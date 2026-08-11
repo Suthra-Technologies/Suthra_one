@@ -320,6 +320,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                 await menuAPI.create(payload);
                 toast.success('Menu item created successfully');
             }
+            window.dispatchEvent(new Event('menu_updated'));
             onSuccess();
             onClose();
         } catch (error: any) {

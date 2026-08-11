@@ -104,6 +104,9 @@ export interface SystemSettings {
         debitCard?: boolean;
         [key: string]: boolean | undefined;
     };
+    paymentQrCodes?: {
+        [key: string]: string | undefined;
+    };
 }
 
 export interface PaymentSettings {
@@ -301,7 +304,8 @@ const defaultSettings: SettingsState = {
             cheque: true,
             creditCard: true,
             debitCard: true,
-        }
+        },
+        paymentQrCodes: {}
     },
     payment: {
         stripePublishableKey: '',
@@ -371,6 +375,8 @@ const defaultSettings: SettingsState = {
 interface SettingsContextType {
     settings: SettingsState;
     loading: boolean;
+    isFetched: boolean;
+    fetchError: boolean;
     refreshSettings: () => Promise<void>;
     updateSettings: (newSettings: SettingsState) => void;
     formatCurrency: (amount: number) => string;
@@ -501,12 +507,43 @@ export const ALL_VALID_UNITS = [
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
-    const [settings, setSettings] = useState<SettingsState>(defaultSettings);
+
+    // Seed initial settings from localStorage or user.tenant if available
+    const getInitialSettings = (): SettingsState => {
+        try {
+            const tenantSlug = (user?.tenant as any)?.slug || (user?.tenant as any)?._id || 'default';
+            const cached = localStorage.getItem(`cached_restaurant_settings_${tenantSlug}`);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                return { ...defaultSettings, ...parsed };
+            }
+        } catch {
+            // ignore JSON error
+        }
+        const initial = { ...defaultSettings };
+        if (user?.tenant) {
+            const t = user.tenant as any;
+            if (t.name) initial.restaurant.name = t.name;
+            if (t.logo) initial.restaurant.logo = t.logo;
+            if (t.address) initial.restaurant.address = t.address;
+            if (t.contactEmail || user.email) initial.restaurant.email = t.contactEmail || user.email || '';
+            if (t.contactPhone || user.phone) {
+                const phoneVal = t.contactPhone || user.phone || '';
+                initial.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+            }
+        }
+        return initial;
+    };
+
+    const [settings, setSettings] = useState<SettingsState>(getInitialSettings);
     const [loading, setLoading] = useState<boolean>(true);
+    const [isFetched, setIsFetched] = useState<boolean>(false);
+    const [fetchError, setFetchError] = useState<boolean>(false);
 
     const refreshSettings = async () => {
         try {
             setLoading(true);
+            setFetchError(false);
             const response = await settingsAPI.getAll();
 
             let fetched: Partial<SettingsState> = {};
@@ -564,7 +601,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         cheque: fetched.system?.posPaymentMethods?.cheque ?? defaultSettings.system.posPaymentMethods?.cheque ?? true,
                         creditCard: fetched.system?.posPaymentMethods?.creditCard ?? defaultSettings.system.posPaymentMethods?.creditCard ?? true,
                         debitCard: fetched.system?.posPaymentMethods?.debitCard ?? defaultSettings.system.posPaymentMethods?.debitCard ?? true,
-                    }
+                    },
+                    paymentQrCodes: fetched.system?.paymentQrCodes || {}
                 },
                 payment: {
                     ...defaultSettings.payment,
@@ -624,6 +662,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             if (!merged.restaurant.logo && user?.tenant) {
                 merged.restaurant.logo = (user.tenant as any).logo || '';
             }
+            if (!merged.restaurant.address && user?.tenant) {
+                merged.restaurant.address = (user.tenant as any).address || '';
+            }
             if (!merged.restaurant.email && user?.tenant) {
                 merged.restaurant.email = (user.tenant as any).contactEmail || user?.email || '';
             }
@@ -633,8 +674,17 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             }
 
             setSettings(merged);
+            setIsFetched(true);
+
+            try {
+                const tenantSlug = (user?.tenant as any)?.slug || (user?.tenant as any)?._id || 'default';
+                localStorage.setItem(`cached_restaurant_settings_${tenantSlug}`, JSON.stringify(merged));
+            } catch {
+                // ignore
+            }
         } catch (error) {
             console.error('Error fetching global settings:', error);
+            setFetchError(true);
         } finally {
             setLoading(false);
         }
@@ -652,6 +702,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const updated = { ...newSettings };
         updated.restaurant.currencySymbol = getCurrencySymbol(updated.restaurant.currency);
         setSettings(updated);
+        try {
+            const tenantSlug = (user?.tenant as any)?.slug || (user?.tenant as any)?._id || 'default';
+            localStorage.setItem(`cached_restaurant_settings_${tenantSlug}`, JSON.stringify(updated));
+        } catch {
+            // ignore
+        }
     };
 
     const formatCurrency = (amount: number): string => {
@@ -671,6 +727,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         <SettingsContext.Provider value={{
             settings,
             loading,
+            isFetched,
+            fetchError,
             refreshSettings,
             updateSettings,
             formatCurrency,

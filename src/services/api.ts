@@ -55,8 +55,8 @@ const api: AxiosInstance = axios.create({
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const isSkippedUrl = config.url && (
-      config.url.includes('/auth/login') || 
-      config.url.includes('/auth/forgot-password') || 
+      config.url.includes('/auth/login') ||
+      config.url.includes('/auth/forgot-password') ||
       config.url.includes('/auth/switch-tenant')
     );
     if (!isSkippedUrl) {
@@ -78,8 +78,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     const isSkippedUrl = response.config?.url && (
-      response.config.url.includes('/auth/login') || 
-      response.config.url.includes('/auth/forgot-password') || 
+      response.config.url.includes('/auth/login') ||
+      response.config.url.includes('/auth/forgot-password') ||
       response.config.url.includes('/auth/switch-tenant')
     );
     if (!isSkippedUrl) {
@@ -89,14 +89,14 @@ api.interceptors.response.use(
   },
   (error) => {
     const isSkippedUrl = error.config?.url && (
-      error.config.url.includes('/auth/login') || 
-      error.config.url.includes('/auth/forgot-password') || 
+      error.config.url.includes('/auth/login') ||
+      error.config.url.includes('/auth/forgot-password') ||
       error.config.url.includes('/auth/switch-tenant')
     );
     if (!isSkippedUrl) {
       handleRequestEnd(error.config?.method, true);
     }
-    
+
     const message = error.response?.data?.message || error.message || 'An error occurred';
     if (error.response?.status === 401) {
       // Mobile-only: keep local session until explicit logout.
@@ -243,6 +243,8 @@ export const ordersAPI = {
     api.get('/orders/filter', { params }),
   getActive: () => api.get('/orders/active'),
   getKitchen: () => api.get('/orders/kitchen'),
+  getDeliveryHistory: (from?: string, to?: string) =>
+    api.get('/orders/delivery-history', { params: { from, to } }),
   getCompleted: () => api.get('/orders/completed'),
   getCancelled: () => api.get('/orders/cancelled'),
 
@@ -415,7 +417,7 @@ export const menuAPI = {
   getAllSubcategories: (categoryId?: string, isDeleted?: boolean) => api.get('/menu/subcategories', { params: { ...(categoryId ? { categoryId } : {}), ...(isDeleted ? { isDeleted } : {}) } }),
   getOne: (id: string) => api.get(`/menu/${id}`),
   create: (menuData: any) => api.post('/menu', menuData),
-  bulkCreate: (items: any[]) => api.post('/menu/bulk', items, { timeout: 180000 }),
+  bulkCreate: (items: any[], options?: { aiDescriptions?: boolean }) => api.post(`/menu/bulk${options?.aiDescriptions ? '?aiDescriptions=true' : ''}`, items),
   update: (id: string, menuData: any) => api.put(`/menu/${id}`, menuData),
   delete: (id: string) => api.delete(`/menu/${id}`),
   restore: (id: string) => api.patch(`/menu/${id}/restore`),
@@ -432,8 +434,8 @@ export const menuAPI = {
   updateSubcategory: (id: string, subcategoryData: any) => api.put(`/menu/subcategories/${id}`, subcategoryData),
   deleteSubcategory: (id: string) => api.delete(`/menu/subcategories/${id}`),
   restoreSubcategory: (id: string) => api.patch(`/menu/subcategories/${id}/restore`),
-  bulkPriceAdjust: (percentage: number, categoryId?: string) =>
-    api.patch('/menu/bulk-price-adjust', { percentage, categoryId }),
+  bulkPriceAdjust: (amount: number, adjustmentType: 'percentage' | 'flat' = 'percentage', categoryId?: string, itemId?: string) =>
+    api.patch('/menu/bulk-price-adjust', { amount, adjustmentType, categoryId, itemId }),
   getPriceAdjustmentLogs: () => api.get('/menu/price-adjustment-logs'),
 };
 
@@ -492,6 +494,16 @@ export const tablesAPI = {
   updateStatus: (id: string, status: string) => api.patch(`/tables/${id}/status`, { status }),
   merge: (primaryId: string, secondaryIds: string[]) => api.post('/tables/merge', { primaryId, secondaryIds }),
   unmerge: (primaryId: string) => api.post('/tables/unmerge', { primaryId }),
+};
+
+// -------------------- Floor Elements API (Architectural: doors, bar, windows, etc.) --------------------
+export const floorElementsAPI = {
+  getAll: (params?: { section?: string }) => api.get('/floor-elements', { params }),
+  create: (data: any) => api.post('/floor-elements', data),
+  update: (id: string, data: any) => api.put(`/floor-elements/${id}`, data),
+  batchUpdateCoordinates: (updates: { _id: string; coordinates: { x: number; y: number } }[]) =>
+    api.patch('/floor-elements/batch-coordinates', { updates }),
+  remove: (id: string) => api.delete(`/floor-elements/${id}`),
 };
 
 // -------------------- Inventory API --------------------
@@ -721,6 +733,8 @@ export const bookingsAPI = {
   getAvailableSlots: (date: string, guests: number) => api.get('/bookings/available-slots', { params: { date, guests } }),
   checkIn: (id: string) => api.post(`/bookings/${id}/check-in`),
   addPreOrderedItem: (id: string, item: { name: string, cost: number, price: number }) => api.post(`/bookings/${id}/pre-order`, item),
+  createWalkIn: (data: { tableId: string; guests: number; orderId: string; customerName?: string; customerPhone?: string }) =>
+    api.post('/bookings/walk-in', data),
 
   // Public (no auth) — for guest users
   publicGetUnavailableSlots: (tenantSlug: string, date: string, guests: number) =>

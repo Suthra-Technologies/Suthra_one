@@ -401,7 +401,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         localStorage.removeItem('user');
       }
 
-      // Attempt to refresh profile to get full user data (savedAddresses, etc.)
+      // Attempt to refresh profile to get full user data (savedAddresses, etc.).
+      // On a fresh handover, `user.tenant` is just the JWT's bare tenant ID string,
+      // not the populated tenant/currentPlan object RequireFeature needs — so keep
+      // isLoading true until the real profile lands, to avoid a flash of "unauthorized"
+      // while tenant.currentPlan.features is still unavailable.
+      if (isFreshHandover) {
+        refreshProfile().finally(() => setIsLoading(false));
+        return;
+      }
       refreshProfile();
     }
     setIsLoading(false);

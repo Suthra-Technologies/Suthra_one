@@ -14,7 +14,8 @@ import {
     History,
     FileDownload,
     Send,
-    Delete
+    Delete,
+    Star
 } from '@mui/icons-material';
 import {
     Alert,
@@ -89,6 +90,7 @@ import PhoneInput from 'src/components/PhoneInput';
 import { useAuth } from '../../../context/AuthContext';
 import { downloadFromUrl } from '../../../utils/fileDownload';
 import { apiBaseUrl } from '../../../services/api';
+import { getTenantSlugFromHostname } from '../../../utils/tenant.utils';
 
 const formatPhoneNumber = (phone?: string) => {
     if (!phone) return '';
@@ -4048,6 +4050,16 @@ const CateringManagementPage = () => {
                 <MenuItem onClick={() => { handleActionMenuClose(); handleSendEmail(actionOrder?._id); }}>
                     <ListItemIcon><Send fontSize="small" /></ListItemIcon>
                     <Typography variant="body2">Send Email</Typography>
+                </MenuItem>
+                <MenuItem onClick={() => {
+                    handleActionMenuClose();
+                    const tenantSlug = getTenantSlugFromHostname();
+                    const feedbackUrl = `${window.location.origin}/${tenantSlug}/feedback/${actionOrder?._id}`;
+                    navigator.clipboard.writeText(feedbackUrl);
+                    toast.success('Feedback link copied to clipboard!');
+                }}>
+                    <ListItemIcon><Star fontSize="small" sx={{ color: '#f59e0b' }} /></ListItemIcon>
+                    <Typography variant="body2">Copy Feedback Link</Typography>
                 </MenuItem>
             </Menu>
 

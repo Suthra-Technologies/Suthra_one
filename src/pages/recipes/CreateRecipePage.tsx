@@ -52,8 +52,10 @@ const CreateRecipePage: React.FC = () => {
     const handleNavigationBack = () => {
         if (returnTo) {
             navigate(getRelativePath(returnTo));
+        } else if (window.history.length > 1) {
+            navigate(-1);
         } else {
-            navigate(getRelativePath('/recipes'));
+            navigate(getRelativePath('/menu'));
         }
     };
 

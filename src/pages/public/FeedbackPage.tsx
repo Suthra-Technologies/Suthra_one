@@ -33,18 +33,9 @@ const FeedbackPage: React.FC = () => {
     const [submitted, setSubmitted] = useState(false);
 
     // Form state
-    const [serviceRating, setServiceRating] = useState<number | null>(0);
-    const [ambianceRating, setAmbianceRating] = useState<number | null>(0);
+    const [rating, setRating] = useState<number | null>(0);
+    const [hoverRating, setHoverRating] = useState<number>(-1);
     const [suggestions, setSuggestions] = useState('');
-    const [itemRatings, setItemRatings] = useState<Record<string, { taste: number; quantity: number }>>({});
-
-    // A dish the kitchen split across rows is still one dish to the guest: rate it
-    // once. This grouped list is the only thing the page renders, keys and submits
-    // from, so a rating can never land on a row the guest never saw.
-    const feedbackItems = React.useMemo(
-        () => groupBillItems(order?.items || []),
-        [order],
-    );
 
     useEffect(() => {
         if (slug && orderId) {
@@ -62,14 +53,6 @@ const FeedbackPage: React.FC = () => {
             }
 
             setOrder(res.data);
-
-            // Seed from the same grouped list the page renders, so the keys line up.
-            const initialRatings: any = {};
-            groupBillItems(res.data.items || []).forEach((item: any, index: number) => {
-                const key = `${item.menuItem}-${index}`;
-                initialRatings[key] = { taste: 0, quantity: 0 };
-            });
-            setItemRatings(initialRatings);
         } catch (error) {
             console.error(error);
             toast.error('Failed to load order details');
@@ -78,19 +61,19 @@ const FeedbackPage: React.FC = () => {
         }
     };
 
-    const handleItemRatingChange = (itemKey: string, type: 'taste' | 'quantity', value: number | null) => {
-        setItemRatings(prev => ({
-            ...prev,
-            [itemKey]: {
-                ...prev[itemKey],
-                [type]: value || 0
-            }
-        }));
+    const ratingLabels: Record<number, string> = {
+        1: 'Poor',
+        2: 'Fair',
+        3: 'Good',
+        4: 'Very Good',
+        5: 'Excellent!'
     };
 
+    const activeRating = hoverRating !== -1 ? hoverRating : (rating || 0);
+
     const handleSubmit = async () => {
-        if (!serviceRating || !ambianceRating) {
-            toast.error('Please rate service and ambiance');
+        if (!rating) {
+            toast.error('Please select a star rating for your experience');
             return;
         }
 
@@ -98,19 +81,12 @@ const FeedbackPage: React.FC = () => {
             setSubmitting(true);
             const payload = {
                 orderId,
-                serviceRating,
-                ambianceRating,
+                rating,
+                overallRating: rating,
+                serviceRating: rating,
+                ambianceRating: rating,
                 suggestions,
-                itemRatings: feedbackItems.map((item: any, index: number) => {
-                    const key = `${item.menuItem}-${index}`;
-                    return {
-                        menuItem: item.menuItem,
-                        name: item.name,
-                        tasteRating: itemRatings[key]?.taste || 0,
-                        quantityRating: itemRatings[key]?.quantity || 0,
-                        modifiers: item.modifiers || []
-                    };
-                })
+                itemRatings: []
             };
 
             await feedbackAPI.submitPublic(slug!, payload);
@@ -135,8 +111,8 @@ const FeedbackPage: React.FC = () => {
     if (submitted) {
         return (
             <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
-                <Paper sx={{ p: 4, borderRadius: 2 }}>
-                    <Typography variant="h4" color="primary" gutterBottom>Thank You!</Typography>
+                <Paper sx={{ p: 4, borderRadius: 3, boxShadow: '0 10px 30px rgba(0,0,0,0.08)' }}>
+                    <Typography variant="h4" color="primary" fontWeight="bold" gutterBottom>Thank You!</Typography>
                     <Typography variant="body1" color="text.secondary">
                         Your feedback helps us serve you better. We look forward to seeing you again!
                     </Typography>
@@ -154,97 +130,47 @@ const FeedbackPage: React.FC = () => {
     }
 
     return (
-        <Container maxWidth="md" sx={{ py: 4 }}>
-            <Paper sx={{ p: { xs: 2, md: 4 }, borderRadius: 2 }}>
-                <Typography variant="h5" gutterBottom align="center" fontWeight="bold">
-                    Rate Your Experience
+        <Container maxWidth="sm" sx={{ py: 6 }}>
+            <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 3, boxShadow: '0 10px 40px rgba(0,0,0,0.06)' }}>
+                <Typography variant="overline" display="block" align="center" color="primary" sx={{ fontWeight: 700, letterSpacing: 2 }}>
+                    RATE YOUR EXPERIENCE
                 </Typography>
-                <Typography variant="subtitle1" align="center" color="text.secondary" gutterBottom>
+                <Typography variant="h5" gutterBottom align="center" fontWeight="bold" sx={{ mt: 0.5 }}>
                     Order #{order.orderNumber}
                 </Typography>
 
                 <Divider sx={{ my: 3 }} />
 
-                <Typography variant="h6" gutterBottom>Food Items</Typography>
-                <List disablePadding>
-                    {feedbackItems.map((item: any, index: number) => {
-                        const key = `${item.menuItem}-${index}`;
-                        return (
-                            <ListItem key={key} sx={{ flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, py: 2, borderBottom: '1px solid #f0f0f0' }}>
-                                <ListItemText
-                                    primary={item.name}
-                                    secondary={
-                                        <>
-                                            <Typography variant="body2" color="text.secondary">
-                                                Qty: {item.quantity}
-                                            </Typography>
-                                            {item.modifiers && (item?.modifiers || []).length > 0 && (
-                                                <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
-                                                    + {(item?.modifiers || []).map((m: any) => m.name).join(', ')}
-                                                </Typography>
-                                            )}
-                                        </>
-                                    }
-                                    sx={{ width: { xs: '100%', sm: '30%' }, mb: { xs: 1, sm: 0 } }}
-                                />
+                <Box display="flex" flexDirection="column" alignItems="center" my={3}>
+                    <Typography variant="subtitle1" fontWeight="600" color="text.primary" gutterBottom>
+                        How was your overall experience?
+                    </Typography>
+                    
+                    <Rating
+                        name="overall-rating"
+                        value={rating}
+                        precision={1}
+                        onChange={(_, val) => setRating(val)}
+                        onChangeActive={(_, newHover) => setHoverRating(newHover)}
+                        icon={<StarIcon sx={{ fontSize: { xs: 44, sm: 52 }, color: '#faaf00' }} />}
+                        emptyIcon={<StarIcon sx={{ fontSize: { xs: 44, sm: 52 }, color: '#e0e0e0' }} />}
+                    />
 
-                                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ width: '100%' }}>
-                                    <Box>
-                                        <Typography component="legend" variant="caption">Taste</Typography>
-                                        <Rating
-                                            name={`taste-${key}`}
-                                            value={itemRatings[key]?.taste || 0}
-                                            onChange={(_, val) => handleItemRatingChange(key, 'taste', val)}
-                                            size="small"
-                                        />
-                                    </Box>
-                                    <Box>
-                                        <Typography component="legend" variant="caption">Quantity</Typography>
-                                        <Rating
-                                            name={`qty-${key}`}
-                                            value={itemRatings[key]?.quantity || 0}
-                                            onChange={(_, val) => handleItemRatingChange(key, 'quantity', val)}
-                                            size="small"
-                                        />
-                                    </Box>
-                                </Stack>
-                            </ListItem>
-                        );
-                    })}
-                </List>
-
-                <Box sx={{ mt: 4 }}>
-                    <Typography variant="h6" gutterBottom>Overall Experience</Typography>
-                    <Stack spacing={2}>
-                        <Box display="flex" alignItems="center" justifyContent="space-between">
-                            <Typography>Service Quality</Typography>
-                            <Rating
-                                value={serviceRating}
-                                onChange={(_, val) => setServiceRating(val)}
-                                size="large"
-                            />
-                        </Box>
-                        <Box display="flex" alignItems="center" justifyContent="space-between">
-                            <Typography>Ambiance</Typography>
-                            <Rating
-                                value={ambianceRating}
-                                onChange={(_, val) => setAmbianceRating(val)}
-                                size="large"
-                            />
-                        </Box>
-                    </Stack>
+                    <Typography variant="body2" sx={{ mt: 1.5, minHeight: 24, fontWeight: 700, color: activeRating > 0 ? 'primary.main' : 'text.secondary' }}>
+                        {activeRating > 0 ? ratingLabels[activeRating] : 'Tap a star to rate'}
+                    </Typography>
                 </Box>
 
-                <Box sx={{ mt: 4 }}>
+                <Box sx={{ mt: 3 }}>
                     <TextField
-                        label="Suggestions / Feedback"
+                        label="Comments or suggestions (Optional)"
                         multiline
                         rows={4}
                         fullWidth
                         variant="outlined"
                         value={suggestions}
                         onChange={(e) => setSuggestions(e.target.value)}
-                        placeholder="Tell us what you liked or how we can improve..."
+                        placeholder="Tell us what you liked or how we can make your next visit even better..."
                     />
                 </Box>
 
@@ -252,9 +178,10 @@ const FeedbackPage: React.FC = () => {
                     <Button
                         variant="contained"
                         size="large"
+                        fullWidth
                         onClick={handleSubmit}
                         disabled={submitting}
-                        sx={{ px: 6, py: 1.5, fontSize: '1.1rem' }}
+                        sx={{ py: 1.8, fontSize: '1.1rem', fontWeight: 700, borderRadius: 2 }}
                     >
                         {submitting ? 'Submitting...' : 'Submit Feedback'}
                     </Button>

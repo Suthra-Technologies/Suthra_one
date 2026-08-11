@@ -11,7 +11,8 @@ import {
     PieChart as ShareIcon,
     Autorenew as ResetIcon,
     Lock as LockIcon,
-    LockOpen as LockOpenIcon
+    LockOpen as LockOpenIcon,
+    ExpandMore as ExpandMoreIcon
 } from '@mui/icons-material';
 import {
     Alert,
@@ -42,9 +43,12 @@ import {
     Select,
     ToggleButton,
     ToggleButtonGroup,
-    InputAdornment
+    InputAdornment,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails
 } from '@mui/material';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../context/SettingsContext';
 import { getActivePaymentMethods } from '../utils/orderWorkflows';
@@ -112,6 +116,8 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
         isLocked?: boolean;
     }
 
+    const MAX_SPLIT_PAYERS = 12;
+
     const [loading, setLoading] = useState(false);
     const [stripeModalOpen, setStripeModalOpen] = useState(false);
     const [tipPercent, setTipPercent] = useState<number>(0);
@@ -126,6 +132,10 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
     const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
     const [isFetchingRewards, setIsFetchingRewards] = useState(false);
     const [isApplyingRewards, setIsApplyingRewards] = useState(false);
+    const [rewardsExpanded, setRewardsExpanded] = useState(false);
+    const hasAppliedRewards = (order?.loyaltyPoints?.pointsUsed || 0) > 0;
+    const currentPointsUsed = order?.loyaltyPoints?.pointsUsed || 0;
+    const prevPointsUsed = useRef<number>(currentPointsUsed);
     const totalAmount = order?.totalAmount || 0;
 
     const totalPaid = (order?.payments || [])
@@ -326,9 +336,15 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
     useEffect(() => {
         if (initialOrder && open) {
             setOrder(initialOrder);
+            prevPointsUsed.current = initialOrder.loyaltyPoints?.pointsUsed || 0;
             setTipPercent(0);
             setCustomTipAmount('');
             setIsCustomActive(false);
+            if (initialOrder.loyaltyPoints?.pointsUsed) {
+                setRewardsExpanded(true);
+            } else {
+                setRewardsExpanded(false);
+            }
 
             // Check for customer and fetch rewards
             const fetchRewards = async () => {
@@ -359,6 +375,9 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
     // Manage/sync split bill rows
     useEffect(() => {
         if (open && amountDue > 0) {
+            const pointsChanged = currentPointsUsed !== prevPointsUsed.current;
+            prevPointsUsed.current = currentPointsUsed;
+
             if (paymentRows.length <= 1) {
                 const currentMethod = paymentRows[0]?.method || paymentMethod || 'cash';
                 setPaymentRows([
@@ -372,13 +391,13 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                         isLocked: false
                     }
                 ]);
-            } else {
+            } else if (!pointsChanged || totalPaid === 0) {
                 setPaymentRows(prev => redistributeRows(prev, splitMode, amountDue));
             }
         } else if (!open || amountDue === 0) {
             setPaymentRows([]);
         }
-    }, [open, amountDue]);
+    }, [open, amountDue, currentPointsUsed, totalPaid]);
 
     if (!order) return null;
 
@@ -422,19 +441,40 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
     const handleQuickSplit = (parts: number) => {
         if (parts <= 0 || amountDue <= 0) return;
         
-        const rows: PaymentRow[] = [];
-        for (let i = 0; i < parts; i++) {
-            rows.push({
-                id: Math.random().toString(),
-                amount: '0.00',
-                shares: '1',
-                percent: '0.00',
-                method: paymentMethod || 'cash',
-                transactionId: '',
-                isLocked: false
-            });
-        }
-        setPaymentRows(redistributeRows(rows, splitMode, amountDue));
+        setPaymentRows(prev => {
+            const lockedRows = prev.filter(r => r.isLocked);
+            const L = lockedRows.length;
+            const targetU = Math.max(0, parts - L);
+            
+            const nextRows: PaymentRow[] = [];
+            let unlockedKeptCount = 0;
+            
+            // Go through the previous rows and keep all locked ones, and unlocked ones up to targetU
+            for (const row of prev) {
+                if (row.isLocked) {
+                    nextRows.push(row);
+                } else if (unlockedKeptCount < targetU) {
+                    nextRows.push(row);
+                    unlockedKeptCount++;
+                }
+            }
+            
+            // If we still need more unlocked rows, create and append them
+            while (unlockedKeptCount < targetU) {
+                nextRows.push({
+                    id: Math.random().toString(),
+                    amount: '0.00',
+                    shares: '1',
+                    percent: '0.00',
+                    method: paymentMethod || 'cash',
+                    transactionId: '',
+                    isLocked: false
+                });
+                unlockedKeptCount++;
+            }
+            
+            return redistributeRows(nextRows, splitMode, amountDue);
+        });
     };
 
     const handleSplitEqually = () => {
@@ -449,6 +489,10 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
     };
 
     const handleAddRow = () => {
+        if (paymentRows.length >= MAX_SPLIT_PAYERS) {
+            toast.error(`Maximum of ${MAX_SPLIT_PAYERS} split bill payers allowed`);
+            return;
+        }
         setPaymentRows(prev => {
             const newRow: PaymentRow = {
                 id: Math.random().toString(),
@@ -572,6 +616,10 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
 
     const handleApplyRewards = async () => {
         if (!rewardPointsInfo) return;
+        if (totalPaid > 0) {
+            toast.error("Reward points cannot be applied after payment collection has started.");
+            return;
+        }
 
         setIsApplyingRewards(true);
         try {
@@ -585,6 +633,31 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
         } catch (err: any) {
             console.error('Failed to apply rewards:', err);
             toast.error(err.response?.data?.message || 'Failed to apply rewards');
+        } finally {
+            setIsApplyingRewards(false);
+        }
+    };
+
+    const handleRemoveRewards = async () => {
+        if (!rewardPointsInfo) return;
+        if (totalPaid > 0) {
+            toast.error("Reward points cannot be applied after payment collection has started.");
+            return;
+        }
+
+        setIsApplyingRewards(true);
+        try {
+            const res = await (ordersAPI as any).update(order._id, {
+                loyaltyPoints: {
+                    pointsUsed: 0
+                }
+            });
+            toast.success('Reward points removed!');
+            setOrder(res.data);
+            setPointsToRedeem(0);
+        } catch (err: any) {
+            console.error('Failed to remove rewards:', err);
+            toast.error(err.response?.data?.message || 'Failed to remove rewards');
         } finally {
             setIsApplyingRewards(false);
         }
@@ -786,78 +859,154 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
 
                             {/* Reward Points Section */}
                             {(rewardPointsInfo || isFetchingRewards) && (
-                                <Box sx={{
-                                    mb: 3,
-                                    p: 2,
-                                    bgcolor: 'rgba(25, 118, 210, 0.04)',
-                                    borderRadius: 2,
-                                    border: '1px dashed',
-                                    borderColor: 'primary.main'
-                                }}>
-                                    {isFetchingRewards ? (
-                                        <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
-                                            <CircularProgress size={16} />
-                                            <Typography variant="body2">Fetching customer rewards...</Typography>
-                                        </Stack>
-                                    ) : (
-                                        <Box>
-                                            <Typography variant="subtitle2" fontWeight="bold" color="primary" gutterBottom>
+                                <Accordion
+                                    expanded={rewardsExpanded}
+                                    onChange={(e, expanded) => setRewardsExpanded(expanded)}
+                                    disableGutters
+                                    elevation={0}
+                                    sx={{
+                                        mb: 3,
+                                        border: '1px dashed',
+                                        borderColor: 'primary.main',
+                                        borderRadius: '8px !important',
+                                        bgcolor: 'rgba(25, 118, 210, 0.04)',
+                                        '&:before': { display: 'none' }
+                                    }}
+                                >
+                                    <AccordionSummary
+                                        expandIcon={<ExpandMoreIcon color="primary" />}
+                                        sx={{ px: 2, minHeight: 48, '&.Mui-expanded': { minHeight: 48 } }}
+                                    >
+                                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ width: '100%', pr: 1 }}>
+                                            <Typography variant="subtitle2" fontWeight="bold" color="primary">
                                                 Redeem Reward Points
                                             </Typography>
-                                            <Stack direction="row" spacing={2} alignItems="flex-start">
-                                                <Box sx={{ flexGrow: 1 }}>
-                                                    <Typography variant="body2">
-                                                        Balance: <strong>{rewardPointsInfo.points || 0} pts</strong>
-                                                        <Chip
-                                                            label={`$${rewardPointsInfo.dollarValue || 0} Value`}
-                                                            size="small"
-                                                            color="success"
-                                                            variant="outlined"
-                                                            sx={{ height: 18, ml: 1, fontSize: '0.6rem' }}
-                                                        />
-                                                    </Typography>
-                                                    <TextField
-                                                        margin="dense"
-                                                        label="Points to Redeem"
-                                                        type="number"
-                                                        size="small"
-                                                        fullWidth
-                                                        value={pointsToRedeem || ''}
-                                                        onChange={(e) => setPointsToRedeem(Math.min(maxUsablePoints, Math.max(0, parseInt(e.target.value) || 0)))}
-                                                        inputProps={{ min: 0, max: maxUsablePoints }}
-                                                        disabled={rewardPointsInfo.points === 0 || (rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0))}
-                                                    />
-                                                    {rewardPointsInfo.settings?.minPointsToRedeem > 0 && (
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            Min. {rewardPointsInfo.settings.minPointsToRedeem} pts required.
-                                                        </Typography>
-                                                    )}
-                                                </Box>
-                                                <Stack spacing={1}>
-                                                    <Button
-                                                        variant="outlined"
-                                                        size="small"
-                                                        onClick={() => setPointsToRedeem(maxUsablePoints)}
-                                                        disabled={maxUsablePoints === 0 || (rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0))}
-                                                    >
-                                                        Max
-                                                    </Button>
-                                                    <Button
-                                                        variant="contained"
-                                                        size="small"
-                                                        onClick={handleApplyRewards}
-                                                        disabled={isApplyingRewards || pointsToRedeem < 0}
-                                                    >
-                                                        {isApplyingRewards ? '...' : 'Apply'}
-                                                    </Button>
-                                                </Stack>
+                                            {isFetchingRewards && (
+                                                <CircularProgress size={14} />
+                                            )}
+                                            {!isFetchingRewards && hasAppliedRewards && (
+                                                <Chip
+                                                    label={`Applied: ${order.loyaltyPoints?.pointsUsed} pts (-${formatCurrency(order.rewardDiscount)})`}
+                                                    size="small"
+                                                    color="success"
+                                                    sx={{ height: 20, fontSize: '0.65rem', fontWeight: 'bold' }}
+                                                />
+                                            )}
+                                            {!isFetchingRewards && !hasAppliedRewards && rewardPointsInfo && rewardPointsInfo.points > 0 && (
+                                                <Chip
+                                                    label={`${rewardPointsInfo.points} pts available`}
+                                                    size="small"
+                                                    color="primary"
+                                                    variant="outlined"
+                                                    sx={{ height: 20, fontSize: '0.65rem', bgcolor: 'background.paper' }}
+                                                />
+                                            )}
+                                        </Stack>
+                                    </AccordionSummary>
+                                    <AccordionDetails sx={{ px: 2, pb: 2, pt: 0 }}>
+                                        {isFetchingRewards ? (
+                                            <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" sx={{ py: 1 }}>
+                                                <CircularProgress size={16} />
+                                                <Typography variant="body2">Fetching customer rewards...</Typography>
                                             </Stack>
-                                        </Box>
-                                    )}
-                                </Box>
+                                        ) : (
+                                            <Box>
+                                                {hasAppliedRewards ? (
+                                                    <Box sx={{ mt: 1 }}>
+                                                        <Typography variant="body2" sx={{ mb: 1.5 }}>
+                                                            Applied: <strong>{order.loyaltyPoints?.pointsUsed} pts</strong>
+                                                            <Chip
+                                                                label={`-$${order.rewardDiscount || 0} Discount`}
+                                                                size="small"
+                                                                color="success"
+                                                                sx={{ height: 18, ml: 1, fontSize: '0.6rem', fontWeight: 'bold' }}
+                                                            />
+                                                        </Typography>
+                                                        <Button
+                                                            variant="outlined"
+                                                            color="error"
+                                                            size="small"
+                                                            fullWidth
+                                                            onClick={handleRemoveRewards}
+                                                            disabled={isApplyingRewards || totalPaid > 0}
+                                                        >
+                                                            {isApplyingRewards ? 'Removing...' : 'Remove Applied Reward Points'}
+                                                        </Button>
+                                                        {totalPaid > 0 && (
+                                                            <Typography variant="caption" color="error.main" sx={{ mt: 1, display: 'block', fontWeight: 'medium' }}>
+                                                                Reward points cannot be applied after payment collection has started.
+                                                            </Typography>
+                                                        )}
+                                                    </Box>
+                                                ) : (
+                                                    <Stack direction="row" spacing={2} alignItems="flex-start" sx={{ mt: 1 }}>
+                                                        <Box sx={{ flexGrow: 1 }}>
+                                                            <Typography variant="body2">
+                                                                Balance: <strong>{rewardPointsInfo?.points || 0} pts</strong>
+                                                                <Chip
+                                                                    label={`$${rewardPointsInfo?.dollarValue || 0} Value`}
+                                                                    size="small"
+                                                                    color="success"
+                                                                    variant="outlined"
+                                                                    sx={{ height: 18, ml: 1, fontSize: '0.6rem' }}
+                                                                />
+                                                            </Typography>
+                                                            <TextField
+                                                                margin="dense"
+                                                                label="Points to Redeem"
+                                                                type="number"
+                                                                size="small"
+                                                                fullWidth
+                                                                value={pointsToRedeem || ''}
+                                                                onChange={(e) => setPointsToRedeem(Math.min(maxUsablePoints, Math.max(0, parseInt(e.target.value) || 0)))}
+                                                                inputProps={{ min: 0, max: maxUsablePoints }}
+                                                                disabled={!rewardPointsInfo || rewardPointsInfo.points === 0 || (rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0)) || totalPaid > 0}
+                                                            />
+                                                            {rewardPointsInfo?.settings?.minPointsToRedeem > 0 && (
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    Min. {rewardPointsInfo.settings.minPointsToRedeem} pts required.
+                                                                </Typography>
+                                                            )}
+                                                            {totalPaid > 0 && (
+                                                                <Typography variant="caption" color="error.main" sx={{ mt: 1, display: 'block', fontWeight: 'medium' }}>
+                                                                    Reward points cannot be applied after payment collection has started.
+                                                                </Typography>
+                                                            )}
+                                                        </Box>
+                                                        <Stack spacing={1} sx={{ mt: 3.5 }}>
+                                                            <Button
+                                                                variant="outlined"
+                                                                size="small"
+                                                                onClick={() => setPointsToRedeem(maxUsablePoints)}
+                                                                disabled={maxUsablePoints === 0 || (rewardPointsInfo && rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0)) || totalPaid > 0}
+                                                            >
+                                                                Max
+                                                            </Button>
+                                                            <Button
+                                                                variant="contained"
+                                                                size="small"
+                                                                onClick={handleApplyRewards}
+                                                                disabled={isApplyingRewards || pointsToRedeem <= 0 || totalPaid > 0}
+                                                            >
+                                                                {isApplyingRewards ? '...' : 'Apply'}
+                                                            </Button>
+                                                        </Stack>
+                                                    </Stack>
+                                                )}
+                                            </Box>
+                                        )}
+                                    </AccordionDetails>
+                                </Accordion>
                             )}
 
                             <Divider sx={{ my: 2 }} />
+
+                            {hasAppliedRewards && (
+                                <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+                                    Reward points applied: <strong>{order.loyaltyPoints?.pointsUsed} points</strong> (<strong>{formatCurrency(order.rewardDiscount)}</strong> discount).
+                                    {paymentRows.length > 1 && " Please review and adjust the split payment amounts below to match the new remaining due."}
+                                </Alert>
+                            )}
 
                             {/* Split Bill Planner Section */}
                             <Box sx={{ mb: 3 }}>
@@ -875,7 +1024,14 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                                         <Button size="small" variant="outlined" sx={{ borderRadius: 2 }} onClick={() => handleQuickSplit(4)}>
                                             4-Ways
                                         </Button>
-                                        <Button size="small" variant="contained" sx={{ borderRadius: 2 }} onClick={handleAddRow} startIcon={<AddIcon />}>
+                                        <Button
+                                            size="small"
+                                            variant="contained"
+                                            sx={{ borderRadius: 2 }}
+                                            onClick={handleAddRow}
+                                            startIcon={<AddIcon />}
+                                            disabled={paymentRows.length >= MAX_SPLIT_PAYERS}
+                                        >
                                             Add Split
                                         </Button>
                                     </Stack>
@@ -1091,8 +1247,12 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                                                         label="Ref ID (Opt.)"
                                                         size="small"
                                                         value={row.transactionId}
-                                                        onChange={(e) => handleUpdateRow(row.id, { transactionId: e.target.value })}
+                                                        onChange={(e) => {
+                                                            const sanitized = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 50);
+                                                            handleUpdateRow(row.id, { transactionId: sanitized });
+                                                        }}
                                                         disabled={loading || row.method === 'card'}
+                                                        inputProps={{ maxLength: 50 }}
                                                         sx={{ width: '100px', flexGrow: 1 }}
                                                     />
 
@@ -1111,6 +1271,50 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                                                         {row.method === 'card' ? 'Pay Card' : 'Collect'}
                                                     </Button>
                                                 </Box>
+
+                                                {/* QR Code Display for Dynamic Digital Payments */}
+                                                {(() => {
+                                                    const currentMethod = row.method;
+                                                    const qrCodeUrl = settings?.system?.paymentQrCodes?.[currentMethod];
+                                                    const isQrMethod = !['cash', 'card', 'cheque', 'creditCard', 'debitCard'].includes(currentMethod);
+                                                    
+                                                    if (isQrMethod) {
+                                                        const methodTitle = availableMethods.find(m => m.val === currentMethod)?.title || currentMethod;
+                                                        return (
+                                                            <Box sx={{ 
+                                                                display: 'flex', 
+                                                                flexDirection: 'column', 
+                                                                alignItems: 'center', 
+                                                                gap: 1, 
+                                                                p: 2, 
+                                                                border: '1px dashed', 
+                                                                borderColor: qrCodeUrl ? 'divider' : 'warning.light', 
+                                                                borderRadius: 2, 
+                                                                bgcolor: 'background.paper', 
+                                                                mt: 1.5,
+                                                                maxWidth: '300px',
+                                                                mx: 'auto',
+                                                                width: '100%'
+                                                            }}>
+                                                                {qrCodeUrl ? (
+                                                                    <>
+                                                                        <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                                                                            Scan QR to pay {formatCurrency(amt)} via {methodTitle}
+                                                                        </Typography>
+                                                                        <Box sx={{ width: 140, height: 140, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 0.5, bgcolor: '#fff' }}>
+                                                                            <img src={qrCodeUrl} alt={`${methodTitle} QR`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                                                        </Box>
+                                                                    </>
+                                                                ) : (
+                                                                    <Typography variant="caption" color="warning.main" fontWeight="bold" align="center">
+                                                                        No QR Code configured for {methodTitle} in POS Settings.
+                                                                    </Typography>
+                                                                )}
+                                                            </Box>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                             </Paper>
                                         );
                                     })}

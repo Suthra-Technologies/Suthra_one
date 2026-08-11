@@ -24,13 +24,13 @@ import { useParams } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import { useSettings } from '../../context/SettingsContext';
-import { cateringAPI, ordersAPI } from '../../services/api';
+import { cateringAPI, ordersAPI, feedbackAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { downloadFromUrl } from '../../utils/fileDownload';
 import { apiBaseUrl } from '../../services/api';
 import { getTenantSlugFromHostname } from '../../utils/tenant.utils';
 import { getActivePaymentMethods } from '../../utils/orderWorkflows';
-import { Assignment, Chat, Event, History, Receipt } from '@mui/icons-material';
+import { Assignment, Chat, Event, History, Receipt, Star, CheckCircle } from '@mui/icons-material';
 
 const SUCCESS_STATUSES = new Set(['succeeded']);
 const FAILURE_STATUSES = new Set(['canceled', 'requires_payment_method', 'failed']);
@@ -220,6 +220,7 @@ const CateringTrackPage = () => {
     const [stripePromise, setStripePromise] = useState<Promise<any> | null>(null);
     const [loadingStripeConfig, setLoadingStripeConfig] = useState(false);
     const [stripeConfigError, setStripeConfigError] = useState<string | null>(null);
+    const [hasFeedback, setHasFeedback] = useState<boolean>(false);
 
     const statuses = ['pending', 'confirmed', 'completed'];
     const getActiveStep = (status: string) => statuses.indexOf(status);
@@ -240,6 +241,15 @@ const CateringTrackPage = () => {
         try {
             const response = await cateringAPI.track(slug, token);
             setOrder(response.data);
+
+            if (response.data && response.data.status === 'completed' && response.data._id) {
+                try {
+                    const fbRes = await feedbackAPI.getOrderForFeedback(slug, response.data._id);
+                    setHasFeedback(!!fbRes.data?.hasFeedback);
+                } catch (e) {
+                    // Non-blocking
+                }
+            }
         } catch (error) {
             console.error('Failed to fetch order:', error);
             toast.error('Could not find order. Please check your link.');
@@ -418,6 +428,73 @@ const CateringTrackPage = () => {
                             </Box>
 
                             <Divider sx={{ mb: 4 }} />
+
+                            {order.status === 'completed' && (
+                                <Paper
+                                    elevation={0}
+                                    sx={{
+                                        p: 2.5,
+                                        mb: 4,
+                                        borderRadius: 2.5,
+                                        background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                                        border: '1px solid #bbf7d0',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        flexWrap: 'wrap',
+                                        gap: 2
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <Box sx={{
+                                            width: 44,
+                                            height: 44,
+                                            borderRadius: 2,
+                                            bgcolor: hasFeedback ? '#16a34a' : '#22c55e',
+                                            color: 'white',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexShrink: 0
+                                        }}>
+                                            {hasFeedback ? <CheckCircle sx={{ fontSize: 24 }} /> : <Star sx={{ fontSize: 26 }} />}
+                                        </Box>
+                                        <Box>
+                                            <Typography variant="subtitle2" fontWeight="bold" color="#14532d">
+                                                {hasFeedback ? "Feedback Submitted" : "How was your catering event?"}
+                                            </Typography>
+                                            <Typography variant="caption" color="#166534" display="block">
+                                                {hasFeedback 
+                                                    ? "Thank you for sharing your experience with us!"
+                                                    : "We'd love to hear your thoughts on the food quality and service."
+                                                }
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                    {!hasFeedback && (
+                                        <Button
+                                            variant="contained"
+                                            onClick={() => {
+                                                const tenantSlug = slug || getTenantSlugFromHostname();
+                                                window.location.href = `/${tenantSlug}/feedback/${order._id}`;
+                                            }}
+                                            sx={{
+                                                bgcolor: '#16a34a',
+                                                '&:hover': { bgcolor: '#15803d' },
+                                                color: 'white',
+                                                fontWeight: 'bold',
+                                                borderRadius: 2,
+                                                px: 2.5,
+                                                py: 0.75,
+                                                fontSize: '0.85rem',
+                                                textTransform: 'none'
+                                            }}
+                                        >
+                                            Rate Event
+                                        </Button>
+                                    )}
+                                </Paper>
+                            )}
 
                             <Stepper activeStep={getActiveStep(order.status)} alternativeLabel sx={{ mb: 6 }}>
                                 <Step>

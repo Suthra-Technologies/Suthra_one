@@ -1455,7 +1455,7 @@ const BookingsAdminPage: React.FC = () => {
                             </>
                         )}
                         <Button onClick={() => setDetailsOpen(false)}>Close</Button>
-                        {selectedBooking && (
+                        {selectedBooking && !['completed', 'cancelled', 'rejected', 'no-show'].includes(selectedBooking.status) && !selectedBooking.checkedIn && (
                             <Button 
                                 variant="outlined" 
                                 color="secondary"

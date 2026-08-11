@@ -88,6 +88,7 @@ export interface IMenuItem {
     linkedGroups?: (string | ModifierGroupTemplate)[];
     addOns?: string[];
     actionHistory?: any[];
+    taxCode?: string;
     taxRate?: number | null;
     isCateringAvailable: boolean;
     isAutoDebit?: boolean;
