@@ -15,6 +15,7 @@ import CustomiseScreensPage from '../pages/admin/customise-screens/CustomiseScre
 import ServiceUsagePage from '../pages/admin/ServiceUsagePage';
 import CustomerActivitiesPage from '../pages/admin/CustomerActivitiesPage';
 import AttendancePage from '../pages/AttendancePage';
+import PayrollPage from '../pages/PayrollPage';
 import CateringPage from '../pages/catering/CateringPage';
 import CateringTrackPage from '../pages/customer/CateringTrackPage';
 import CustomersPage from '../pages/customers/CustomersPage';
@@ -132,6 +133,7 @@ export const TenantRoutes = () => (
         <Route element={<RequireFeature feature="attendance" />}>
           <Route path="attendance" element={<AttendancePage />} />
         </Route>
+        <Route path="payroll" element={<PayrollPage />} />
       </Route>
 
       <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>

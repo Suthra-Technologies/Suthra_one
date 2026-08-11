@@ -358,6 +358,56 @@ export const attendanceAPI = {
   exportFinancials: (filters: any) => api.get('/attendance/admin/export', { params: filters, responseType: 'blob', timeout: 120000 }),
 };
 
+// -------------------- Payroll API --------------------
+export const payrollAPI = {
+  // Profiles
+  getProfiles: (params?: { page?: number; limit?: number; search?: string; status?: string; role?: string }) =>
+    api.get('/payroll/profiles', { params }),
+  getProfile: (id: string) => api.get(`/payroll/profiles/${id}`),
+  createProfile: (data: any) => api.post('/payroll/profiles', data),
+  updateProfile: (id: string, data: any) => api.put(`/payroll/profiles/${id}`, data),
+  deactivateProfile: (id: string, data: { status?: string; reason?: string; resignationDate?: string; letterUrl?: string }) =>
+    api.delete(`/payroll/profiles/${id}`, { data }),
+  syncUsers: () => api.post('/payroll/sync-users'),
+
+  // Payroll runs
+  getSheet: (month: number, year: number) => api.get('/payroll/sheet', { params: { month, year } }),
+  getMonthlySheet: (month: number, year: number) => api.get('/payroll/monthly-sheet', { params: { month, year } }),
+  compute: (id: string, month: number, year: number) =>
+    api.get(`/payroll/profiles/${id}/compute`, { params: { month, year } }),
+  processSalary: (id: string, data: any) => api.post(`/payroll/profiles/${id}/process`, data),
+  processAll: (data: { month: number; year: number; status?: string; reprocess?: boolean }) =>
+    api.post('/payroll/process-all', data, { timeout: 180000 }),
+  updateSalaryStatus: (id: string, data: { month: number; year: number; status: string }) =>
+    api.patch(`/payroll/profiles/${id}/salary-status`, data),
+  getPayslip: (id: string, month: number, year: number) =>
+    api.get(`/payroll/profiles/${id}/payslip`, { params: { month, year } }),
+  exportPayroll: (month: number, year: number) =>
+    api.get('/payroll/export', { params: { month, year }, responseType: 'blob', timeout: 120000 }),
+
+  backfillExpenses: () => api.post('/payroll/backfill-expenses', {}, { timeout: 180000 }),
+
+  // Attendance marking
+  getDailyRoster: (date: string) => api.get('/payroll/daily-roster', { params: { date } }),
+  markBulkDay: (data: { date: string; records: Array<{ profileId: string; status: string; note?: string }> }) =>
+    api.post('/payroll/daily-attendance', data, { timeout: 120000 }),
+  getEmployeeAttendance: (id: string, params?: { month?: number; year?: number; limit?: number }) =>
+    api.get(`/payroll/profiles/${id}/attendance`, { params }),
+  markDay: (id: string, data: { date: string; status: string; leaveType?: string; reason?: string; note?: string }) =>
+    api.post(`/payroll/profiles/${id}/attendance`, data),
+
+  // Advances
+  addAdvance: (id: string, data: { amount: number; reason?: string; date?: string }) =>
+    api.post(`/payroll/profiles/${id}/advances`, data),
+  repayAdvance: (id: string, data: { amount: number }) =>
+    api.post(`/payroll/profiles/${id}/advances/repay`, data),
+
+  // Leave
+  markLeave: (id: string, data: { date: string; type?: 'paid' | 'unpaid'; reason?: string }) =>
+    api.post(`/payroll/profiles/${id}/leave`, data),
+  removeLeave: (id: string, date: string) => api.delete(`/payroll/profiles/${id}/leave/${date}`),
+};
+
 // -------------------- Menu API --------------------
 export const menuAPI = {
   getAll: (params?: { search?: string; cursor?: string; limit?: number; category?: string; subcategory?: string; foodType?: string; isAvailable?: boolean; isCateringAvailable?: boolean; isDeleted?: boolean }) => api.get('/menu', { params }),
