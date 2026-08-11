@@ -309,7 +309,7 @@ const KitchenInterface: React.FC = () => {
 
       const filteredByDate = ordersData.filter((order: any) => {
         const orderDate = new Date(order.createdAt);
-        return orderDate >= todayStart && orderDate <= todayEnd;
+        return orderDate >= todayStart && orderDate <= todayEnd && !order.isDisputed;
       });
 
       // Sort by most recent first

@@ -60,8 +60,8 @@ const KitchenOrdersPage: React.FC = () => {
                 const orderDate = new Date(order.createdAt);
                 const isToday = orderDate >= todayStart && orderDate <= todayEnd;
                 const isValidStatus = !['ready_to_takeaway', 'ready_to_pickup', 'on_the_way', 'served', 'delivered', 'completed', 'cancelled'].includes(order.status);
-                
-                return isToday && isValidStatus;
+
+                return isToday && isValidStatus && !order.isDisputed;
             });
             setOrders(kitchenOrders);
         } catch (error) {
