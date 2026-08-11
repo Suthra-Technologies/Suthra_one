@@ -139,6 +139,8 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
                 capacity: editTable.capacity,
                 location: editTable.location,
                 status: editTable.status,
+                featureTag: editTable.featureTag || '',
+                vibeText: editTable.vibeText || '',
             };
             await tablesAPI.update(editTable._id, updateData);
             toast.success('Table updated successfully');
@@ -278,6 +280,22 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
                             <MenuItem value="reserved">Reserved</MenuItem>
                         </Select>
                     </FormControl>
+
+                    <TextField
+                        label="Ambiance / Location Tag (e.g. Scenic Window Spot 🪟)"
+                        value={editTable.featureTag || ''}
+                        onChange={e => setEditTable({ ...editTable, featureTag: e.target.value })}
+                        placeholder="e.g. Scenic Window Spot 🪟, Heated Patio Spot 🌿, VIP Corner"
+                        fullWidth
+                    />
+
+                    <TextField
+                        label="Vibe Description"
+                        value={editTable.vibeText || ''}
+                        onChange={e => setEditTable({ ...editTable, vibeText: e.target.value })}
+                        placeholder="e.g. Romantic corner with sunset view"
+                        fullWidth
+                    />
                 </Box>
             </DialogContent>
             <DialogActions>

@@ -3610,11 +3610,12 @@ const SettingsPage: React.FC = () => {
                                         {(() => {
                                             const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
                                             const defaultMethods = isIndia ? ['cash', 'card', 'phonepe', 'gpay', 'paytm', 'cheque'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
-                                            const standardKeys = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
-                                            
-                                            // Extract all configured keys
-                                            const configuredKeys = Object.keys(settings.system.posPaymentMethods || {}).filter(k => !['creditCard', 'debitCard'].includes(k));
-                                            const allDisplayMethods = Array.from(new Set([...defaultMethods, ...configuredKeys]));
+                                            const posMethods = settings.system.posPaymentMethods || {};
+                                            const configuredKeys = Object.keys(posMethods).filter(k => !['creditCard', 'debitCard'].includes(k));
+                                            const allDisplayMethods = Array.from(new Set([...defaultMethods, ...configuredKeys])).filter(m => {
+                                                if (!defaultMethods.includes(m) && !(m in posMethods)) return false;
+                                                return true;
+                                            });
 
                                             const getMethodDisplayName = (m: string) => {
                                                 const knownLabels: Record<string, string> = {
@@ -3639,7 +3640,7 @@ const SettingsPage: React.FC = () => {
 
                                             return allDisplayMethods.map((method) => {
                                                 const isCustom = !['cash', 'card', 'cheque'].includes(method);
-                                                const isChecked = settings.system.posPaymentMethods?.[method] ?? defaultMethods.includes(method);
+                                                const isChecked = posMethods[method] === true || (posMethods[method] === undefined && defaultMethods.includes(method));
 
                                                 return (
                                                     <Grid size={{ xs: 6, sm: 3 }} key={method}>
@@ -3672,12 +3673,16 @@ const SettingsPage: React.FC = () => {
                                                                         <IconButton
                                                                             size="small"
                                                                             color="error"
-                                                                            title={`Remove ${getMethodDisplayName(method)}`}
+                                                                            title={`Disable ${getMethodDisplayName(method)}`}
                                                                             onClick={(e) => {
                                                                                 e.preventDefault(); // Prevent toggling the checkbox
                                                                                 setSettings(prev => {
                                                                                     const currentMethods = { ...(prev.system.posPaymentMethods || {}) };
-                                                                                    delete currentMethods[method];
+                                                                                    if (defaultMethods.includes(method)) {
+                                                                                        currentMethods[method] = false;
+                                                                                    } else {
+                                                                                        delete currentMethods[method];
+                                                                                    }
                                                                                     const currentQr = { ...(prev.system.paymentQrCodes || {}) };
                                                                                     delete currentQr[method];
                                                                                     return {

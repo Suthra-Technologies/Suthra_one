@@ -13,6 +13,7 @@ import {
     Button,
     Card,
     CardContent,
+    Checkbox,
     Chip,
     CircularProgress,
     Dialog,
@@ -29,6 +30,8 @@ import {
     TextField,
     Tooltip,
     Typography,
+    useMediaQuery,
+    useTheme,
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -51,6 +54,8 @@ const emptyForm = {
 const toValue = (label: string) => label.trim().toLowerCase().replace(/[\s-]+/g, '_');
 
 const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = false }) => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [sets, setSets] = useState<SpiceLevelSet[]>([]);
     const [loading, setLoading] = useState(true);
     const [openDialog, setOpenDialog] = useState(false);
@@ -314,11 +319,18 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
     };
 
     return (
-        <Box sx={{ p: hideHeader ? 0 : 3 }}>
-            <Box display="flex" justifyContent={hideHeader ? 'flex-end' : 'space-between'} alignItems="center" mb={3}>
+        <Box sx={{ p: hideHeader ? 0 : { xs: 1.5, sm: 3 } }}>
+            <Box
+                display="flex"
+                flexDirection={{ xs: 'column', sm: 'row' }}
+                justifyContent={hideHeader ? 'flex-end' : 'space-between'}
+                alignItems={{ xs: 'stretch', sm: 'center' }}
+                gap={1.5}
+                mb={3}
+            >
                 {!hideHeader && (
                     <Box>
-                        <Typography variant="h4" fontWeight="bold">Spice Level Sets</Typography>
+                        <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">Spice Level Sets</Typography>
                         <Typography variant="body2" color="text.secondary">
                             Create reusable spice scales and apply them to the menu items that share them.
                         </Typography>
@@ -411,7 +423,7 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
             )}
 
             {/* Create / edit dialog */}
-            <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+            <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth fullScreen={isMobile}>
                 <form onSubmit={handleSubmit}>
                     <DialogTitle>{editingSet ? 'Edit Spice Level Set' : 'Create Spice Level Set'}</DialogTitle>
                     <DialogContent dividers>
@@ -457,21 +469,29 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
                                                             <ArrowDownIcon fontSize="inherit" />
                                                         </IconButton>
                                                     </Stack>
-                                                    <TextField
-                                                        label="Label"
-                                                        size="small"
-                                                        required
-                                                        value={level.label}
-                                                        onChange={e => handleLevelChange(index, 'label', e.target.value)}
-                                                        sx={{ flex: 1 }}
-                                                    />
-                                                    <TextField
-                                                        label="Description"
-                                                        size="small"
-                                                        value={level.description || ''}
-                                                        onChange={e => handleLevelChange(index, 'description', e.target.value)}
-                                                        sx={{ flex: 1.4 }}
-                                                    />
+                                                    {/* Side by side on desktop; stacked on mobile so neither
+                                                        field is squeezed to a few characters wide. */}
+                                                    <Stack
+                                                        direction={{ xs: 'column', sm: 'row' }}
+                                                        spacing={1}
+                                                        sx={{ flex: 1, minWidth: 0 }}
+                                                    >
+                                                        <TextField
+                                                            label="Label"
+                                                            size="small"
+                                                            required
+                                                            value={level.label}
+                                                            onChange={e => handleLevelChange(index, 'label', e.target.value)}
+                                                            sx={{ flex: 1, minWidth: 0 }}
+                                                        />
+                                                        <TextField
+                                                            label="Description"
+                                                            size="small"
+                                                            value={level.description || ''}
+                                                            onChange={e => handleLevelChange(index, 'description', e.target.value)}
+                                                            sx={{ flex: 1.4, minWidth: 0 }}
+                                                        />
+                                                    </Stack>
                                                     <IconButton size="small" color="error" onClick={() => handleRemoveLevel(index)}>
                                                         <DeleteIcon fontSize="small" />
                                                     </IconButton>
@@ -515,34 +535,98 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
             </Dialog>
 
             {/* Bulk assign dialog */}
-            <Dialog open={!!assignTarget} onClose={handleCloseAssign} maxWidth="sm" fullWidth>
+            <Dialog open={!!assignTarget} onClose={handleCloseAssign} maxWidth="md" fullWidth fullScreen={isMobile}>
                 <DialogTitle>Add menu items to “{assignTarget?.name}”</DialogTitle>
                 <DialogContent dividers>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                         Only items without a spice level set are listed. To move an item from another
                         set, remove it there first.
                     </Typography>
-                    {assignableItems.length === 0 && (
+                    {assignableItems.length === 0 ? (
                         <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
                             Every menu item already belongs to a spice level set.
                         </Typography>
+                    ) : (
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                            <Typography variant="caption" color="text.secondary">
+                                {assignSelection.length} of {assignableItems.length} selected
+                            </Typography>
+                            <Box>
+                                <Button size="small" onClick={() => setAssignSelection(assignableItems)}>
+                                    Select all
+                                </Button>
+                                <Button
+                                    size="small"
+                                    color="inherit"
+                                    disabled={assignSelection.length === 0}
+                                    onClick={() => setAssignSelection([])}
+                                >
+                                    Clear
+                                </Button>
+                            </Box>
+                        </Box>
                     )}
                     <Autocomplete
                         multiple
-                        // A set can cover dozens of items; show a couple of chips
-                        // and collapse the rest into "+N" so the field stays compact.
-                        limitTags={2}
+                        // No chips: with dozens selected they grow the input until it
+                        // fills the dialog and pushes the list off screen. The ticked
+                        // checkboxes and the count above already show the selection.
+                        renderTags={() => null}
+                        // Render the list inline rather than as a floating popup: the
+                        // popup is positioned against the viewport, so inside a dialog
+                        // a long list gets clipped or pushed off screen.
+                        open
+                        disablePortal
+                        popupIcon={null}
+                        forcePopupIcon={false}
                         options={assignableItems}
                         value={assignSelection}
                         onChange={(_, value) => setAssignSelection(value)}
                         getOptionLabel={option => option.name || ''}
                         isOptionEqualToValue={(option, value) => option._id === value._id}
-                        getLimitTagsText={more => `+${more}`}
+                        // A menu can run to hundreds of items; a single column means
+                        // endless scrolling, so lay the options out in columns that
+                        // collapse to one on narrow screens.
+                        slotProps={{
+                            // Sits in the normal flow under the search box instead of
+                            // floating, so the dialog scrolls it rather than the viewport.
+                            popper: {
+                                sx: {
+                                    position: 'static !important',
+                                    transform: 'none !important',
+                                    width: '100% !important',
+                                    mt: 1,
+                                },
+                            },
+                            paper: { elevation: 0, sx: { border: '1px solid', borderColor: 'divider', borderRadius: 2 } },
+                            listbox: {
+                                sx: {
+                                    display: 'grid',
+                                    gridTemplateColumns: {
+                                        xs: '1fr',
+                                        sm: 'repeat(2, minmax(0, 1fr))',
+                                        md: 'repeat(3, minmax(0, 1fr))',
+                                    },
+                                    maxHeight: { xs: '50vh', sm: '45vh' },
+                                },
+                            },
+                        }}
+                        renderOption={(props, option, { selected }) => {
+                            const { key, ...optionProps } = props as any;
+                            return (
+                                <li key={key} {...optionProps} style={{ ...optionProps.style, minWidth: 0 }}>
+                                    <Checkbox size="small" checked={selected} sx={{ mr: 1, flexShrink: 0 }} />
+                                    <Typography variant="body2" noWrap title={option.name}>
+                                        {option.name}
+                                    </Typography>
+                                </li>
+                            );
+                        }}
                         renderInput={params => (
                             <TextField
                                 {...params}
                                 label="Menu items"
-                                placeholder={assignSelection.length > 0 ? '' : 'Search items'}
+                                placeholder="Search items"
                             />
                         )}
                     />
@@ -556,7 +640,7 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
             </Dialog>
 
             {/* Set details: the levels, and the items currently using them */}
-            <Dialog open={!!detailsTarget} onClose={() => setDetailsTarget(null)} maxWidth="sm" fullWidth>
+            <Dialog open={!!detailsTarget} onClose={() => setDetailsTarget(null)} maxWidth="sm" fullWidth fullScreen={isMobile}>
                 <DialogTitle sx={{ pr: 6 }}>
                     {detailsTarget?.name}
                     {detailsTarget?.description && (

@@ -1,0 +1,1360 @@
+// src/pages/tables/components/FloorPlanView.tsx
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+    Box,
+    Typography,
+    Paper,
+    Card,
+    Chip,
+    Button,
+    IconButton,
+    Tooltip,
+    Stack,
+    Menu,
+    MenuItem,
+    ListItemIcon,
+    ListItemText,
+    Divider,
+    TextField,
+    InputAdornment,
+    Snackbar,
+    Alert,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Avatar,
+    List,
+    ListItem,
+    useTheme,
+    alpha,
+} from '@mui/material';
+import {
+    Add as AddIcon,
+    Edit as EditIcon,
+    Delete as DeleteIcon,
+    TableRestaurant as TableIcon,
+    EventSeat as BookIcon,
+    CheckCircle as AvailableIcon,
+    Block as OccupiedIcon,
+    CleaningServices as CleaningIcon,
+    ShoppingCart as OrderIcon,
+    RestoreFromTrash as RestoreIcon,
+    HelpOutline as HelpIcon,
+    Tune as CustomizeIcon,
+    Save as SaveIcon,
+    AutoAwesome as AutoArrangeIcon,
+    ZoomIn as ZoomInIcon,
+    ZoomOut as ZoomOutIcon,
+    RestartAlt as ResetZoomIcon,
+    AccessTime as TimeIcon,
+    Search as SearchIcon,
+    Clear as ClearIcon,
+    MeetingRoom as RoomIcon,
+    OpenWith as MoveIcon,
+    ViewInAr as ThreeDIcon,
+    TableRows as TwoDIcon,
+    MeetingRoomOutlined as DoorIcon,
+    KitchenOutlined as KitchenIcon,
+    LocalBarOutlined as BarIcon,
+    WindowOutlined as WindowIcon,
+    WcOutlined as RestroomIcon,
+    ParkOutlined as PlantIcon,
+    Person as PersonIcon,
+    ReceiptLong as OrderReceiptIcon,
+    Info as InfoIcon,
+    QrCode2 as QrCodeIcon,
+} from '@mui/icons-material';
+import { QRCodeSVG } from 'qrcode.react';
+import TableLegendDialog from './TableLegendDialog';
+
+export interface TableItem {
+    _id: string;
+    tableNumber: string;
+    tableName?: string;
+    capacity: number;
+    location: string;
+    section?: string;
+    shape?: 'square' | 'rectangle' | 'round';
+    status: string;
+    coordinates?: { x?: number; y?: number };
+    occupiedAt?: string | Date;
+    isMerged?: boolean;
+    isPrimary?: boolean;
+    mergedWith?: string;
+    assignedWaiter?: any;
+    currentOrder?: any;
+    isActive?: boolean;
+    deletedAt?: string | Date;
+    seatingMode?: 'standard' | 'communal';
+    seatTickets?: Array<{
+        seatNumber: number;
+        customerName?: string;
+        currentOrder?: any;
+        seatedAt?: string | Date;
+        status?: string;
+    }>;
+}
+
+export interface FloorElementItem {
+    _id: string;
+    type: 'door' | 'kitchen_door' | 'bar' | 'window' | 'restroom' | 'wall' | 'column' | 'plant' | 'host_stand';
+    label: string;
+    section: string;
+    coordinates: { x: number; y: number };
+    width?: number;
+    height?: number;
+    visibleToCustomer?: boolean;
+}
+
+interface FloorPlanViewProps {
+    tables: TableItem[];
+    tenantSlug?: string | null;
+    customLocations?: string[];
+    canDeleteTables?: boolean;
+    isMobile?: boolean;
+    mode?: 'admin' | 'customer';
+    selectedTableId?: string | null;
+    floorElements?: FloorElementItem[];
+    onSelectTableForCustomer?: (table: TableItem) => void;
+    onOpenBooking?: (table: TableItem) => void;
+    onOpenAddTable?: () => void;
+    onOpenAddLocation?: () => void;
+    onOpenEditTable?: (table: TableItem) => void;
+    onOpenDeleteTable?: (table: TableItem) => void;
+    onRestoreTable?: (table: TableItem) => void;
+    onQuickStatusChange?: (tableId: string, status: string) => void;
+    onOpenHistory?: (tableId: string, title: string) => void;
+    onSaveTableCoordinates?: (updatedTables: { _id: string; coordinates: { x: number; y: number } }[]) => Promise<void>;
+    onAddFloorElement?: (element: Omit<FloorElementItem, '_id'>) => Promise<void>;
+}
+
+const formatSectionName = (key: string): string => {
+    if (!key || key === 'all') return 'All Rooms';
+    return key.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+};
+
+const getSeatingTimerInfo = (occupiedAt?: string | Date) => {
+    if (!occupiedAt) return { text: '< 30m', color: '#EF4444', isAlert: false };
+    const start = new Date(occupiedAt).getTime();
+    if (isNaN(start)) return { text: '—', color: '#94A3B8', isAlert: false };
+    const now = Date.now();
+    const diffMins = Math.max(1, Math.floor((now - start) / (1000 * 60)));
+    if (diffMins < 45) return { text: `${diffMins}m`, color: '#EF4444', isAlert: false };
+    if (diffMins <= 90) {
+        const hours = Math.floor(diffMins / 60);
+        const mins = diffMins % 60;
+        return { text: hours > 0 ? `${hours}h ${mins}m` : `${mins}m`, color: '#F59E0B', isAlert: false };
+    }
+    return { text: '>1h 30m', color: '#DC2626', isAlert: true };
+};
+
+// Default Architectural Landmarks (positioned cleanly away from table grid)
+const DEFAULT_ARCHITECTURAL_ELEMENTS: FloorElementItem[] = [
+    { _id: 'elem-entrance', type: 'door', label: 'Main Entrance 🚪', section: 'indoor', coordinates: { x: 45, y: 10 }, width: 105, height: 32 },
+    { _id: 'elem-kitchen', type: 'kitchen_door', label: 'Kitchen Pickup 🍳', section: 'indoor', coordinates: { x: 740, y: 10 }, width: 115, height: 32 },
+    { _id: 'elem-bar', type: 'bar', label: 'Bar Counter 🍺', section: 'indoor', coordinates: { x: 45, y: 560 }, width: 200, height: 38 },
+    { _id: 'elem-window-1', type: 'window', label: 'Window View 🪟', section: 'indoor', coordinates: { x: 890, y: 160 }, width: 18, height: 160 },
+    { _id: 'elem-restroom', type: 'restroom', label: 'Restrooms 🚻', section: 'indoor', coordinates: { x: 740, y: 560 }, width: 95, height: 35 },
+];
+
+const renderArchitecturalElement = (item: FloorElementItem, is3D: boolean) => {
+    const w = item.width || 80;
+    const h = item.height || 35;
+
+    let icon = <DoorIcon sx={{ fontSize: 17 }} />;
+    let bgColor = '#F1F5F9';
+    let borderColor = '#64748B';
+    let textColor = '#334155';
+
+    switch (item.type) {
+        case 'door':
+            icon = <DoorIcon sx={{ fontSize: 17, color: '#3B82F6' }} />;
+            bgColor = '#EFF6FF'; borderColor = '#3B82F6'; textColor = '#1D4ED8';
+            break;
+        case 'kitchen_door':
+            icon = <KitchenIcon sx={{ fontSize: 17, color: '#F97316' }} />;
+            bgColor = '#FFF7ED'; borderColor = '#F97316'; textColor = '#C2410C';
+            break;
+        case 'bar':
+            icon = <BarIcon sx={{ fontSize: 18, color: '#D97706' }} />;
+            bgColor = '#FEF3C7'; borderColor = '#D97706'; textColor = '#92400E';
+            break;
+        case 'window':
+            icon = <WindowIcon sx={{ fontSize: 17, color: '#06B6D4' }} />;
+            bgColor = '#ECFEFF'; borderColor = '#06B6D4'; textColor = '#0891B2';
+            break;
+        case 'restroom':
+            icon = <RestroomIcon sx={{ fontSize: 17, color: '#8B5CF6' }} />;
+            bgColor = '#F5F3FF'; borderColor = '#8B5CF6'; textColor = '#6D28D9';
+            break;
+        case 'plant':
+            icon = <PlantIcon sx={{ fontSize: 17, color: '#10B981' }} />;
+            bgColor = '#ECFDF5'; borderColor = '#10B981'; textColor = '#047857';
+            break;
+        default:
+            break;
+    }
+
+    const depth = is3D ? 4 : 0;
+
+    return (
+        <Box
+            key={item._id}
+            sx={{
+                position: 'absolute',
+                left: item.coordinates.x,
+                top: item.coordinates.y,
+                width: w,
+                height: h,
+                zIndex: 1,
+                bgcolor: bgColor,
+                border: `2px dashed ${borderColor}`,
+                borderRadius: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 0.5,
+                px: 1,
+                boxShadow: is3D
+                    ? `${depth}px ${depth + 2}px 0 ${alpha(borderColor, 0.3)}, 0 4px 10px rgba(0,0,0,0.08)`
+                    : 'none',
+                pointerEvents: 'none',
+                userSelect: 'none',
+            }}
+        >
+            {icon}
+            <Typography variant="caption" fontWeight={900} sx={{ fontSize: '0.7rem', color: textColor, whiteSpace: 'nowrap' }}>
+                {item.label}
+            </Typography>
+        </Box>
+    );
+};
+
+// ─────────────────────────────────────────────
+// Dining Chair Component
+// ─────────────────────────────────────────────
+interface DiningChairProps {
+    side: 'top' | 'bottom' | 'left' | 'right';
+    positionPercent: number;
+    accentColor: string;
+    is3D: boolean;
+}
+
+const DiningChair: React.FC<DiningChairProps> = ({ side, positionPercent, accentColor, is3D }) => {
+    const depth = is3D ? 3 : 0;
+
+    if (side === 'top') return (
+        <Box sx={{
+            position: 'absolute',
+            top: -12,
+            left: `${positionPercent}%`,
+            transform: 'translateX(-50%)',
+            width: 22,
+            height: 11,
+            borderRadius: '5px 5px 2px 2px',
+            bgcolor: '#FFFFFF',
+            border: `1.5px solid ${accentColor}`,
+            boxShadow: is3D ? `${depth}px ${depth + 2}px 0 ${alpha(accentColor, 0.4)}, 0 4px 8px rgba(0,0,0,0.12)` : '0 2px 4px rgba(0,0,0,0.08)',
+            zIndex: 1,
+            pointerEvents: 'none',
+            '&::before': { content: '""', position: 'absolute', top: -3, left: '15%', right: '15%', height: 3, borderRadius: '3px 3px 0 0', bgcolor: accentColor },
+        }} />
+    );
+
+    if (side === 'bottom') return (
+        <Box sx={{
+            position: 'absolute',
+            bottom: -12,
+            left: `${positionPercent}%`,
+            transform: 'translateX(-50%)',
+            width: 22,
+            height: 11,
+            borderRadius: '2px 2px 5px 5px',
+            bgcolor: '#FFFFFF',
+            border: `1.5px solid ${accentColor}`,
+            boxShadow: is3D ? `${depth}px ${depth + 2}px 0 ${alpha(accentColor, 0.4)}, 0 4px 8px rgba(0,0,0,0.12)` : '0 2px 4px rgba(0,0,0,0.08)',
+            zIndex: 1,
+            pointerEvents: 'none',
+            '&::after': { content: '""', position: 'absolute', bottom: -3, left: '15%', right: '15%', height: 3, borderRadius: '0 0 3px 3px', bgcolor: accentColor },
+        }} />
+    );
+
+    if (side === 'left') return (
+        <Box sx={{
+            position: 'absolute',
+            left: -12,
+            top: `${positionPercent}%`,
+            transform: 'translateY(-50%)',
+            width: 11,
+            height: 22,
+            borderRadius: '5px 2px 2px 5px',
+            bgcolor: '#FFFFFF',
+            border: `1.5px solid ${accentColor}`,
+            boxShadow: is3D ? `${depth}px ${depth + 2}px 0 ${alpha(accentColor, 0.4)}, 0 4px 8px rgba(0,0,0,0.12)` : '0 2px 4px rgba(0,0,0,0.08)',
+            zIndex: 1,
+            pointerEvents: 'none',
+            '&::before': { content: '""', position: 'absolute', left: -3, top: '15%', bottom: '15%', width: 3, borderRadius: '3px 0 0 3px', bgcolor: accentColor },
+        }} />
+    );
+
+    return (
+        <Box sx={{
+            position: 'absolute',
+            right: -12,
+            top: `${positionPercent}%`,
+            transform: 'translateY(-50%)',
+            width: 11,
+            height: 22,
+            borderRadius: '2px 5px 5px 2px',
+            bgcolor: '#FFFFFF',
+            border: `1.5px solid ${accentColor}`,
+            boxShadow: is3D ? `${depth}px ${depth + 2}px 0 ${alpha(accentColor, 0.4)}, 0 4px 8px rgba(0,0,0,0.12)` : '0 2px 4px rgba(0,0,0,0.08)',
+            zIndex: 1,
+            pointerEvents: 'none',
+            '&::after': { content: '""', position: 'absolute', right: -3, top: '15%', bottom: '15%', width: 3, borderRadius: '0 3px 3px 0', bgcolor: accentColor },
+        }} />
+    );
+};
+
+// ─────────────────────────────────────────────
+// REALISTIC RESTAURANT DINING SEATING FORMULA
+// • Max 1 chair at Left Head of Table
+// • Max 1 chair at Right Foot of Table
+// • All other chairs evenly spaced along Top & Bottom long edges!
+// ─────────────────────────────────────────────
+const renderDynamicChairs = (capacity: number, shape: string = 'rectangle', accentColor: string, is3D: boolean) => {
+    const cap = Math.max(2, capacity || 2);
+    const chairs: React.ReactNode[] = [];
+
+    if (shape === 'round') {
+        const perSide = Math.floor(cap / 4);
+        const remainder = cap % 4;
+        const topCount = perSide + (remainder > 0 ? 1 : 0);
+        const bottomCount = perSide + (remainder > 1 ? 1 : 0);
+        const leftCount = perSide + (remainder > 2 ? 1 : 0);
+        const rightCount = perSide;
+
+        for (let i = 0; i < topCount; i++) {
+            const pct = topCount === 1 ? 50 : 15 + (i / (topCount - 1)) * 70;
+            chairs.push(<DiningChair key={`t${i}`} side="top" positionPercent={pct} accentColor={accentColor} is3D={is3D} />);
+        }
+        for (let i = 0; i < bottomCount; i++) {
+            const pct = bottomCount === 1 ? 50 : 15 + (i / (bottomCount - 1)) * 70;
+            chairs.push(<DiningChair key={`b${i}`} side="bottom" positionPercent={pct} accentColor={accentColor} is3D={is3D} />);
+        }
+        for (let i = 0; i < leftCount; i++) {
+            const pct = leftCount === 1 ? 50 : 15 + (i / (leftCount - 1)) * 70;
+            chairs.push(<DiningChair key={`l${i}`} side="left" positionPercent={pct} accentColor={accentColor} is3D={is3D} />);
+        }
+        for (let i = 0; i < rightCount; i++) {
+            const pct = rightCount === 1 ? 50 : 15 + (i / (rightCount - 1)) * 70;
+            chairs.push(<DiningChair key={`r${i}`} side="right" positionPercent={pct} accentColor={accentColor} is3D={is3D} />);
+        }
+        return chairs;
+    }
+
+    // REALISTIC RECTANGULAR/SQUARE SEATING:
+    // Head of table = 1 max left, 1 max right for cap > 4
+    const hasHead = cap > 4 ? 1 : 0;
+    const hasFoot = cap > 5 ? 1 : 0;
+    const remaining = cap - (hasHead + hasFoot);
+
+    const topCount = Math.ceil(remaining / 2);
+    const bottomCount = Math.floor(remaining / 2);
+
+    if (hasHead > 0) {
+        chairs.push(<DiningChair key="head-left" side="left" positionPercent={50} accentColor={accentColor} is3D={is3D} />);
+    }
+    if (hasFoot > 0) {
+        chairs.push(<DiningChair key="foot-right" side="right" positionPercent={50} accentColor={accentColor} is3D={is3D} />);
+    }
+
+    // Helper to calculate even % spacing along top and bottom long sides
+    const getSpacing = (count: number) => {
+        if (count === 1) return [50];
+        if (count === 2) return [30, 70];
+        if (count === 3) return [20, 50, 80];
+        if (count === 4) return [16, 38, 62, 84];
+        return Array.from({ length: count }, (_, i) => 12 + (i / (count - 1)) * 76);
+    };
+
+    getSpacing(topCount).forEach((pct, i) =>
+        chairs.push(<DiningChair key={`top-${i}`} side="top" positionPercent={pct} accentColor={accentColor} is3D={is3D} />)
+    );
+    getSpacing(bottomCount).forEach((pct, i) =>
+        chairs.push(<DiningChair key={`bot-${i}`} side="bottom" positionPercent={pct} accentColor={accentColor} is3D={is3D} />)
+    );
+
+    return chairs;
+};
+
+// Dynamic table dimension calculation (expands table width for larger capacities)
+const getTableDimensions = (capacity: number, isRound: boolean) => {
+    const cap = capacity || 4;
+    if (isRound) {
+        if (cap <= 4) return { w: 84, h: 84 };
+        if (cap <= 8) return { w: 100, h: 100 };
+        return { w: 120, h: 120 };
+    }
+
+    const hasHead = cap > 4 ? 1 : 0;
+    const hasFoot = cap > 5 ? 1 : 0;
+    const remaining = cap - (hasHead + hasFoot);
+    const topCount = Math.ceil(remaining / 2);
+
+    if (topCount <= 2) return { w: 112, h: 76 };
+    if (topCount === 3) return { w: 154, h: 80 };
+    if (topCount === 4) return { w: 196, h: 84 };
+    if (topCount === 5) return { w: 238, h: 88 };
+    return { w: 110 + (topCount * 30), h: 92 };
+};
+
+// ─────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────
+const FloorPlanView: React.FC<FloorPlanViewProps> = ({
+    tables,
+    tenantSlug,
+    customLocations = [],
+    canDeleteTables = true,
+    isMobile = false,
+    mode = 'admin',
+    selectedTableId = null,
+    floorElements = [],
+    onSelectTableForCustomer,
+    onOpenBooking,
+    onOpenAddTable,
+    onOpenAddLocation,
+    onOpenEditTable,
+    onOpenDeleteTable,
+    onRestoreTable,
+    onQuickStatusChange,
+    onOpenHistory,
+    onSaveTableCoordinates,
+}) => {
+    const theme = useTheme();
+    const navigate = useNavigate();
+    const isCustomerMode = mode === 'customer';
+
+    const activeFloorElements = useMemo(() => {
+        if (floorElements && floorElements.length > 0) return floorElements;
+        return DEFAULT_ARCHITECTURAL_ELEMENTS;
+    }, [floorElements]);
+
+    const sections = useMemo(() => {
+        const set = new Set<string>();
+        tables.forEach(t => set.add((t.section || t.location || 'indoor').toLowerCase()));
+        customLocations.forEach(loc => set.add(loc.toLowerCase()));
+        if (set.size === 0) { set.add('indoor'); set.add('outdoor'); set.add('private_room'); set.add('bar'); }
+        return Array.from(set);
+    }, [tables, customLocations]);
+
+    const [activeSection, setActiveSection]       = useState<string>(() => sections.length > 0 ? sections[0] : 'indoor');
+    const [searchQuery, setSearchQuery]           = useState<string>('');
+    const [isCustomizeMode, setIsCustomizeMode]   = useState<boolean>(false);
+    const [legendOpen, setLegendOpen]             = useState<boolean>(false);
+    const [zoomLevel, setZoomLevel]               = useState<number>(1);
+    const [is3DMode, setIs3DMode]                 = useState<boolean>(true);
+    const [roomSwitchToast, setRoomSwitchToast]   = useState<string | null>(null);
+    const [tablePositions, setTablePositions]     = useState<{ [id: string]: { x: number; y: number } }>({});
+    const [isSavingLayout, setIsSavingLayout]     = useState(false);
+    const [, setHasUnsavedChanges]                = useState(false);
+    const [contextMenu, setContextMenu]           = useState<{ mouseX: number; mouseY: number; table: TableItem | null } | null>(null);
+    const [selectedTableDetails, setSelectedTableDetails] = useState<TableItem | null>(null);
+    const [qrCodeDialogTable, setQrCodeDialogTable] = useState<TableItem | null>(null);
+    const [draggingTableId, setDraggingTableId]   = useState<string | null>(null);
+    const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+    const canvasRef     = useRef<HTMLDivElement>(null);
+    const [, setTick]   = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => setTick(t => t + 1), 60000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const currentSectionTables = useMemo(() => {
+        let list = tables;
+        if (activeSection !== 'all') {
+            list = list.filter(t => (t.section || t.location || 'indoor').toLowerCase() === activeSection.toLowerCase());
+        }
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase().trim();
+            list = list.filter(t =>
+                (t.tableNumber && t.tableNumber.toLowerCase().includes(q)) ||
+                (t.tableName   && t.tableName.toLowerCase().includes(q)) ||
+                (t.section     && t.section.toLowerCase().includes(q)) ||
+                (t.location    && t.location.toLowerCase().includes(q)) ||
+                (t.status      && t.status.toLowerCase().includes(q))
+            );
+        }
+        return list;
+    }, [tables, activeSection, searchQuery]);
+
+    const currentSectionElements = useMemo(() => {
+        if (activeSection === 'all') return activeFloorElements;
+        return activeFloorElements.filter(e => (e.section || 'indoor').toLowerCase() === activeSection.toLowerCase());
+    }, [activeFloorElements, activeSection]);
+
+    // Grid calculations start cleanly at y = 70 to prevent overlap with top landmark banners
+    useEffect(() => {
+        const pos: { [id: string]: { x: number; y: number } } = {};
+        const COLS = isMobile ? 2 : 4;
+        currentSectionTables.forEach((table, index) => {
+            if (table.coordinates && typeof table.coordinates.x === 'number' && typeof table.coordinates.y === 'number') {
+                pos[table._id] = { x: table.coordinates.x, y: table.coordinates.y };
+            } else {
+                const { w, h } = getTableDimensions(table.capacity, table.shape === 'round');
+                const GAP_X = 60, GAP_Y = 58;
+                const col = index % COLS;
+                const row = Math.floor(index / COLS);
+                pos[table._id] = { x: 45 + col * (w + GAP_X), y: 75 + row * (h + GAP_Y) };
+            }
+        });
+        setTablePositions(prev => ({ ...prev, ...pos }));
+    }, [currentSectionTables, isMobile]);
+
+    const handleDragStart = (e: React.MouseEvent, tableId: string) => {
+        if (!isCustomizeMode || isCustomerMode) return;
+        e.preventDefault();
+        const currentPos = tablePositions[tableId] || { x: 45, y: 75 };
+        dragOffsetRef.current = { x: e.clientX - currentPos.x * zoomLevel, y: e.clientY - currentPos.y * zoomLevel };
+        setDraggingTableId(tableId);
+    };
+
+    const handleTouchStart = (e: React.TouchEvent, tableId: string) => {
+        if (!isCustomizeMode || isCustomerMode || e.touches.length === 0) return;
+        const touch = e.touches[0];
+        const currentPos = tablePositions[tableId] || { x: 45, y: 75 };
+        dragOffsetRef.current = { x: touch.clientX - currentPos.x * zoomLevel, y: touch.clientY - currentPos.y * zoomLevel };
+        setDraggingTableId(tableId);
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!draggingTableId || !isCustomizeMode || isCustomerMode) return;
+        const newX = Math.max(15, Math.round((e.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10);
+        const newY = Math.max(15, Math.round((e.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10);
+        setTablePositions(prev => ({ ...prev, [draggingTableId]: { x: newX, y: newY } }));
+        setHasUnsavedChanges(true);
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!draggingTableId || !isCustomizeMode || isCustomerMode || e.touches.length === 0) return;
+        const touch = e.touches[0];
+        const newX = Math.max(15, Math.round((touch.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10);
+        const newY = Math.max(15, Math.round((touch.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10);
+        setTablePositions(prev => ({ ...prev, [draggingTableId]: { x: newX, y: newY } }));
+        setHasUnsavedChanges(true);
+    };
+
+    const handleDragEnd = () => { if (draggingTableId) setDraggingTableId(null); };
+
+    const handleAutoArrange = () => {
+        const pos: { [id: string]: { x: number; y: number } } = {};
+        const COLS = isMobile ? 2 : 4;
+        currentSectionTables.forEach((table, index) => {
+            const { w, h } = getTableDimensions(table.capacity, table.shape === 'round');
+            const GAP_X = 60, GAP_Y = 58;
+            const col = index % COLS;
+            const row = Math.floor(index / COLS);
+            pos[table._id] = { x: 45 + col * (w + GAP_X), y: 75 + row * (h + GAP_Y) };
+        });
+        setTablePositions(prev => ({ ...prev, ...pos }));
+        setHasUnsavedChanges(true);
+    };
+
+    const handleSaveLayout = async () => {
+        if (!onSaveTableCoordinates) { setIsCustomizeMode(false); setHasUnsavedChanges(false); return; }
+        try {
+            setIsSavingLayout(true);
+            const validTableIds = new Set(tables.filter(t => t.isActive !== false).map(t => t._id));
+            const updates = Object.entries(tablePositions)
+                .filter(([id]) => validTableIds.has(id))
+                .map(([id, coords]) => ({ _id: id, coordinates: coords }));
+            await onSaveTableCoordinates(updates);
+            setHasUnsavedChanges(false);
+            setIsCustomizeMode(false);
+        } catch (error) {
+            console.error('Error saving table positions:', error);
+        } finally {
+            setIsSavingLayout(false);
+        }
+    };
+
+    const handleTableClick = (table: TableItem) => {
+        if (isCustomizeMode) return;
+        if (isCustomerMode) {
+            if (table.status === 'occupied' || table.status === 'cleaning' || table.isActive === false) return;
+            if (onSelectTableForCustomer) onSelectTableForCustomer(table);
+            return;
+        }
+        if (table.isActive === false) { if (onRestoreTable) onRestoreTable(table); return; }
+        if (table.status === 'available' || table.status === 'occupied' || table.status === 'partially_occupied') {
+            if (!tenantSlug) return;
+            navigate(`/${tenantSlug}/pos?tableId=${table._id}`);
+        } else if (table.status === 'cleaning') {
+            if (onQuickStatusChange) onQuickStatusChange(table._id, 'available');
+        } else {
+            if (onOpenBooking) onOpenBooking(table);
+        }
+    };
+
+    const handleContextMenu = (e: React.MouseEvent, table: TableItem) => {
+        if (isCustomerMode) return;
+        e.preventDefault(); e.stopPropagation();
+        setContextMenu({ mouseX: e.clientX + 2, mouseY: e.clientY - 6, table });
+    };
+
+    const handleCloseContextMenu = () => setContextMenu(null);
+
+    const handleSectionSwitch = (section: string) => {
+        if (isCustomizeMode && activeSection !== section) {
+            setRoomSwitchToast(`Move Mode: Now editing "${formatSectionName(section)}" - Save layout when done.`);
+        }
+        setActiveSection(section);
+    };
+
+    return (
+        <Box sx={{ width: '100%', pb: 3 }}>
+
+            {/* ── TOP TOOLBAR ── */}
+            <Paper elevation={0} sx={{
+                mb: 2, p: { xs: 1.8, sm: 2.2 }, borderRadius: 3.5,
+                bgcolor: '#FFFFFF', border: '1.5px solid', borderColor: 'divider',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                flexWrap: 'wrap', gap: 2, boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+            }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.6 }}>
+                    <Box sx={{ width: 42, height: 42, borderRadius: 2.5, bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <TableIcon sx={{ fontSize: 24 }} />
+                    </Box>
+                    <Box>
+                        <Typography variant="h6" fontWeight={900} sx={{ letterSpacing: -0.3, lineHeight: 1.1 }}>
+                            {isCustomerMode ? 'Choose Your Table' : 'Dining Floor Plan'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                            {isCustomerMode ? 'Select a table on the 3D map for your booking' : `${is3DMode ? '3D Isometric View' : '2D View'} • Live Dispatch & Navigation Map`}
+                        </Typography>
+                    </Box>
+                </Box>
+
+                <Stack direction="row" spacing={1.2} alignItems="center" flexWrap="wrap">
+                    <Tooltip title={is3DMode ? 'Switch to 2D View' : 'Switch to 3D View'}>
+                        <Button
+                            size="small"
+                            variant={is3DMode ? 'contained' : 'outlined'}
+                            startIcon={is3DMode ? <ThreeDIcon /> : <TwoDIcon />}
+                            onClick={() => setIs3DMode(v => !v)}
+                            sx={{
+                                borderRadius: 2.5, textTransform: 'none', fontWeight: 900, height: 36,
+                                bgcolor: is3DMode ? '#7C3AED' : 'transparent',
+                                borderColor: '#7C3AED', color: is3DMode ? '#FFFFFF' : '#7C3AED',
+                                '&:hover': { bgcolor: is3DMode ? '#6D28D9' : alpha('#7C3AED', 0.08) },
+                            }}
+                        >
+                            {is3DMode ? '3D' : '2D'}
+                        </Button>
+                    </Tooltip>
+
+                    {!isCustomerMode && (
+                        <>
+                            <TextField
+                                size="small"
+                                placeholder="Search Table #..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                InputProps={{
+                                    startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary', fontSize: 18 }} /></InputAdornment>,
+                                    endAdornment: searchQuery ? (
+                                        <InputAdornment position="end">
+                                            <IconButton size="small" onClick={() => setSearchQuery('')} sx={{ p: 0.2 }}><ClearIcon fontSize="small" /></IconButton>
+                                        </InputAdornment>
+                                    ) : null,
+                                    sx: { borderRadius: 2.5, fontSize: '0.84rem', height: 36 },
+                                }}
+                                sx={{ width: { xs: 130, sm: 165 } }}
+                            />
+
+                            {onOpenAddLocation && (
+                                <Button size="small" variant="outlined" startIcon={<RoomIcon />} onClick={onOpenAddLocation}
+                                    sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 800, height: 36, borderColor: 'divider', color: 'text.primary', display: { xs: 'none', sm: 'inline-flex' } }}>
+                                    + Add Room
+                                </Button>
+                            )}
+
+                            {onOpenAddTable && (
+                                <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={onOpenAddTable}
+                                    sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 800, height: 36, borderColor: 'divider', color: 'text.primary', display: { xs: 'none', sm: 'inline-flex' } }}>
+                                    + Add Table
+                                </Button>
+                            )}
+
+                            {isCustomizeMode ? (
+                                <Stack direction="row" spacing={1}>
+                                    <Button size="small" variant="outlined" startIcon={<AutoArrangeIcon />} onClick={handleAutoArrange}
+                                        sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 800, height: 36 }}>
+                                        Auto-Arrange
+                                    </Button>
+                                    <Button size="small" variant="contained" color="success" startIcon={<SaveIcon />}
+                                        onClick={handleSaveLayout} disabled={isSavingLayout}
+                                        sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 900, bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' }, height: 36 }}>
+                                        {isSavingLayout ? 'Saving...' : 'Save Layout'}
+                                    </Button>
+                                    <Button size="small" variant="text" onClick={() => setIsCustomizeMode(false)}
+                                        sx={{ borderRadius: 2.5, textTransform: 'none', color: 'text.secondary', fontWeight: 700 }}>
+                                        Cancel
+                                    </Button>
+                                </Stack>
+                            ) : (
+                                <Button size="small" variant="contained" startIcon={<CustomizeIcon />} onClick={() => setIsCustomizeMode(true)}
+                                    sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 900, height: 36, px: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                                    Move Tables
+                                </Button>
+                            )}
+                        </>
+                    )}
+                </Stack>
+            </Paper>
+
+            {/* ── ROOM TABS ── */}
+            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1.2, overflowX: 'auto', pb: 0.5 }}>
+                {sections.map(section => {
+                    const isActive = activeSection === section;
+                    const count = tables.filter(t => (t.section || t.location || 'indoor').toLowerCase() === section.toLowerCase()).length;
+                    return (
+                        <Box key={section} onClick={() => handleSectionSwitch(section)} sx={{
+                            px: 2.2, py: 0.85, borderRadius: 3, cursor: 'pointer', fontWeight: 800, fontSize: '0.84rem',
+                            bgcolor: isActive ? 'primary.main' : '#FFFFFF', color: isActive ? '#FFFFFF' : 'text.primary',
+                            border: '1.5px solid', borderColor: isActive ? 'primary.main' : 'divider',
+                            boxShadow: isActive ? '0 4px 14px rgba(0,0,0,0.12)' : 'none',
+                            transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: 0.8, flexShrink: 0,
+                            '&:hover': { borderColor: 'primary.main' },
+                        }}>
+                            <span>{formatSectionName(section)}</span>
+                            <Chip label={count} size="small" sx={{ height: 20, fontSize: '0.68rem', fontWeight: 800, bgcolor: isActive ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)', color: isActive ? '#FFFFFF' : 'text.secondary' }} />
+                        </Box>
+                    );
+                })}
+
+                {!isCustomerMode && (
+                    <Box onClick={() => handleSectionSwitch('all')} sx={{
+                        px: 2.2, py: 0.85, borderRadius: 3, cursor: 'pointer', fontWeight: 800, fontSize: '0.84rem',
+                        bgcolor: activeSection === 'all' ? 'primary.main' : '#FFFFFF',
+                        color: activeSection === 'all' ? '#FFFFFF' : 'text.secondary',
+                        border: '1.5px solid', borderColor: activeSection === 'all' ? 'primary.main' : 'divider',
+                        display: 'flex', alignItems: 'center', gap: 0.8, flexShrink: 0,
+                    }}>
+                        <span>All Rooms</span>
+                        <Chip label={tables.length} size="small" sx={{ height: 20, fontSize: '0.68rem', fontWeight: 800, bgcolor: activeSection === 'all' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)', color: activeSection === 'all' ? '#FFFFFF' : 'text.secondary' }} />
+                    </Box>
+                )}
+            </Box>
+
+            {/* ── 3D FLOOR CANVAS ── */}
+            <Paper
+                ref={canvasRef}
+                elevation={0}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleDragEnd}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleDragEnd}
+                sx={{
+                    position: 'relative',
+                    width: '100%',
+                    minHeight: { xs: 540, sm: 660 },
+                    maxHeight: '80vh',
+                    overflow: 'auto',
+                    borderRadius: 3.5,
+                    border: '2px solid',
+                    borderColor: isCustomizeMode ? 'primary.main' : (is3DMode ? '#7C3AED' : 'divider'),
+                    bgcolor: is3DMode ? '#EDE9DF' : '#F8FAFC',
+                    backgroundImage: is3DMode
+                        ? `
+                          linear-gradient(rgba(139,90,43,0.07) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(139,90,43,0.07) 1px, transparent 1px),
+                          linear-gradient(135deg, #EDE9DF 25%, #E8E3D8 25%, #E8E3D8 50%, #EDE9DF 50%, #EDE9DF 75%, #E8E3D8 75%)
+                        `
+                        : 'radial-gradient(circle, #E2E8F0 1.2px, transparent 1.2px)',
+                    backgroundSize: is3DMode
+                        ? '60px 60px, 60px 60px, 30px 30px'
+                        : `${24 * zoomLevel}px ${24 * zoomLevel}px`,
+                    p: 3,
+                    userSelect: isCustomizeMode ? 'none' : 'auto',
+                    cursor: isCustomizeMode ? (draggingTableId ? 'grabbing' : 'grab') : 'default',
+                    transition: 'border-color 0.2s ease, background-color 0.3s ease',
+                }}
+            >
+                {/* Move Mode Banner */}
+                {isCustomizeMode && !isCustomerMode && (
+                    <Paper elevation={2} sx={{
+                        position: 'sticky', top: 8, zIndex: 20,
+                        display: 'inline-flex', alignItems: 'center', gap: 1,
+                        px: 2, py: 0.8, borderRadius: 3, bgcolor: '#0F172A', color: '#FFFFFF',
+                        boxShadow: '0 6px 18px rgba(0,0,0,0.2)', mb: 2,
+                    }}>
+                        <MoveIcon sx={{ fontSize: 18, color: '#38BDF8' }} />
+                        <Typography variant="caption" fontWeight={800} sx={{ fontSize: '0.8rem' }}>
+                            Move Mode Active: Drag tables to reposition, then click Save Layout.
+                        </Typography>
+                    </Paper>
+                )}
+
+                {/* Zoom Controls */}
+                <Paper elevation={1} sx={{
+                    position: 'sticky', top: 8, float: 'right', zIndex: 10,
+                    display: 'flex', alignItems: 'center', gap: 0.5,
+                    p: 0.4, borderRadius: 2.5, bgcolor: '#FFFFFF', border: '1px solid', borderColor: 'divider',
+                }}>
+                    <Tooltip title="Zoom Out"><IconButton size="small" onClick={() => setZoomLevel(z => Math.max(0.6, z - 0.1))}><ZoomOutIcon fontSize="small" /></IconButton></Tooltip>
+                    <Typography variant="caption" fontWeight={800} sx={{ minWidth: 36, textAlign: 'center', fontSize: '0.72rem' }}>{Math.round(zoomLevel * 100)}%</Typography>
+                    <Tooltip title="Zoom In"><IconButton size="small" onClick={() => setZoomLevel(z => Math.min(1.4, z + 0.1))}><ZoomInIcon fontSize="small" /></IconButton></Tooltip>
+                    <Tooltip title="Reset Zoom"><IconButton size="small" onClick={() => setZoomLevel(1)}><ResetZoomIcon fontSize="small" /></IconButton></Tooltip>
+                </Paper>
+
+                {/* Empty State */}
+                {currentSectionTables.length === 0 ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 380, gap: 2 }}>
+                        <TableIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
+                        <Typography variant="h6" color="text.secondary" fontWeight={800}>
+                            {searchQuery ? `No tables matching "${searchQuery}"` : `No tables in ${formatSectionName(activeSection)}`}
+                        </Typography>
+                        {!searchQuery && onOpenAddTable && !isCustomerMode && (
+                            <Button variant="contained" startIcon={<AddIcon />} onClick={onOpenAddTable} sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 800 }}>
+                                Add First Table
+                            </Button>
+                        )}
+                    </Box>
+                ) : (
+                    <Box sx={{
+                        position: 'relative',
+                        minWidth: 960,
+                        minHeight: 600,
+                        transform: `scale(${zoomLevel})`,
+                        transformOrigin: 'top left',
+                        transition: draggingTableId ? 'none' : 'transform 0.15s ease',
+                    }}>
+                        {/* ── ARCHITECTURAL LANDMARKS (Doors, Kitchen, Bar, Windows) ── */}
+                        {currentSectionElements.map(element => renderArchitecturalElement(element, is3DMode))}
+
+                        {/* ── REALISTIC DINING TABLES ── */}
+                        {currentSectionTables.map(table => {
+                            const pos = tablePositions[table._id] || { x: 45, y: 75 };
+                            const isOccupied  = table.status === 'occupied' || table.status === 'partially_occupied';
+                            const isReserved  = table.status === 'reserved';
+                            const isCleaning  = table.status === 'cleaning';
+                            const isDeleted   = table.isActive === false;
+                            const isRound     = table.shape === 'round';
+                            const isDragging  = draggingTableId === table._id;
+                            const isSelectedByCustomer = selectedTableId === table._id;
+
+                            const timerInfo = isOccupied ? getSeatingTimerInfo(table.occupiedAt) : null;
+
+                            // Status Colors
+                            let statusColor = '#10B981';
+                            let statusBg    = '#ECFDF5';
+                            let statusLabel = 'Available';
+
+                            if      (isDeleted)  { statusColor = '#94A3B8'; statusBg = '#F1F5F9'; statusLabel = 'Deleted'; }
+                            else if (isOccupied) { statusColor = '#EF4444'; statusBg = '#FEF2F2'; statusLabel = `Occupied • ${timerInfo?.text || 'Active'}`; }
+                            else if (isReserved) { statusColor = '#F59E0B'; statusBg = '#FFFBEB'; statusLabel = 'Reserved'; }
+                            else if (isCleaning) { statusColor = '#06B6D4'; statusBg = '#ECFEFF'; statusLabel = 'Cleaning'; }
+
+                            if (isSelectedByCustomer) {
+                                statusColor = '#7C3AED';
+                                statusBg = '#F3E8FF';
+                                statusLabel = 'Selected Table ✨';
+                            }
+
+                            const { w, h } = getTableDimensions(table.capacity, isRound);
+                            const tooltipText = isCustomerMode
+                                ? `${table.tableNumber ? `Table ${table.tableNumber}` : (table.tableName || 'Table')} • ${table.capacity} Guests • ${isOccupied || isCleaning ? 'Taken 🔒' : 'Available to Book ✅'}`
+                                : `${table.tableNumber ? `T-${table.tableNumber}` : (table.tableName || 'Table')} • ${table.capacity} seats • ${statusLabel}`;
+
+                            const depth3D = 7;
+                            const boxShadow3D = is3DMode
+                                ? `${depth3D}px ${depth3D + 2}px 0 ${alpha(statusColor, 0.35)}, ${depth3D + 4}px ${depth3D + 8}px 18px rgba(0,0,0,0.18)`
+                                : `0 3px 10px rgba(0,0,0,0.06)`;
+
+                            return (
+                                <Box
+                                    key={table._id}
+                                    onMouseDown={e => handleDragStart(e, table._id)}
+                                    onTouchStart={e => handleTouchStart(e, table._id)}
+                                    onContextMenu={e => handleContextMenu(e, table)}
+                                    sx={{
+                                        position: 'absolute',
+                                        left: pos.x,
+                                        top: pos.y,
+                                        width: w,
+                                        height: h,
+                                        zIndex: isDragging || isSelectedByCustomer ? 100 : 2,
+                                        willChange: 'transform',
+                                        transition: isDragging ? 'none' : 'transform 0.15s ease',
+                                        opacity: isCustomerMode && (isOccupied || isCleaning || isDeleted) ? 0.45 : 1,
+                                        cursor: isCustomerMode
+                                            ? (isOccupied || isCleaning || isDeleted ? 'not-allowed' : 'pointer')
+                                            : (isCustomizeMode ? (isDragging ? 'grabbing' : 'grab') : 'pointer'),
+                                        '&:hover': {
+                                            transform: isCustomizeMode ? 'none' : (is3DMode ? 'translateY(-3px) scale(1.02)' : 'translateY(-2px)'),
+                                        },
+                                    }}
+                                >
+                                    {/* REALISTIC SEATING FORMULA CHAIRS */}
+                                    {renderDynamicChairs(table.capacity, table.shape, statusColor, is3DMode)}
+
+                                    {/* 3D Table Surface */}
+                                    <Tooltip title={tooltipText} arrow placement="top">
+                                        <Card
+                                            elevation={0}
+                                            onClick={() => handleTableClick(table)}
+                                            sx={{
+                                                width: '100%',
+                                                height: '100%',
+                                                borderRadius: isRound ? '50%' : (is3DMode ? 2 : 2.5),
+                                                border: `2px solid ${statusColor}`,
+                                                background: is3DMode
+                                                    ? `linear-gradient(145deg, #FFFFFF 30%, ${alpha(statusColor, 0.06)} 100%)`
+                                                    : '#FFFFFF',
+                                                boxShadow: isDragging
+                                                    ? `${depth3D + 4}px ${depth3D + 8}px 28px rgba(0,0,0,0.28)`
+                                                    : boxShadow3D,
+                                                position: 'relative',
+                                                zIndex: 3,
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                p: 0.6,
+                                                overflow: 'hidden',
+                                                transition: 'all 0.18s ease',
+                                                '&:hover': {
+                                                    boxShadow: is3DMode
+                                                        ? `${depth3D + 2}px ${depth3D + 5}px 0 ${alpha(statusColor, 0.5)}, ${depth3D + 6}px ${depth3D + 10}px 22px rgba(0,0,0,0.22)`
+                                                        : '0 6px 18px rgba(0,0,0,0.12)',
+                                                    background: is3DMode
+                                                        ? `linear-gradient(145deg, #FFFFFF 20%, ${alpha(statusColor, 0.1)} 100%)`
+                                                        : statusBg,
+                                                },
+                                            }}
+                                        >
+                                            {/* Status dot + Table number */}
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                                                <Box sx={{
+                                                    width: 7, height: 7, borderRadius: '50%',
+                                                    bgcolor: statusColor,
+                                                    boxShadow: `0 0 0 1.5px #FFFFFF, 0 0 6px ${statusColor}`,
+                                                    flexShrink: 0,
+                                                }} />
+                                                <Typography sx={{ fontWeight: 900, fontSize: '0.88rem', color: '#0F172A', letterSpacing: -0.3, lineHeight: 1.1, textAlign: 'center' }}>
+                                                    {table.tableNumber ? `T-${table.tableNumber}` : (table.tableName || 'Table')}
+                                                </Typography>
+                                            </Box>
+
+                                            <Typography variant="caption" sx={{ fontSize: '0.64rem', fontWeight: 700, color: 'text.secondary', mt: 0.3 }}>
+                                                {table.capacity} seats
+                                            </Typography>
+
+                                            {isSelectedByCustomer && (
+                                                <Chip label="Selected" size="small" color="secondary" sx={{ height: 16, fontSize: '0.6rem', fontWeight: 900, mt: 0.2 }} />
+                                            )}
+                                        </Card>
+                                    </Tooltip>
+                                </Box>
+                            );
+                        })}
+                    </Box>
+                )}
+            </Paper>
+
+            {/* ── FOOTER LEGEND ── */}
+            <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                    {[['#10B981', 'Available'], ['#EF4444', 'Occupied'], ['#F59E0B', 'Reserved'], ['#06B6D4', 'Cleaning']].map(([color, label]) => (
+                        <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: color }} />
+                            <Typography variant="caption" fontWeight={700} color="text.secondary">{label}</Typography>
+                        </Box>
+                    ))}
+                </Box>
+                {!isCustomerMode && (
+                    <Button size="small" variant="text" startIcon={<HelpIcon sx={{ fontSize: 14 }} />} onClick={() => setLegendOpen(true)}
+                        sx={{ color: 'text.secondary', fontSize: '0.75rem', textTransform: 'none', fontWeight: 600 }}>
+                        View Legend
+                    </Button>
+                )}
+            </Box>
+
+            {/* ── RIGHT-CLICK CONTEXT MENU (Admin Only) ── */}
+            {!isCustomerMode && (
+                <Menu
+                    open={contextMenu !== null}
+                    onClose={handleCloseContextMenu}
+                    anchorReference="anchorPosition"
+                    anchorPosition={contextMenu ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined}
+                    PaperProps={{ sx: { borderRadius: 2.5, minWidth: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', border: '1px solid', borderColor: 'divider' } }}
+                >
+                    {contextMenu?.table?.isActive === false ? (
+                        <MenuItem onClick={() => { if (contextMenu?.table && onRestoreTable) onRestoreTable(contextMenu.table); handleCloseContextMenu(); }} disabled={!canDeleteTables}>
+                            <ListItemIcon><RestoreIcon fontSize="small" color="success" /></ListItemIcon>
+                            <ListItemText primary="Restore Table" primaryTypographyProps={{ fontWeight: 700 }} />
+                        </MenuItem>
+                    ) : [
+                        <MenuItem key="live-intel" onClick={() => { if (contextMenu?.table) setSelectedTableDetails(contextMenu.table); handleCloseContextMenu(); }}>
+                            <ListItemIcon><InfoIcon fontSize="small" color="primary" /></ListItemIcon>
+                            <ListItemText primary="View Live Table Intel" primaryTypographyProps={{ fontWeight: 800 }} />
+                        </MenuItem>,
+                        <MenuItem key="show-qr" onClick={() => { if (contextMenu?.table) setQrCodeDialogTable(contextMenu.table); handleCloseContextMenu(); }}>
+                            <ListItemIcon><QrCodeIcon fontSize="small" color="secondary" /></ListItemIcon>
+                            <ListItemText primary="Show Table QR Code" primaryTypographyProps={{ fontWeight: 800 }} />
+                        </MenuItem>,
+                        <MenuItem key="take-order" onClick={() => { if (contextMenu?.table) { if (tenantSlug) navigate(`/${tenantSlug}/pos?tableId=${contextMenu.table._id}`); } handleCloseContextMenu(); }}>
+                            <ListItemIcon><OrderIcon fontSize="small" color="primary" /></ListItemIcon>
+                            <ListItemText primary={contextMenu?.table?.status === 'occupied' ? 'View Order / Pay Check' : 'Take Order (POS)'} primaryTypographyProps={{ fontWeight: 700 }} />
+                        </MenuItem>,
+                        <MenuItem key="book-table" onClick={() => { if (contextMenu?.table && onOpenBooking) onOpenBooking(contextMenu.table); handleCloseContextMenu(); }}>
+                            <ListItemIcon><BookIcon fontSize="small" color="info" /></ListItemIcon>
+                            <ListItemText primary="Book Table" primaryTypographyProps={{ fontWeight: 700 }} />
+                        </MenuItem>,
+                        <Divider key="div-1" sx={{ my: 0.5 }} />,
+                        contextMenu?.table?.status !== 'available' && (
+                            <MenuItem key="mark-available" onClick={() => { if (contextMenu?.table && onQuickStatusChange) onQuickStatusChange(contextMenu.table._id, 'available'); handleCloseContextMenu(); }}>
+                                <ListItemIcon><AvailableIcon fontSize="small" color="success" /></ListItemIcon>
+                                <ListItemText primary="Mark Available" />
+                            </MenuItem>
+                        ),
+                        contextMenu?.table?.status !== 'occupied' && (
+                            <MenuItem key="mark-occupied" onClick={() => { if (contextMenu?.table && onQuickStatusChange) onQuickStatusChange(contextMenu.table._id, 'occupied'); handleCloseContextMenu(); }}>
+                                <ListItemIcon><OccupiedIcon fontSize="small" color="error" /></ListItemIcon>
+                                <ListItemText primary="Mark Occupied" />
+                            </MenuItem>
+                        ),
+                        contextMenu?.table?.status !== 'cleaning' && (
+                            <MenuItem key="mark-cleaning" onClick={() => { if (contextMenu?.table && onQuickStatusChange) onQuickStatusChange(contextMenu.table._id, 'cleaning'); handleCloseContextMenu(); }}>
+                                <ListItemIcon><CleaningIcon fontSize="small" color="info" /></ListItemIcon>
+                                <ListItemText primary="Mark Needs Cleaning" />
+                            </MenuItem>
+                        ),
+                        <Divider key="div-2" sx={{ my: 0.5 }} />,
+                        onOpenEditTable && (
+                            <MenuItem key="edit-details" onClick={() => { if (contextMenu?.table) onOpenEditTable(contextMenu.table); handleCloseContextMenu(); }}>
+                                <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+                                <ListItemText primary="Edit Details" />
+                            </MenuItem>
+                        ),
+                        onOpenHistory && (
+                            <MenuItem key="audit-history" onClick={() => { if (contextMenu?.table) onOpenHistory(contextMenu.table._id, `Table ${contextMenu.table.tableNumber}`); handleCloseContextMenu(); }}>
+                                <ListItemIcon><TimeIcon fontSize="small" /></ListItemIcon>
+                                <ListItemText primary="Audit History" />
+                            </MenuItem>
+                        ),
+                        onOpenDeleteTable && (
+                            <MenuItem key="delete-table" onClick={() => { if (contextMenu?.table) onOpenDeleteTable(contextMenu.table); handleCloseContextMenu(); }} disabled={!canDeleteTables} sx={{ color: 'error.main' }}>
+                                <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
+                                <ListItemText primary="Delete Table" />
+                            </MenuItem>
+                        )
+                    ].filter(Boolean)}
+                </Menu>
+            )}
+
+            {/* ── LIVE OCCUPIED & COMMUNAL TABLE DETAILS MODAL ── */}
+            <Dialog
+                open={selectedTableDetails !== null}
+                onClose={() => setSelectedTableDetails(null)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{
+                    sx: { borderRadius: 3.5, p: 0.5, boxShadow: '0 12px 32px rgba(0,0,0,0.18)' }
+                }}
+            >
+                {selectedTableDetails && (() => {
+                    const t = selectedTableDetails;
+                    const order = t.currentOrder;
+                    const customerName = order?.customer?.name || (t as any).customerName || 'Dine-In Guest';
+                    const waiterName = t.assignedWaiter?.firstName ? `${t.assignedWaiter.firstName} ${t.assignedWaiter.lastName || ''}` : (typeof t.assignedWaiter === 'string' ? t.assignedWaiter : 'Unassigned');
+                    
+                    const seatedTimeMin = t.occupiedAt ? Math.max(0, Math.floor((Date.now() - new Date(t.occupiedAt).getTime()) / 60000)) : 0;
+                    const isCommunal = t.seatingMode === 'communal' || Boolean(t.seatTickets && t.seatTickets.length > 0);
+
+                    const isOverdue = t.status === 'occupied' && seatedTimeMin >= 240;
+                    const isForgotten = t.status === 'occupied' && seatedTimeMin >= 720;
+
+                    const formatSeatedDuration = (mins: number) => {
+                        if (mins <= 0) return 'Just seated';
+                        if (mins < 60) return `${mins} mins seated`;
+                        if (mins < 1440) {
+                            const hrs = (mins / 60).toFixed(1);
+                            return `${hrs} hrs seated`;
+                        }
+                        const days = (mins / 1440).toFixed(1);
+                        return `${days} days seated (${mins} mins)`;
+                    };
+
+                    return (
+                        <>
+                            <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                                    <Box sx={{ width: 38, height: 38, borderRadius: 2.5, bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <TableIcon />
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="h6" fontWeight={900}>
+                                            Table {t.tableNumber} {t.tableName ? `(${t.tableName})` : ''}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                                            {t.capacity} Seats • {(t.section || t.location || 'Indoor').toUpperCase()}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                                <Chip
+                                    label={isCommunal ? 'Communal Shared' : t.status.toUpperCase()}
+                                    size="small"
+                                    color={t.status === 'occupied' ? 'error' : t.status === 'cleaning' ? 'info' : 'success'}
+                                    sx={{ fontWeight: 800, textTransform: 'uppercase', fontSize: '0.7rem' }}
+                                />
+                            </DialogTitle>
+
+                            <DialogContent dividers sx={{ py: 2 }}>
+                                {/* OVERDUE / FORGOTTEN TABLE WARNING BANNER */}
+                                {isOverdue && (
+                                    <Alert
+                                        severity={isForgotten ? 'error' : 'warning'}
+                                        variant="filled"
+                                        sx={{ mb: 2, borderRadius: 2.5, fontWeight: 700 }}
+                                        action={
+                                            <Button
+                                                color="inherit"
+                                                size="small"
+                                                variant="outlined"
+                                                onClick={() => {
+                                                    if (onQuickStatusChange) onQuickStatusChange(t._id, 'available');
+                                                    setSelectedTableDetails(null);
+                                                }}
+                                                sx={{ textTransform: 'none', fontWeight: 800, borderColor: '#FFFFFF', whiteSpace: 'nowrap' }}
+                                            >
+                                                Clear Table
+                                            </Button>
+                                        }
+                                    >
+                                        {isForgotten
+                                            ? `⚠️ Forgotten Table Warning: Table occupied for ${formatSeatedDuration(seatedTimeMin)}. Did staff forget to reset this table?`
+                                            : `⚠️ Overdue Occupancy: Table occupied for ${formatSeatedDuration(seatedTimeMin)}.`}
+                                    </Alert>
+                                )}
+
+                                {/* CUSTOMER & SEATED DURATION */}
+                                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5, mb: 2, bgcolor: '#F8FAFC' }}>
+                                    <Stack spacing={1.2}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <PersonIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                                                <Typography variant="subtitle2" fontWeight={800}>
+                                                    {customerName}
+                                                </Typography>
+                                            </Box>
+                                            <Chip
+                                                icon={<TimeIcon sx={{ fontSize: 14 }} />}
+                                                label={formatSeatedDuration(seatedTimeMin)}
+                                                size="small"
+                                                variant="outlined"
+                                                color={isOverdue ? 'error' : seatedTimeMin > 60 ? 'warning' : 'default'}
+                                                sx={{ fontWeight: 800, fontSize: '0.72rem' }}
+                                            />
+                                        </Box>
+
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                                                Assigned Server: <b>{waiterName}</b>
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                                                Status: <b>{t.status}</b>
+                                            </Typography>
+                                        </Box>
+                                    </Stack>
+                                </Paper>
+
+                                {/* INDIVIDUAL SEAT TICKETS (IF COMMUNAL OR MULTI-GUEST) */}
+                                {t.seatTickets && t.seatTickets.length > 0 && (
+                                    <Box sx={{ mb: 2 }}>
+                                        <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', mb: 1, display: 'block' }}>
+                                            Per-Seat Guest Sub-Tickets
+                                        </Typography>
+                                        <Stack spacing={1}>
+                                            {t.seatTickets.map((st, idx) => (
+                                                <Paper key={idx} variant="outlined" sx={{ p: 1.2, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <Chip label={`Seat ${st.seatNumber}`} size="small" color="primary" sx={{ fontWeight: 800, height: 22 }} />
+                                                        <Typography variant="body2" fontWeight={800}>
+                                                            {st.customerName || `Guest ${st.seatNumber}`}
+                                                        </Typography>
+                                                    </Box>
+                                                    <Chip
+                                                        label={st.status || 'occupied'}
+                                                        size="small"
+                                                        color={st.status === 'paid' ? 'success' : 'error'}
+                                                        sx={{ fontWeight: 800, height: 20, fontSize: '0.65rem' }}
+                                                    />
+                                                </Paper>
+                                            ))}
+                                        </Stack>
+                                    </Box>
+                                )}
+
+                                {/* CURRENT ORDER SUMMARY */}
+                                {order ? (
+                                    <Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                                            <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase' }}>
+                                                Active Order ({order.orderNumber || order._id || 'POS Order'})
+                                            </Typography>
+                                            <Chip
+                                                label={order.paymentStatus || 'UNPAID'}
+                                                size="small"
+                                                color={order.paymentStatus === 'paid' ? 'success' : 'warning'}
+                                                sx={{ fontWeight: 800, height: 20, fontSize: '0.68rem' }}
+                                            />
+                                        </Box>
+
+                                        {order.items && order.items.length > 0 && (
+                                            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, mb: 1.5 }}>
+                                                <List disablePadding>
+                                                    {order.items.slice(0, 5).map((item: any, idx: number) => (
+                                                        <ListItem key={idx} disableGutters sx={{ py: 0.3, display: 'flex', justifyContent: 'space-between' }}>
+                                                            <Typography variant="body2" fontWeight={700}>
+                                                                {item.quantity}x {item.name || item.menuItem?.name}
+                                                            </Typography>
+                                                            <Typography variant="body2" fontWeight={800} color="text.secondary">
+                                                                ${((item.price || 0) * (item.quantity || 1)).toFixed(2)}
+                                                            </Typography>
+                                                        </ListItem>
+                                                    ))}
+                                                </List>
+                                            </Paper>
+                                        )}
+
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 0.5 }}>
+                                            <Typography variant="subtitle2" fontWeight={800}>
+                                                Total Amount:
+                                            </Typography>
+                                            <Typography variant="h6" fontWeight={900} color="primary.main">
+                                                ${(order.totalAmount || order.total || 0).toFixed(2)}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 2 }}>
+                                        No active order linked to this table yet.
+                                    </Typography>
+                                )}
+                            </DialogContent>
+
+                            <DialogActions sx={{ px: 2.5, py: 1.5, gap: 1 }}>
+                                {t.status === 'occupied' && onQuickStatusChange && (
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        color="success"
+                                        startIcon={<AvailableIcon />}
+                                        onClick={() => {
+                                            onQuickStatusChange(t._id, 'available');
+                                            setSelectedTableDetails(null);
+                                        }}
+                                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800 }}
+                                    >
+                                        Mark Available
+                                    </Button>
+                                )}
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => setSelectedTableDetails(null)}
+                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+                                >
+                                    Close
+                                </Button>
+                                {tenantSlug && (
+                                    <Button
+                                        size="small"
+                                        variant="contained"
+                                        color="primary"
+                                        startIcon={<OrderReceiptIcon />}
+                                        onClick={() => {
+                                            const tableId = t._id;
+                                            setSelectedTableDetails(null);
+                                            navigate(`/${tenantSlug}/pos?tableId=${tableId}`);
+                                        }}
+                                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800, px: 2 }}
+                                    >
+                                        {t.status === 'occupied' ? 'Checkout / Pay Order' : 'Open POS Order'}
+                                    </Button>
+                                )}
+                            </DialogActions>
+                        </>
+                    );
+                })()}
+            </Dialog>
+
+            {/* ── LEGEND DIALOG ── */}
+            <TableLegendDialog open={legendOpen} onClose={() => setLegendOpen(false)} />
+
+            {/* ── SINGLE TABLE QR CODE MODAL ── */}
+            <Dialog
+                open={qrCodeDialogTable !== null}
+                onClose={() => setQrCodeDialogTable(null)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3.5, p: 1, textAlign: 'center' } }}
+            >
+                {qrCodeDialogTable && (() => {
+                    const t = qrCodeDialogTable;
+                    const slug = tenantSlug || 'mythri';
+                    const domain = window.location.origin;
+                    const qrUrl = `${domain}/${slug}?tableId=${t._id}&tableNo=${encodeURIComponent(t.tableNumber)}`;
+
+                    return (
+                        <>
+                            <DialogTitle sx={{ pb: 1, fontWeight: 900 }}>
+                                Table {t.tableNumber} QR Code
+                            </DialogTitle>
+                            <DialogContent sx={{ py: 2 }}>
+                                <Typography variant="caption" color="text.secondary" fontWeight={700} display="block" sx={{ mb: 2 }}>
+                                    {(t.section || t.location || 'Indoor').toUpperCase()} • {t.capacity} Seats
+                                </Typography>
+                                <Box sx={{ p: 2, bgcolor: '#FFFFFF', borderRadius: 3, display: 'inline-block', border: '1.5px solid', borderColor: 'divider', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' }}>
+                                    <QRCodeSVG value={qrUrl} size={180} level="M" />
+                                </Box>
+                                <Typography variant="body2" fontWeight={700} sx={{ mt: 2, color: 'text.primary' }}>
+                                    Scan to View Menu, Order & Pay
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', wordBreak: 'break-all', display: 'block', mt: 1 }}>
+                                    {qrUrl}
+                                </Typography>
+                            </DialogContent>
+                            <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+                                <Button variant="contained" onClick={() => setQrCodeDialogTable(null)} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800, px: 3 }}>
+                                    Close
+                                </Button>
+                            </DialogActions>
+                        </>
+                    );
+                })()}
+            </Dialog>
+
+            {/* ── ROOM-SWITCH TOAST ── */}
+            <Snackbar
+                open={roomSwitchToast !== null}
+                autoHideDuration={3500}
+                onClose={() => setRoomSwitchToast(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert onClose={() => setRoomSwitchToast(null)} severity="warning" variant="filled"
+                    sx={{ borderRadius: 2.5, fontWeight: 700, boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}>
+                    {roomSwitchToast}
+                </Alert>
+            </Snackbar>
+        </Box>
+    );
+};
+
+export default FloorPlanView;

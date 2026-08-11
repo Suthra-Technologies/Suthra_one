@@ -43,7 +43,7 @@ import {
     ShoppingBag as OnlineTakeawayIcon,
     Search as SearchIcon,
 } from '@mui/icons-material';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import { useSettings } from '../../context/SettingsContext';
@@ -116,6 +116,23 @@ const GuestPOSPage: React.FC = () => {
     const [tableNumber, setTableNumber] = useState<string>('');
     const [tables, setTables] = useState<any[]>([]);
     const [taxRate, setTaxRate] = useState<number>(5); // Default 5%, will be updated from settings
+
+    const [searchParams] = useSearchParams();
+    const tableNoParam = searchParams.get('tableNo');
+    const tableIdParam = searchParams.get('tableId');
+    const isQrScanned = Boolean(tableNoParam || sessionStorage.getItem('qr_table_no'));
+
+    useEffect(() => {
+        const qTableNo = tableNoParam || sessionStorage.getItem('qr_table_no');
+        const qTableId = tableIdParam || sessionStorage.getItem('qr_table_id');
+        if (tableNoParam) sessionStorage.setItem('qr_table_no', tableNoParam);
+        if (tableIdParam) sessionStorage.setItem('qr_table_id', tableIdParam);
+
+        if (qTableNo) {
+            setTableNumber(qTableNo);
+            setOrderType('global_dine_in');
+        }
+    }, [tableNoParam, tableIdParam]);
 
     // Stripe card payment
     const [stripePromise, setStripePromise] = useState<Promise<any> | null>(null);
@@ -817,6 +834,27 @@ const GuestPOSPage: React.FC = () => {
 
             {/* Content */}
             <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
+                {/* Seated Table Contactless Banner */}
+                {tableNumber && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2.5 }}>
+                        <Chip
+                            icon={<DineInIcon sx={{ color: '#fff !important' }} />}
+                            label={`📍 Seated at Table ${tableNumber} • Contactless Ordering`}
+                            sx={{
+                                bgcolor: 'primary.main',
+                                color: '#fff',
+                                fontWeight: 900,
+                                fontSize: { xs: '0.85rem', sm: '1rem' },
+                                py: 2.2,
+                                px: 2,
+                                borderRadius: 4,
+                                boxShadow: '0 6px 18px rgba(79, 70, 229, 0.35)',
+                                '& .MuiChip-label': { px: 1 }
+                            }}
+                        />
+                    </Box>
+                )}
+
                 {/* Filters */}
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3, alignItems: 'center' }}>
                     {/* Search */}
@@ -1290,7 +1328,12 @@ const GuestPOSPage: React.FC = () => {
 
                             {/* Order Type Selection */}
                             <Box sx={{ mb: 3 }}>
-                                <Typography variant="subtitle2" gutterBottom>Order Type</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                                    <Typography variant="subtitle2">Order Type</Typography>
+                                    {isQrScanned && (
+                                        <Chip label="🔒 Locked for QR Table Order" size="small" color="primary" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800 }} />
+                                    )}
+                                </Box>
                                 <ToggleButtonGroup
                                     value={orderType}
                                     exclusive
@@ -1300,6 +1343,7 @@ const GuestPOSPage: React.FC = () => {
                                     fullWidth
                                     color="primary"
                                     size="small"
+                                    disabled={isQrScanned}
                                 >
                                     <ToggleButton value="global_dine_in">
                                         <DineInIcon sx={{ mr: 1, fontSize: 20 }} /> Global Dine In
@@ -1307,28 +1351,27 @@ const GuestPOSPage: React.FC = () => {
                                     <ToggleButton value="global_takeaway">
                                         <TakeawayIcon sx={{ mr: 1, fontSize: 20 }} /> Global Takeaway
                                     </ToggleButton>
-                                    {/* <ToggleButton value="delivery">
-                                        <DeliveryIcon sx={{ mr: 1, fontSize: 20 }} /> Delivery
-                                    </ToggleButton> */}
-                                    {/* <ToggleButton value="online_takeaway">
-                                        <OnlineTakeawayIcon sx={{ mr: 1, fontSize: 20 }} /> Online Takeaway
-                                    </ToggleButton> */}
                                 </ToggleButtonGroup>
                             </Box>
 
                             {/* Table Number — shown only for Dine In */}
                             {orderType === 'global_dine_in' && (
                                 <Box sx={{ mb: 3 }}>
-                                    <Typography variant="subtitle2" gutterBottom>
-                                        Table Number <Typography component="span" color="text.secondary" variant="caption">(recommended)</Typography>
-                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                                        <Typography variant="subtitle2">
+                                            Table Number <Typography component="span" color="text.secondary" variant="caption">(recommended)</Typography>
+                                        </Typography>
+                                        {isQrScanned && (
+                                            <Chip label={`🔒 Table ${tableNumber} Locked`} size="small" color="success" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800 }} />
+                                        )}
+                                    </Box>
                                     <TextField
                                         select
                                         fullWidth
                                         size="small"
                                         value={tableNumber}
                                         onChange={e => setTableNumber(e.target.value)}
-                                        disabled={tables.length === 0}
+                                        disabled={isQrScanned || tables.length === 0}
                                         SelectProps={{
                                             displayEmpty: true,
                                             renderValue: (selected: any) => {
@@ -1360,9 +1403,11 @@ const GuestPOSPage: React.FC = () => {
                                         ))}
                                     </TextField>
                                     <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                                        {tables.length === 0
-                                            ? 'Table list unavailable — please tell your server your table number.'
-                                            : 'So the server knows which table to bring your order to'}
+                                        {isQrScanned
+                                            ? `🔒 Table ${tableNumber} verified from table QR code scan.`
+                                            : tables.length === 0
+                                                ? 'Table list unavailable — please tell your server your table number.'
+                                                : 'So the server knows which table to bring your order to'}
                                     </Typography>
                                 </Box>
                             )}
