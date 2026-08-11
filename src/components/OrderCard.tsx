@@ -385,7 +385,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 {formatTime(order.createdAt)}
                             </Typography>
                         </Stack>
-                        {order.isPreOrder && order.scheduledTime && (
+                        {order.scheduledTime && (
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5, px: 1, py: 0.25, borderRadius: 1, bgcolor: alpha('#7c3aed', 0.07), border: '1px solid rgba(124,58,237,0.2)', width: 'fit-content' }}>
                                 <EventIcon sx={{ fontSize: 14, mr: 0.5, color: '#7c3aed' }} />
                                 <Typography variant="body2" sx={{ color: '#7c3aed', fontWeight: 600, fontSize: '0.75rem' }}>
@@ -395,10 +395,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         )}
                     </Box>
                     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
-                        {order.isPreOrder && (
+                        {order.scheduledTime && (
                             <Chip
                                 icon={<EventIcon sx={{ fontSize: 14 }} />}
-                                label="PRE-ORDER"
+                                label={order.isPreOrder ? 'PRE-ORDER' : 'SCHEDULED'}
                                 size="small"
                                 sx={{
                                     fontWeight: 'bold',
@@ -705,7 +705,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                                 >
                                                     {formatCurrency(item.total || item.price * item.quantity)}
                                                 </Typography>
-                                                {['pending', 'confirmed'].includes(order.status) && order.orderType === 'dine_in' && item.preparationStatus !== 'ready' && (
+                                                {['pending', 'confirmed'].includes(order.status) && order.orderType === 'dine_in' && item.preparationStatus !== 'ready' && Number(item.disputedQuantity || 0) < Number(item.quantity || 0) && (
                                                     <IconButton
                                                         size="small"
                                                         color="error"
@@ -761,7 +761,15 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                                         <Typography variant="body2" sx={{ textDecoration: 'line-through', color: 'text.disabled' }}>
                                                             {formatCurrency(item.total || item.price * item.quantity)}
                                                         </Typography>
-                                                        {canManage && (
+                                                        {canManage && Number(item.disputedQuantity || 0) >= Number(item.quantity || 0) ? (
+                                                            <Tooltip title="This item is under an active dispute — resolve the dispute to process its refund">
+                                                                <span>
+                                                                    <IconButton size="small" color="warning" disabled sx={{ padding: '2px' }}>
+                                                                        <RefundIcon sx={{ fontSize: 16 }} />
+                                                                    </IconButton>
+                                                                </span>
+                                                            </Tooltip>
+                                                        ) : canManage && (
                                                             <Tooltip title={canRefund ? 'Process Refund' : 'Mark as refunded (cash)'}>
                                                                 <IconButton
                                                                     size="small"
@@ -1269,7 +1277,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         </>
                     ) : (
                         <>
-                            {canManage && !order.isDisputed && nextStatus && (isDeliveryBoy ? ['ready_to_pickup', 'on_the_way', 'ready_to_pick'].includes(order.status) : true) && (
+                            {canManage && !order.isDisputed && !order.isPreOrder && nextStatus && (isDeliveryBoy ? ['ready_to_pickup', 'on_the_way', 'ready_to_pick'].includes(order.status) : true) && (
                                 // Hide "Next: Completed" for Dine In as it's typically handled via payment collection
                                 (order.orderType === 'dine_in' && nextStatus === 'completed' && !isGlobalDineIn(order)) ? null : (
                                     // Disable "On the Way" and "Delivered" for third-party delivery (DoorDash/Uber Eats)

@@ -14,7 +14,8 @@ import {
   Print as PrintIcon,
   CurrencyExchange as RefundIcon,
   Add as AddIcon,
-  Remove as RemoveIcon
+  Remove as RemoveIcon,
+  Event as EventIcon
 } from '@mui/icons-material';
 import {
   alpha,
@@ -810,6 +811,21 @@ const KitchenInterface: React.FC = () => {
                                 : getElapsedTime(order.createdAt)}
                             </Typography>
                           </Stack>
+                          {!order.isPreOrder && order.scheduledTime && (
+                            <Chip
+                              icon={<EventIcon sx={{ fontSize: '0.85rem !important' }} />}
+                              label={`Was Sch: ${new Date(order.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: '0.65rem',
+                                fontWeight: 'bold',
+                                bgcolor: alpha('#7c3aed', 0.1),
+                                color: '#7c3aed',
+                                border: '1px solid rgba(124,58,237,0.25)',
+                              }}
+                            />
+                          )}
                           {order.tableNumber && (
                             <Chip
                               label={`TABLE ${order.tableNumber}`}
