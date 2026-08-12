@@ -62,6 +62,8 @@ export const RequireFeature: React.FC<Props> = ({ feature, guestAllowed = false 
         if (features.includes(feature) || ((features.includes('core') || isLegacyPlan) && CORE_FEATURES.includes(feature))) {
             return <Outlet />;
         }
+
+        return <Navigate to="/unauthorized" state={{ reason: 'plan', feature }} replace />;
     }
 
     return <Navigate to="/unauthorized" replace />;
