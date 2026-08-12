@@ -1177,7 +1177,7 @@ const HomePage: React.FC = () => {
             >
               Streamline your front-of-house, manage inventory, and grow your
               sales with the easiest POS software on the market. Start your
-              7-day free trial.
+              3-day free trial.
             </Typography>
             <Stack
               direction={{ xs: "column", sm: "row" }}
