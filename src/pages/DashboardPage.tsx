@@ -40,7 +40,7 @@ import {
   useTheme
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { DashboardSkeleton } from '../components/common/PageSkeleton';
 
 
@@ -504,12 +504,24 @@ const DashboardPage: React.FC = () => {
     }
   };
 
+  // Kept up to date every render so the mount-only effect below always calls
+  // the latest closure (current timeRange/startDate/endDate) without having to
+  // tear down and re-register the interval/listeners on every filter change.
+  const fetchDashboardDataRef = useRef(fetchDashboardData);
+  fetchDashboardDataRef.current = fetchDashboardData;
+
+  // Refetch whenever the selected range changes.
   useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 30000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeRange, startDate, endDate]);
+
+  // Poll + realtime listeners: registered once on mount, not on every filter change.
+  useEffect(() => {
+    const interval = setInterval(() => fetchDashboardDataRef.current(), 30000);
 
     const handleRealtimeUpdate = () => {
-      fetchDashboardData();
+      fetchDashboardDataRef.current();
     };
 
     window.addEventListener('newOrder', handleRealtimeUpdate);
@@ -528,7 +540,7 @@ const DashboardPage: React.FC = () => {
       window.removeEventListener('dashboardRefetch', handleRealtimeUpdate);
       window.removeEventListener('inventoryStockAlert', handleRealtimeUpdate);
     };
-  }, [timeRange, startDate, endDate]);
+  }, []);
 
   useEffect(() => {
     const statuses = ['expired', 'expiring', 'service_due', 'upcoming_service'];

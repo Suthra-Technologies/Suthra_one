@@ -53,6 +53,28 @@ export const ListSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) => (
     </Stack>
 );
 
+/** Paywall/upgrade-prompt card skeleton: icon + title + description + two plan cards + actions. */
+export const UpgradeCardSkeleton: React.FC = () => (
+    <Box sx={{ display: 'flex', justifyContent: 'center', p: { xs: 2, sm: 4 } }}>
+        <Card sx={{ p: { xs: 3, sm: 5 }, maxWidth: 560, width: '100%', borderRadius: 3 }}>
+            <Stack alignItems="center" spacing={1.5}>
+                <Skeleton variant="rounded" width={56} height={56} sx={{ borderRadius: 2 }} />
+                <Skeleton variant="text" width="70%" height={36} />
+                <Skeleton variant="text" width="90%" />
+                <Skeleton variant="text" width="60%" />
+            </Stack>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ my: 3 }}>
+                <Skeleton variant="rounded" height={72} sx={{ flex: 1 }} />
+                <Skeleton variant="rounded" height={72} sx={{ flex: 1 }} />
+            </Stack>
+            <Stack direction="row" spacing={2} justifyContent="center">
+                <Skeleton variant="rounded" width={160} height={42} />
+                <Skeleton variant="rounded" width={140} height={42} />
+            </Stack>
+        </Card>
+    </Box>
+);
+
 /** Table-shaped skeleton: header row + N body rows of column skeletons. */
 export const TableSkeleton: React.FC<{ rows?: number; columns?: number }> = ({ rows = 8, columns = 5 }) => (
     <Stack spacing={1}>

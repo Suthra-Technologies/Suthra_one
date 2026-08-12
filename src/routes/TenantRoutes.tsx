@@ -125,8 +125,10 @@ export const TenantRoutes = () => (
         </Route>
         <Route element={<RequireFeature feature="menu" />}>
           <Route path="menu" element={<MenuPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="payroll" />}>
           <Route path="payroll" element={<PayrollPage />} />
-      </Route>
+        </Route>
         <Route element={<RequireFeature feature="globaladdons" />}>
           <Route path="global-add-ons" element={<AddOnGroupsPage />} />
         </Route>

@@ -214,18 +214,13 @@ const ReportsPage: React.FC = () => {
         setPaymentDetailsPage(0);
     }, [activeTab]);
 
-    // Fetch data based on active tab
+    // Fetch data based on active tab (and feedback sub-view, so item-wise vs
+    // summary both get their own initial fetch and 30s auto-refresh).
     useEffect(() => {
         fetchReportData();
         const interval = setInterval(fetchReportData, 30000); // Auto-refresh every 30s
         return () => clearInterval(interval);
-    }, [activeTab, period, startDate, endDate, paymentMethodFilter]);
-
-    useEffect(() => {
-        if (activeTab === 15 && feedbackView === 'item-wise') {
-            feedbackAPI.getItemWiseReport().then(res => setItemWiseReport(res.data || [])).catch(err => console.error(err));
-        }
-    }, [activeTab, feedbackView]);
+    }, [activeTab, period, startDate, endDate, paymentMethodFilter, feedbackView]);
 
     // Real-time updates
     useEffect(() => {
@@ -334,7 +329,11 @@ const ReportsPage: React.FC = () => {
                     await fetchTableStats(params);
                     break;
                 case 15: // Feedback
-                    await fetchFeedback(params);
+                    if (feedbackView === 'item-wise') {
+                        await feedbackAPI.getItemWiseReport().then(res => setItemWiseReport(res.data || []));
+                    } else {
+                        await fetchFeedback(params);
+                    }
                     break;
                 case 16: // Tips Report
                     await Promise.all([

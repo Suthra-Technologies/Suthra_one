@@ -675,7 +675,6 @@ const SettingsPage: React.FC = () => {
     const [showStripeWebhookSecret, setShowStripeWebhookSecret] = useState(false);
 
     const [stripeStatus, setStripeStatus] = useState<{ stripeMode?: string; hasPublishableKey?: boolean; hasSecretKey?: boolean; hasWebhookSecret?: boolean }>({});
-    const [usersList, setUsersList] = useState<any[]>([]);
     const [newPaymentMethod, setNewPaymentMethod] = useState<string>('');
     const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
     const [pairedAgents, setPairedAgents] = useState<any[]>([]);

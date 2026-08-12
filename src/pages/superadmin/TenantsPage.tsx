@@ -508,7 +508,7 @@ const TenantsPage: React.FC = () => {
                 <MenuItem value="">No Plan</MenuItem>
                 {plans.map((plan) => (
                   <MenuItem key={plan._id} value={plan._id}>
-                    {plan.name} ($${Number(plan.price || 0).toFixed(2)}/{plan.interval})
+                    {plan.name} (${Number(plan.price || 0).toFixed(2)}/{plan.interval})
                   </MenuItem>
                 ))}
               </Select>

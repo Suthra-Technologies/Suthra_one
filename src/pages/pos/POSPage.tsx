@@ -993,14 +993,17 @@ const POSPage: React.FC = () => {
     }, [searchQuery, selectedCategory, foodTypeFilter]);
 
 
-    // Refresh coupons when order type or cart total changes
+    // Refresh the available-coupons list only when order type changes — the list of
+    // coupon definitions doesn't depend on cart contents, only their validity does.
     useEffect(() => {
         fetchAvailableCoupons();
+    }, [orderType]);
 
-        // Re-validate the coupon whenever cart changes:
-        // - If there's already an applied discount, re-check it's still valid
-        // - If there's a code but no discount yet (min amount wasn't met before),
-        //   attempt validation again now that the cart total may have increased
+    // Re-validate the applied/entered coupon whenever cart or order type changes:
+    // - If there's already an applied discount, re-check it's still valid
+    // - If there's a code but no discount yet (min amount wasn't met before),
+    //   attempt validation again now that the cart total may have increased
+    useEffect(() => {
         if (couponCode) {
             handleValidateCoupon(true); // Silent re-validation
         }

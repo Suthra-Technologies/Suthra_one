@@ -63,6 +63,8 @@ const MODULES: { key: string; label: string }[] = [
     { key: 'customersupport', label: 'Customer Tickets' },
     { key: 'settings', label: 'Settings' },
     { key: 'managenotifications', label: 'Manage Notifications' },
+    { key: 'payroll', label: 'Employees & Payroll' },
+    { key: 'helpguide', label: 'Help & Guide' },
 ];
 // Legacy plans stored a single bundled "core" feature. Before the module-level split,
 // every one of these pages was ungated (open to any admin/manager), so a legacy "core"

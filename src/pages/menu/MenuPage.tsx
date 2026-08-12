@@ -268,12 +268,14 @@ const MenuPage: React.FC = () => {
     };
 
     useEffect(() => {
+        if (tabValue === 6) {
+            // Deleted tab has its own dedicated fetch — no need to also refetch menu items/categories.
+            fetchDeletedData();
+            return;
+        }
         // Only refresh data when switching tabs, not on every render
         if (loading === false) { // Only refresh after initial load is complete
             debouncedFetchData();
-        }
-        if (tabValue === 6) {
-            fetchDeletedData();
         }
     }, [tabValue]);
 

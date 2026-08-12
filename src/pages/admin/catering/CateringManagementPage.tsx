@@ -255,7 +255,10 @@ const CateringManagementPage = () => {
             cancelled = true;
             clearTimeout(timer);
         };
-    }, [newOrder.items, newOrder.discount, newOrder.zipCode, newOrder.address, settings]);
+    // Deliberately excludes newOrder.zipCode/address: catering tax is sourced from the
+    // restaurant's address (settings.restaurant), not the customer's delivery address —
+    // see the payload above — so editing that field shouldn't retrigger a recalculation.
+    }, [newOrder.items, newOrder.discount, settings]);
 
     const [expanded, setExpanded] = useState<string | false>('customer');
     const [activeStep, setActiveStep] = useState(0);
@@ -806,17 +809,18 @@ const CateringManagementPage = () => {
         }
     };
 
-    // Debounced Search for Menu Items
+    // Debounced Search for Menu Items — also re-runs when the create/edit dialog opens
+    // (not just on search text change), so opening the dialog actually loads menu items.
     useEffect(() => {
         if (!createDialogOpen && !isEditing) return;
-        
+
         const timer = setTimeout(() => {
             setMenuPrevCursors([]); // Reset pagination on new search
             fetchMenu(itemSearch);
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [itemSearch]);
+    }, [itemSearch, createDialogOpen, isEditing]);
 
     const handleMenuNext = () => {
         if (menuNextCursor) {

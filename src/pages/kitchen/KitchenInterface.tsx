@@ -135,10 +135,9 @@ const KitchenInterface: React.FC = () => {
     }
 
     // Try direct printing via local print agent first (QZ Tray style fast path)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s fast timeout
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s fast timeout
-
       const response = await fetch('http://127.0.0.1:19001/print', {
         method: 'POST',
         headers: {
@@ -160,8 +159,6 @@ const KitchenInterface: React.FC = () => {
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
-
       if (response.ok) {
         const resData = await response.json();
         if (resData.success) {
@@ -180,6 +177,8 @@ const KitchenInterface: React.FC = () => {
           toast.error('Check your printer connection');
           return;
       }
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     if (Capacitor.isNativePlatform()) {
