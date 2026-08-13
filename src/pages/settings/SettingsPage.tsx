@@ -2113,7 +2113,7 @@ const SettingsPage: React.FC = () => {
                                                         const { toast } = await import('react-hot-toast');
                                                         toast.loading('Uploading logo...');
                                                         const { uploadAPI } = await import('../../services/api');
-                                                        const response = await uploadAPI.uploadImage(file);
+                                                        const response = await uploadAPI.uploadImage(file, 'branding');
                                                         toast.dismiss();
                                                         toast.success('Logo uploaded successfully!');
                                                         handleInputChange('restaurant', 'logo', response.data.url);
@@ -2222,7 +2222,7 @@ const SettingsPage: React.FC = () => {
                                                     const { toast } = await import('react-hot-toast');
                                                     toast.loading('Uploading logo...');
                                                     const { uploadAPI } = await import('../../services/api');
-                                                    const response = await uploadAPI.uploadImage(file);
+                                                    const response = await uploadAPI.uploadImage(file, 'branding');
                                                     toast.dismiss();
                                                     toast.success('Logo uploaded successfully!');
                                                     handleInputChange('restaurant', 'logo', response.data.url);
@@ -2277,7 +2277,7 @@ const SettingsPage: React.FC = () => {
                                                 try {
                                                     toast.loading('Uploading stamp...');
                                                     const { uploadAPI } = await import('../../services/api');
-                                                    const response = await uploadAPI.uploadImage(file);
+                                                    const response = await uploadAPI.uploadImage(file, 'stamp');
                                                     toast.dismiss();
                                                     toast.success('Stamp uploaded successfully!');
                                                     handleInputChange('restaurant', 'stamp', response.data.url);
@@ -3979,7 +3979,7 @@ const SettingsPage: React.FC = () => {
                                                                                     if (file) {
                                                                                         try {
                                                                                             toast.loading('Uploading QR image...', { id: 'qr-upload' });
-                                                                                            const response = await uploadAPI.uploadImage(file);
+                                                                                            const response = await uploadAPI.uploadImage(file, 'qr-code');
                                                                                             const uploadedUrl = response.data.url;
                                                                                             setSettings(prev => ({
                                                                                                 ...prev,

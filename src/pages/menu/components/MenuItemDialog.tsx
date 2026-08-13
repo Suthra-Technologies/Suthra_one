@@ -336,7 +336,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         if (file) {
             const loadingToast = toast.loading('Uploading image...');
             try {
-                const response = await uploadAPI.uploadImage(file);
+                const response = await uploadAPI.uploadImage(file, 'menu');
                 toast.dismiss(loadingToast);
                 toast.success('Image uploaded successfully!');
                 setMenuItemForm({ ...menuItemForm, image: response.data.url });

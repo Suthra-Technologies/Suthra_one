@@ -154,7 +154,7 @@ const MaterialProvidersPage: React.FC = () => {
     if (!file) return;
     const loadingToast = toast.loading('Uploading image...');
     try {
-      const res = await uploadAPI.uploadImage(file);
+      const res = await uploadAPI.uploadImage(file, 'provider');
       setForm(prev => ({ ...prev, [field]: res.data.url }));
       toast.success('Image uploaded');
     } catch {

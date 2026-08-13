@@ -169,7 +169,7 @@ const AssetForm: React.FC = () => {
         return;
       }
 
-      const res = await uploadAPI.uploadImage(file);
+      const res = await uploadAPI.uploadImage(file, 'asset');
       setForm(prev => ({
         ...prev,
         fileLinks: [...prev.fileLinks, res.data.url]

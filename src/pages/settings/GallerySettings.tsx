@@ -90,7 +90,7 @@ const GallerySettings: React.FC = () => {
 
         try {
             setUploading(true);
-            const res = await uploadAPI.uploadImage(file);
+            const res = await uploadAPI.uploadImage(file, 'gallery');
             setEditingItem(prev => ({ ...prev, imageUrl: res.data.url }));
             toast.success('Image uploaded successfully', { position: 'top-center', style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, background: '#333', color: '#fff' } });
         } catch (error) {

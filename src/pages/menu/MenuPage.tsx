@@ -881,7 +881,7 @@ const MenuPage: React.FC = () => {
 
         const loadingToast = toast.loading('Uploading replacement image...');
         try {
-            const response = await uploadAPI.uploadImage(file);
+            const response = await uploadAPI.uploadImage(file, 'menu');
             const newItems = [...bulkPreviewItems];
             newItems[previewTargetIdx].image = response.data.url;
             setBulkPreviewItems(newItems);

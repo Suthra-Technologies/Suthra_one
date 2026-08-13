@@ -411,7 +411,7 @@ const CustomiseScreensPage: React.FC = () => {
   };
 
   const handleUploadImage = async (file: File): Promise<string> => {
-    const response = await uploadAPI.uploadImage(file);
+    const response = await uploadAPI.uploadImage(file, 'homepage');
     return response.data.url;
   };
 

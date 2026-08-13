@@ -949,14 +949,45 @@ export const recipesAPI = {
 };
 
 // -------------------- Upload API --------------------
+/**
+ * Which folder the file lands in inside the tenant's S3 prefix. Must match
+ * MODULE_PREFIXES in the backend upload controller; omitting it files the
+ * upload under misc/.
+ */
+export type UploadModule =
+  | 'menu'
+  | 'category'
+  | 'recipe'
+  | 'gallery'
+  | 'menu-pdf'
+  | 'qr-code'
+  | 'menu-document'
+  | 'promo'
+  | 'event'
+  | 'inventory'
+  | 'table'
+  | 'asset'
+  | 'purchase'
+  | 'expense'
+  | 'support'
+  | 'dispute'
+  | 'user'
+  | 'payroll'
+  | 'branding'
+  | 'vendor'
+  | 'provider'
+  | 'stamp'
+  | 'homepage';
+
 export const uploadAPI = {
-  uploadImage: (file: File) => {
+  uploadImage: (file: File, module?: UploadModule) => {
     const formData = new FormData();
     formData.append('file', file);
     return api.post('/upload/image', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      params: module ? { module } : undefined,
       timeout: 60000, // 60 seconds
     });
   },

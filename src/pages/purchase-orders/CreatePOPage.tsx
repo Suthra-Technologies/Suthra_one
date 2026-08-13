@@ -324,7 +324,7 @@ const CreatePOPage: React.FC = () => {
 
         setUploading(true);
         try {
-            const response = await uploadAPI.uploadImage(file);
+            const response = await uploadAPI.uploadImage(file, 'purchase');
             const url = response.data.url || response.data.imageUrl || response.data;
             const finalUrl = typeof url === 'string' ? url : (url.url || url);
 
@@ -528,7 +528,7 @@ const CreatePOPage: React.FC = () => {
 
             // Also upload as visual evidence
             try {
-                const uploadRes = await uploadAPI.uploadImage(file);
+                const uploadRes = await uploadAPI.uploadImage(file, 'purchase');
                 const url = uploadRes.data.url || uploadRes.data.imageUrl || uploadRes.data;
                 const finalUrl = typeof url === 'string' ? url : (url.url || url);
                 setFormData(prev => ({
