@@ -469,7 +469,12 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         return dbElems.filter((e: FloorElementItem) => !deletedElementIds.includes(e._id));
     }, [floorElements, deletedElementIds]);
 
-    const isValidRoom = (s: string) => Boolean(s && s.length >= 2 && s.length <= 20 && /[aeiouy]/i.test(s) && !/^(sdh|asdf|qwer|test|junk|inside)/i.test(s));
+    const isValidRoom = (s: string) => {
+        if (!s || typeof s !== 'string') return false;
+        const cleaned = s.trim().toLowerCase();
+        if (cleaned.length < 2 || cleaned.length > 30) return false;
+        return !/^(sdh|asdf|qwer|zxcv|junk)$/i.test(cleaned);
+    };
     const getEffectiveRoom = (t: { section?: string; location?: string }) => {
         const raw = (t?.section || t?.location || 'indoor').toLowerCase();
         return isValidRoom(raw) ? raw : 'indoor';
@@ -670,15 +675,24 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         if (draggingTableId) {
             const rawX = Math.round((e.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10;
             const rawY = Math.round((e.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10;
-            const clampedX = Math.min(Math.max(20, rawX), 920);
-            const clampedY = Math.min(Math.max(20, rawY), 580);
+            const draggingTable = currentSectionTables.find(t => t._id === draggingTableId);
+            const isRound = draggingTable?.shape === 'round';
+            const { w: tableWidth, h: tableHeight } = getTableDimensions(draggingTable?.capacity || 4, isRound);
+
+            const minX = 35;
+            const maxX = Math.max(minX, 930 - tableWidth);
+            const minY = 40;
+            const maxY = Math.max(minY, dynamicCanvasHeight - tableHeight - 20);
+
+            const clampedX = Math.min(Math.max(minX, rawX), maxX);
+            const clampedY = Math.min(Math.max(minY, rawY), maxY);
             setTablePositions(prev => ({ ...prev, [draggingTableId]: { x: clampedX, y: clampedY } }));
             setHasUnsavedChanges(true);
         } else if (draggingElementId) {
             const rawX = Math.round((e.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10;
             const rawY = Math.round((e.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10;
-            const clampedX = Math.min(Math.max(20, rawX), 920);
-            const clampedY = Math.min(Math.max(20, rawY), 580);
+            const clampedX = Math.min(Math.max(35, rawX), 850);
+            const clampedY = Math.min(Math.max(40, rawY), Math.max(40, dynamicCanvasHeight - 50));
             setElementPositions(prev => ({ ...prev, [draggingElementId]: { x: clampedX, y: clampedY } }));
             setHasUnsavedChanges(true);
         }
@@ -690,15 +704,24 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         if (draggingTableId) {
             const rawX = Math.round((touch.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10;
             const rawY = Math.round((touch.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10;
-            const clampedX = Math.min(Math.max(20, rawX), 920);
-            const clampedY = Math.min(Math.max(20, rawY), 580);
+            const draggingTable = currentSectionTables.find(t => t._id === draggingTableId);
+            const isRound = draggingTable?.shape === 'round';
+            const { w: tableWidth, h: tableHeight } = getTableDimensions(draggingTable?.capacity || 4, isRound);
+
+            const minX = 35;
+            const maxX = Math.max(minX, 930 - tableWidth);
+            const minY = 40;
+            const maxY = Math.max(minY, dynamicCanvasHeight - tableHeight - 20);
+
+            const clampedX = Math.min(Math.max(minX, rawX), maxX);
+            const clampedY = Math.min(Math.max(minY, rawY), maxY);
             setTablePositions(prev => ({ ...prev, [draggingTableId]: { x: clampedX, y: clampedY } }));
             setHasUnsavedChanges(true);
         } else if (draggingElementId) {
             const rawX = Math.round((touch.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10;
             const rawY = Math.round((touch.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10;
-            const clampedX = Math.min(Math.max(20, rawX), 920);
-            const clampedY = Math.min(Math.max(20, rawY), 580);
+            const clampedX = Math.min(Math.max(35, rawX), 850);
+            const clampedY = Math.min(Math.max(40, rawY), Math.max(40, dynamicCanvasHeight - 50));
             setElementPositions(prev => ({ ...prev, [draggingElementId]: { x: clampedX, y: clampedY } }));
             setHasUnsavedChanges(true);
         }
@@ -868,12 +891,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                 sx={{ width: { xs: 130, sm: 165 } }}
                             />
 
-                            {onOpenAddTable && (
-                                <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={onOpenAddTable}
-                                    sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 700, height: 36, borderColor: 'divider', color: 'text.primary', display: { xs: 'none', sm: 'inline-flex' } }}>
-                                     Add Table
-                                </Button>
-                            )}
+
 
                             {isCustomizeMode ? (
                                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ gap: 1 }}>
@@ -954,6 +972,19 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                     }}>
                         <AddIcon sx={{ fontSize: 18 }} />
                         <span>Add Room</span>
+                    </Box>
+                )}
+                {onOpenAddTable && !isCustomerMode && (
+                    <Box onClick={onOpenAddTable} sx={{
+                        px: 2, py: 0.85, borderRadius: 3, cursor: 'pointer', fontWeight: 800, fontSize: '0.84rem',
+                        bgcolor: 'primary.main', color: '#FFFFFF',
+                        border: '1.5px solid', borderColor: 'primary.main',
+                        boxShadow: '0 3px 10px rgba(99, 102, 241, 0.3)',
+                        transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: 0.6, flexShrink: 0,
+                        '&:hover': { bgcolor: 'primary.dark', transform: 'translateY(-1px)', boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)' },
+                    }}>
+                        <AddIcon sx={{ fontSize: 18 }} />
+                        <span>Add Table</span>
                     </Box>
                 )}
             </Box>

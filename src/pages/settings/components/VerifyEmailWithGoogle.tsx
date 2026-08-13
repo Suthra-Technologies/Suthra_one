@@ -16,7 +16,7 @@ const GOOGLE_AUTH_RELAY_URL = import.meta.env.VITE_GOOGLE_AUTH_RELAY_URL || 'htt
 interface VerifyEmailWithGoogleProps {
     contactEmail?: string;
     contactEmailVerified?: boolean;
-    onVerified: (result: { contactEmail: string; contactEmailVerified: boolean }) => void;
+    onVerified: (result: { contactEmail: string; contactEmailVerified: boolean; gmailSendEnabled?: boolean }) => void;
 }
 
 export const VerifyEmailWithGoogle: React.FC<VerifyEmailWithGoogleProps> = ({ contactEmail, contactEmailVerified, onVerified }) => {
@@ -33,16 +33,20 @@ export const VerifyEmailWithGoogle: React.FC<VerifyEmailWithGoogleProps> = ({ co
             const data = event.data;
             if (!data || data.type !== GOOGLE_AUTH_RELAY_MESSAGE_TYPE) return;
 
-            if (data.error || !data.credential) {
+            if (data.error || !data.code) {
                 setVerifying(false);
                 toast.error(data.error || 'Google sign-in failed. Please try again.');
                 return;
             }
 
             try {
-                const res = await tenantAPI.verifyEmailWithGoogle(data.credential);
+                const res = await tenantAPI.verifyEmailWithGmailSend(data.code, data.redirectUri);
                 onVerified(res.data);
-                toast.success(`Verified ${res.data.contactEmail}`);
+                toast.success(
+                    res.data.gmailSendEnabled
+                        ? `Verified ${res.data.contactEmail} — emails will now send from this address.`
+                        : `Verified ${res.data.contactEmail}`,
+                );
             } catch (err: any) {
                 toast.error(err?.response?.data?.message || 'Could not verify email with Google.');
             } finally {
@@ -93,6 +97,10 @@ export const VerifyEmailWithGoogle: React.FC<VerifyEmailWithGoogleProps> = ({ co
                     <CircularProgress size={18} />
                     <Typography variant="body2" color="text.secondary">Verifying…</Typography>
                 </Stack>
+            ) : contactEmailVerified ? (
+                <Button variant="text" size="small" onClick={openPopup} sx={{ p: 0, minWidth: 0, textTransform: 'none' }}>
+                    Verify a different email
+                </Button>
             ) : (
                 <Button variant="outlined" size="small" startIcon={<GoogleIcon />} onClick={openPopup}>
                     Verify with Google
@@ -100,8 +108,9 @@ export const VerifyEmailWithGoogle: React.FC<VerifyEmailWithGoogleProps> = ({ co
             )}
 
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                Sign in with the Google account for your restaurant's contact email to verify it.
-                Signing in with a different account will update your contact email to that address.
+                {contactEmailVerified
+                    ? 'Signing in with a different Google account will update your contact email to that address.'
+                    : 'Sign in with the Google account for your restaurant\'s contact email to verify it. Signing in with a different account will update your contact email to that address.'}
             </Typography>
         </Box>
     );
