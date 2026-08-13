@@ -46,6 +46,7 @@ import {
   Store as VendorIcon,
   Assignment,
   MonetizationOn,
+  Payments as PayrollIcon,
   ConfirmationNumber,
   AccountBox,
   ExpandLess,
@@ -201,6 +202,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/users', label: 'Users', icon: <People />, roles: ['admin', 'manager'], feature: 'users' },
         { path: '/customers', label: 'Customers', icon: <AccountBox />, roles: ['admin', 'manager'], feature: 'customers' },
         { path: '/attendance', label: 'Attendance', icon: <AccessTimeIcon />, roles: ['admin', 'manager', 'accountant'], feature: 'attendance' },
+        { path: '/payroll', label: 'Employees & Payroll', icon: <PayrollIcon />, roles: ['admin', 'manager', 'accountant'], feature: 'payroll' },
         { path: '/assets', label: 'Asset & Document Management', icon: <Assignment />, roles: ['admin', 'manager', 'accountant', 'superadmin'], feature: 'assets' },
         { path: '/expenses', label: 'Expenses', icon: <MonetizationOn />, roles: ['admin', 'manager', 'accountant'], feature: 'expenses' },
         { path: '/disputes', label: 'Disputes', icon: <Gavel />, roles: ['admin', 'manager', 'accountant'], feature: 'disputes' },
@@ -230,7 +232,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/customer-support', label: 'Customer Tickets', icon: <Forum />, roles: ['admin', 'manager'], feature: 'customersupport' },
         { path: '/settings', label: 'Settings', icon: <Settings />, roles: ['admin', 'manager'], feature: 'settings' },
         { path: '/manage-notifications', label: 'Manage Notifications', icon: <NotificationsActive />, roles: ['admin', 'manager'], feature: 'managenotifications' },
-        { path: '', label: 'Help & Guide', icon: <AutoStories />, roles: ['admin', 'manager', 'accountant', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank') },
+        { path: '', label: 'Help & Guide', icon: <AutoStories />, roles: ['admin', 'manager', 'accountant', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank'), feature: 'helpguide' },
       ]
     },
   ];

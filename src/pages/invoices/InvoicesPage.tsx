@@ -33,6 +33,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../../context/SettingsContext';
 import { apiBaseUrl, invoicesAPI } from '../../services/api';
 import { downloadFromUrl } from '../../utils/fileDownload';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const InvoicesPage = () => {
     const navigate = useNavigate();
@@ -153,13 +154,11 @@ const InvoicesPage = () => {
                 />
             </Box>
 
-            {isMobile ? (
+            {loading ? (
+                <TableSkeleton rows={8} columns={6} />
+            ) : isMobile ? (
                 <Box>
-                    {loading ? (
-                        <Box display="flex" justifyContent="center" p={3}>
-                            <CircularProgress />
-                        </Box>
-                    ) : (!Array.isArray(invoices) || invoices.length === 0) ? (
+                    {(!Array.isArray(invoices) || invoices.length === 0) ? (
                         <Typography align="center" color="textSecondary">No invoices found</Typography>
                     ) : (
                         <Stack spacing={1.5}>
@@ -224,13 +223,7 @@ const InvoicesPage = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
-                                        <CircularProgress />
-                                    </TableCell>
-                                </TableRow>
-                            ) : (!Array.isArray(invoices) || invoices.length === 0) ? (
+                            {(!Array.isArray(invoices) || invoices.length === 0) ? (
                                 <TableRow>
                                     <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
                                         <Typography color="textSecondary">No invoices found</Typography>

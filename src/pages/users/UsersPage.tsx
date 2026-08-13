@@ -67,6 +67,7 @@ import ActionHistoryList from '../../components/common/ActionHistoryList';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import PhoneInput from '../../components/PhoneInput';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 interface Address {
   street?: string;
@@ -359,28 +360,12 @@ const UsersPage = () => {
     { value: 'customer', label: 'Customer', icon: CustomerIcon, color: '#607d8b' },
   ];
 
-  const [googleMapsApiKey, setGoogleMapsApiKey] = useState(import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '');
+  // Already loaded app-wide by SettingsContext — no need for a page-local fetch.
+  const googleMapsApiKey = settings?.system?.googleMapsApiKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
   useEffect(() => {
     fetchUsers();
-    fetchSettings();
   }, [page, tabValue]);
-
-  const fetchSettings = async () => {
-    try {
-      const response = await settingsAPI.getAll();
-      if (Array.isArray(response.data)) {
-        const systemSettings = response.data.find((s: any) => s.category === 'system')?.settings;
-        if (systemSettings?.googleMapsApiKey) {
-          setGoogleMapsApiKey(systemSettings.googleMapsApiKey);
-        }
-      } else if (response.data?.system?.googleMapsApiKey) {
-        setGoogleMapsApiKey(response.data.system.googleMapsApiKey);
-      }
-    } catch (error) {
-      console.error('Failed to fetch settings for API key', error);
-    }
-  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -963,25 +948,7 @@ const UsersPage = () => {
       {/* Users Display */}
       <Box>
         {loading ? (
-          <Box sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '350px',
-            gap: 2,
-            bgcolor: alpha(theme.palette.background.paper, 0.4),
-            backdropFilter: 'blur(8px)',
-            borderRadius: 4,
-            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            m: { xs: 2, sm: 0 },
-            py: 6
-          }}>
-            <CircularProgress size={50} thickness={4.5} sx={{ color: 'primary.main' }} />
-            <Typography variant="h6" sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}>
-              Loading Users...
-            </Typography>
-          </Box>
+          <CardGridSkeleton count={9} cardHeight={220} />
         ) : users.length === 0 ? (
           <Box sx={{
             display: 'flex',

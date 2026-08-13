@@ -116,6 +116,8 @@ import StaffIconImg from "/src/assets/images/icons/staff.png";
 // import RecipeIconActiveImg from '/src/assets/images/icons/recipe-active.png';
 
 import { Box, Container, Grid, IconButton, Typography } from "@mui/material";
+import { CardGridSkeleton } from "../../components/common/PageSkeleton";
+import { splitPlanFeatures, planFeatureLabel } from "../../utils/planFeatures";
 
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -1175,7 +1177,7 @@ const HomePage: React.FC = () => {
             >
               Streamline your front-of-house, manage inventory, and grow your
               sales with the easiest POS software on the market. Start your
-              7-day free trial.
+              3-day free trial.
             </Typography>
             <Stack
               direction={{ xs: "column", sm: "row" }}
@@ -2003,9 +2005,7 @@ const HomePage: React.FC = () => {
           </Box>
 
           {plansLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-              <CircularProgress />
-            </Box>
+            <CardGridSkeleton count={3} cardHeight={420} />
           ) : plans.length === 0 ? (
             <Box textAlign="center" py={8}>
               <Typography variant="body1" color="text.secondary">
@@ -2015,29 +2015,24 @@ const HomePage: React.FC = () => {
           ) : (
             <Grid container spacing={4} justifyContent="center">
               {plans.map((plan: any, i: number) => {
-                const featureLabels: Record<string, string> = {
-                  catering: "Catering Management",
-                  inventory: "Inventory Management",
-                  wastemanagement: "Waste Management",
-                  attendance: "Staff Attendance",
-                };
-                const systemItems = [
-                  plan.maxUsers ? `Up to ${plan.maxUsers} Users` : null,
-                  plan.maxTables ? `Up to ${plan.maxTables} Tables` : null,
-                  plan.maxOrders ? `Up to ${plan.maxOrders} Orders/month` : null,
-                  plan.maxSms !== undefined && plan.maxSms !== null ? (plan.maxSms === 0 || plan.maxSms === -1 ? `Unlimited SMS/month` : `Up to ${plan.maxSms} SMS/month`) : null,
+                const { basePlan, extra } = splitPlanFeatures(plan, plans);
+                const limitItems = [
+                  plan.maxUsers ? `Max Users: ${plan.maxUsers}` : null,
+                  plan.maxTables ? `Max Tables: ${plan.maxTables}` : null,
+                  plan.maxOrders ? `Max Orders/month: ${plan.maxOrders}` : null,
+                  plan.maxSms !== undefined && plan.maxSms !== null ? (plan.maxSms === 0 || plan.maxSms === -1 ? `Max SMS/month: Unlimited` : `Max SMS/month: ${plan.maxSms}`) : null,
+                  (plan.maxEmail ?? plan.maxEmails) !== undefined && (plan.maxEmail ?? plan.maxEmails) !== null
+                    ? ((plan.maxEmail ?? plan.maxEmails) === 0 || (plan.maxEmail ?? plan.maxEmails) === -1 ? `Max Emails/month: Unlimited` : `Max Emails/month: ${plan.maxEmail ?? plan.maxEmails}`)
+                    : null,
                 ].filter(Boolean) as string[];
-                const featureItems = (plan.features || []).map(
-                  (f: string) => featureLabels[f] || f
-                );
-                const allItems = [...systemItems, ...featureItems];
+                const featureItems = extra.map(planFeatureLabel);
                 const isPopular = i === Math.floor(plans.length / 2);
                 return (
                   <Grid item xs={12} md={4} key={plan._id || i}>
                     <Paper
                       elevation={0}
                       sx={{
-                        p: 5,
+                        p: 3.5,
                         height: "100%",
                         borderRadius: 3,
                         bgcolor: isPopular ? "#1a1a2e" : "#f7f6f4",
@@ -2095,17 +2090,48 @@ const HomePage: React.FC = () => {
                       {/* DESCRIPTION */}
                       <Typography
                         variant="body2"
-                        mb={4}
+                        mb={2}
                         sx={{ color: isPopular ? "rgba(255,255,255,0.7)" : "text.secondary" }}
                       >
                         {plan.description || `Everything you will get with the ${plan.name} plan.`}
                       </Typography>
 
+                      {/* LIMITS */}
+                      {limitItems.length > 0 && (
+                        <Box mb={2}>
+                          <Typography
+                            variant="body2"
+                            fontWeight={700}
+                            mb={0.5}
+                            sx={{ color: isPopular ? "#fff" : "inherit" }}
+                          >
+                            Limits:
+                          </Typography>
+                          {limitItems.map((item: string, j: number) => (
+                            <Typography
+                              key={j}
+                              variant="body2"
+                              sx={{ color: isPopular ? "rgba(255,255,255,0.85)" : "text.secondary", lineHeight: 1.7 }}
+                            >
+                              • {item}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )}
+
                       {/* FEATURES */}
-                      <Stack spacing={1.5} mb={6}>
-                        {allItems.map((item: string, j: number) => (
+                      <Typography
+                        variant="body2"
+                        fontWeight={700}
+                        mb={0.5}
+                        sx={{ color: isPopular ? "#fff" : "inherit" }}
+                      >
+                        {basePlan ? `Everything in ${basePlan.name}, plus:` : "Features:"}
+                      </Typography>
+                      <Stack spacing={0.4} mb={4}>
+                        {featureItems.map((item: string, j: number) => (
                           <Stack key={j} direction="row" spacing={1} alignItems="center">
-                            <CheckIcon sx={{ fontSize: 18, color: isPopular ? "#6366f1" : "inherit" }} />
+                            <CheckIcon sx={{ fontSize: 15, color: isPopular ? "#6366f1" : "inherit" }} />
                             <Typography
                               variant="body2"
                               sx={{ color: isPopular ? "rgba(255,255,255,0.85)" : "inherit" }}

@@ -54,9 +54,16 @@ export const RequireFeature: React.FC<Props> = ({ feature, guestAllowed = false 
             'customeractivities', 'invoices', 'auditlogs', 'subscription', 'support', 'customersupport',
             'settings', 'managenotifications',
         ];
-        if (features.includes(feature) || (features.includes('core') && CORE_FEATURES.includes(feature))) {
+        // A plan with an empty features list predates the feature-gating system entirely
+        // (no plan is ever deliberately created with zero features) — treat it the same
+        // as an explicit 'core' plan so tenants on old plans aren't locked out without
+        // requiring a one-off data migration to backfill the 'core' flag.
+        const isLegacyPlan = features.length === 0;
+        if (features.includes(feature) || ((features.includes('core') || isLegacyPlan) && CORE_FEATURES.includes(feature))) {
             return <Outlet />;
         }
+
+        return <Navigate to="/unauthorized" state={{ reason: 'plan', feature }} replace />;
     }
 
     return <Navigate to="/unauthorized" replace />;

@@ -56,6 +56,7 @@ import RawMaterialDialog from '../../components/RawMaterialDialog';
 import UsageDialog from '../../components/UsageDialog';
 import BulkUploadDialog from '../../components/BulkUploadDialog';
 import { useSettings } from '../../context/SettingsContext';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 interface RawMaterial {
     _id: string;
@@ -629,9 +630,7 @@ const InventoryPage: React.FC = () => {
                     </Box>
 
                     {loading ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                            <CircularProgress />
-                        </Box>
+                        <TableSkeleton rows={8} columns={9} />
                     ) : rawMaterials.length === 0 ? (
                         <Box sx={{ p: 4, textAlign: 'center' }}>
                             <Typography color="text.secondary" sx={{ fontSize: bodyFontSize, textAlign: 'center' }}>
@@ -793,9 +792,7 @@ const InventoryPage: React.FC = () => {
                     </Grid>
 
                     {loading ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                            <CircularProgress />
-                        </Box>
+                        <TableSkeleton rows={8} columns={6} />
                     ) : dailyReport ? (
                         <>
                             <Grid container spacing={3} sx={{ mb: 3 }}>

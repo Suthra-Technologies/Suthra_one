@@ -21,6 +21,7 @@ import {
     MoneyOff as RefundIcon,
     Add as AddIcon,
     Remove as RemoveIcon,
+    Gavel as DisputeIcon,
 } from '@mui/icons-material';
 import {
     alpha,
@@ -154,6 +155,12 @@ const OrderCard: React.FC<OrderCardProps> = ({
     );
     const { user, tenantSlug } = useAuth();
     const isDeliveryBoy = user?.role === 'delivery';
+
+    // A dispute can target only some of an order's items — the order-level DISPUTED
+    // badge should say so instead of implying every item is under dispute.
+    const isFullyDisputed = order.isDisputed && (order.items || []).length > 0 && (order.items || []).every(
+        (item: any) => Number(item?.disputedQuantity || 0) >= Number(item?.quantity || 0)
+    );
 
     const canAddMoreItems = canAddItems(order.status, order.orderType, order);
     // Global Dine In orders have already paid - don't show collect payment
@@ -394,7 +401,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 {formatTime(order.createdAt)}
                             </Typography>
                         </Stack>
-                        {order.isPreOrder && order.scheduledTime && (
+                        {order.scheduledTime && (
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5, px: 1, py: 0.25, borderRadius: 1, bgcolor: alpha('#7c3aed', 0.07), border: '1px solid rgba(124,58,237,0.2)', width: 'fit-content' }}>
                                 <EventIcon sx={{ fontSize: 14, mr: 0.5, color: '#7c3aed' }} />
                                 <Typography variant="body2" sx={{ color: '#7c3aed', fontWeight: 600, fontSize: '0.75rem' }}>
@@ -404,10 +411,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         )}
                     </Box>
                     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
-                        {order.isPreOrder && (
+                        {order.scheduledTime && (
                             <Chip
                                 icon={<EventIcon sx={{ fontSize: 14 }} />}
-                                label="PRE-ORDER"
+                                label={order.isPreOrder ? 'PRE-ORDER' : 'SCHEDULED'}
                                 size="small"
                                 sx={{
                                     fontWeight: 'bold',
@@ -708,6 +715,31 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                                     />
                                                 ) : null}
 
+                                                {Number(item.disputedQuantity || 0) > 0 && (
+                                                    <Chip
+                                                        icon={<DisputeIcon sx={{ fontSize: 14 }} />}
+                                                        label={
+                                                            item.disputedQuantity >= item.quantity
+                                                                ? 'Disputed'
+                                                                : `Disputed: ${item.disputedQuantity}/${item.quantity}`
+                                                        }
+                                                        size="small"
+                                                        sx={{
+                                                            alignSelf: 'flex-start',
+                                                            ml: 2,
+                                                            height: 22,
+                                                            fontSize: '0.72rem',
+                                                            fontWeight: 700,
+                                                            bgcolor: alpha(theme.palette.error.main, 0.12),
+                                                            color: theme.palette.error.dark,
+                                                            border: `1px solid ${alpha(theme.palette.error.main, 0.28)}`,
+                                                            '& .MuiChip-icon': {
+                                                                color: theme.palette.error.main,
+                                                            },
+                                                        }}
+                                                    />
+                                                )}
+
                                                 {item.modifiers && (item?.modifiers || []).length > 0 && (
                                                     <Typography variant="caption" display="block" color="text.secondary" sx={{ ml: 2 }}>
                                                         + {(item?.modifiers || []).map((m: any) => m.name).join(', ')}
@@ -725,7 +757,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                                 >
                                                     {formatCurrency(item.total || item.price * item.quantity)}
                                                 </Typography>
-                                                {['pending', 'confirmed'].includes(order.status) && order.orderType === 'dine_in' && item.preparationStatus !== 'ready' && (
+                                                {['pending', 'confirmed'].includes(order.status) && order.orderType === 'dine_in' && item.preparationStatus !== 'ready' && Number(item.disputedQuantity || 0) < Number(item.quantity || 0) && (
                                                     <IconButton
                                                         size="small"
                                                         color="error"
@@ -781,7 +813,15 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                                         <Typography variant="body2" sx={{ textDecoration: 'line-through', color: 'text.disabled' }}>
                                                             {formatCurrency(item.total || item.price * item.quantity)}
                                                         </Typography>
-                                                        {canManage && (
+                                                        {canManage && Number(item.disputedQuantity || 0) >= Number(item.quantity || 0) ? (
+                                                            <Tooltip title="This item is under an active dispute — resolve the dispute to process its refund">
+                                                                <span>
+                                                                    <IconButton size="small" color="warning" disabled sx={{ padding: '2px' }}>
+                                                                        <RefundIcon sx={{ fontSize: 16 }} />
+                                                                    </IconButton>
+                                                                </span>
+                                                            </Tooltip>
+                                                        ) : canManage && (
                                                             <Tooltip title={canRefund ? 'Process Refund' : 'Mark as refunded (cash)'}>
                                                                 <IconButton
                                                                     size="small"
@@ -916,7 +956,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     <Stack direction="row" spacing={0.5} alignItems="center">
                         {order.isDisputed && (
                             <Chip
-                                label="DISPUTED"
+                                label={isFullyDisputed ? 'DISPUTED' : 'PARTIALLY DISPUTED'}
                                 size="small"
                                 sx={{
                                     height: 20,
@@ -1289,7 +1329,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         </>
                     ) : (
                         <>
-                            {canManage && nextStatus && (isDeliveryBoy ? ['ready_to_pickup', 'on_the_way', 'ready_to_pick'].includes(order.status) : true) && (
+                            {canManage && !order.isDisputed && !order.isPreOrder && nextStatus && (isDeliveryBoy ? ['ready_to_pickup', 'on_the_way', 'ready_to_pick'].includes(order.status) : true) && (
                                 // Hide "Next: Completed" for Dine In as it's typically handled via payment collection
                                 (order.orderType === 'dine_in' && nextStatus === 'completed' && !isGlobalDineIn(order)) ? null : (
                                     // Disable "On the Way" and "Delivered" for third-party delivery (DoorDash/Uber Eats)

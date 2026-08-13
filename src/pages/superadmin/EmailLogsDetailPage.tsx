@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
-    TableHead, TableRow, CircularProgress, alpha, useTheme,
+    TableHead, TableRow, alpha, useTheme,
     Button, Stack, Chip, TablePagination, Tooltip,
     FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
@@ -10,6 +10,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5006';
 
@@ -97,6 +98,9 @@ const EmailLogsDetailPage: React.FC = () => {
             </Box>
 
             <Paper elevation={0} sx={{ borderRadius: 4, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+                {loading ? (
+                    <TableSkeleton rows={8} columns={6} />
+                ) : (
                 <TableContainer>
                     <Table size="small">
                         <TableHead sx={{ bgcolor: alpha(theme.palette.action.hover, 0.5) }}>
@@ -110,13 +114,7 @@ const EmailLogsDetailPage: React.FC = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
-                                        <CircularProgress />
-                                    </TableCell>
-                                </TableRow>
-                            ) : logs.length === 0 ? (
+                            {logs.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
                                         <Typography color="text.secondary">No email logs found</Typography>
@@ -200,6 +198,7 @@ const EmailLogsDetailPage: React.FC = () => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+                )}
                 <TablePagination
                     component="div"
                     count={total}

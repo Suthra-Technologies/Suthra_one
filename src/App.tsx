@@ -14,6 +14,7 @@ import { getTenantSlugFromHostname } from './utils/tenant.utils';
 
 import HomePage from './pages/public/HomePage';
 import PrivacyPolicyPage from './pages/public/PrivacyPolicyPage';
+import GoogleAuthRelayPage from './pages/public/GoogleAuthRelayPage';
 import RescheduleDemoPage from './pages/public/RescheduleDemoPage';
 import TermsConditionsPage from './pages/public/TermsConditionsPage';
 import RestaurantRegisterPage from './pages/RestaurantRegisterPage';
@@ -198,6 +199,7 @@ const AppRoutes: React.FC = () => {
       {/* Public routes (no layout, no slug) */}
       <Route path="/" element={hasStoredSession ? <Navigate to={defaultAuthedPath} replace /> : (isNative ? <Navigate to="/login" replace /> : <HomePage />)} />
       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+      <Route path="/google-auth-relay" element={<GoogleAuthRelayPage />} />
       <Route path="/terms-and-conditions" element={<TermsConditionsPage />} />
       <Route path="/reschedule-demo/:token" element={<RescheduleDemoPage />} />
       <Route path="/login" element={hasStoredSession ? <Navigate to={defaultAuthedPath} replace /> : <LoginPage />} />

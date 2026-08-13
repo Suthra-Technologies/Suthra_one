@@ -44,6 +44,7 @@ import { enUS } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import OrderCard from '../../components/OrderCard';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 import OrderDetailsDialog from '../../components/OrderDetailsDialog';
 import OrderTrackingDialog from '../../components/OrderTrackingDialog';
 import OrderUpdateDialog from '../../components/OrderUpdateDialog';
@@ -414,9 +415,7 @@ const OrdersPage = () => {
 
       {/* Orders Grid */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-          <CircularProgress />
-        </Box>
+        <CardGridSkeleton count={8} cardHeight={260} />
       ) : orders.length === 0 ? (
         <Paper sx={{ p: 5, textAlign: 'center' }}>
           <Typography variant="h6" color="text.secondary" gutterBottom>

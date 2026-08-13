@@ -16,6 +16,7 @@ import {
 import { Settings as SettingsIcon, Visibility, VisibilityOff } from '@mui/icons-material';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { ListSkeleton } from '../../components/common/PageSkeleton';
 
 interface GoogleMeetSettings {
   clientId: string;
@@ -71,11 +72,7 @@ export default function SuperAdminSettingsPage() {
   };
 
   if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-        <CircularProgress size={50} sx={{ color: '#6366F1' }} />
-      </Box>
-    );
+    return <ListSkeleton count={1} />;
   }
 
   return (

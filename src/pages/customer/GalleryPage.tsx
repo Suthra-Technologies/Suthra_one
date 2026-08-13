@@ -6,7 +6,6 @@ import {
     Card,
     CardMedia,
     Box,
-    CircularProgress,
     IconButton,
     Dialog,
     DialogContent,
@@ -22,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import { galleryAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 const GalleryPage: React.FC = () => {
     const theme = useTheme();
@@ -51,9 +51,9 @@ const GalleryPage: React.FC = () => {
 
     if (loading) {
         return (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-                <CircularProgress />
-            </Box>
+            <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
+                <CardGridSkeleton count={6} cardHeight={300} />
+            </Container>
         );
     }
 

@@ -584,6 +584,16 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
                                             </TableCell>
                                         </TableRow>
                                     )}
+                                    {billData.utensilsFee > 0 && (
+                                        <TableRow className="totals-compact utensils-row">
+                                            <TableCell colSpan={3} sx={{ borderBottom: 'none', py: 0.25 }}>
+                                                <Typography variant="body2">Utensils Fee:</Typography>
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ borderBottom: 'none', py: 0.25 }}>
+                                                <Typography variant="body2">{formatCurrency(billData.utensilsFee)}</Typography>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
 
                                     {(billData.discount?.amount > 0 || billData.couponDiscount > 0) && (
                                         <TableRow className="totals-compact discount-row">

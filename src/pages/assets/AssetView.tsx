@@ -16,7 +16,6 @@ import {
   Avatar,
   useTheme,
   alpha,
-  CircularProgress,
   List,
   ListItem,
   ListItemText,
@@ -55,6 +54,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { assetsAPI, usersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
+import { DashboardSkeleton } from '../../components/common/PageSkeleton';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -233,11 +233,7 @@ const getStatusDisplay = (asset: any) => {
   };
 
   if (loading) {
-    return (
-      <Box sx={{ p: 10, textAlign: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <DashboardSkeleton />;
   }
 
   const status = getStatusDisplay(asset);

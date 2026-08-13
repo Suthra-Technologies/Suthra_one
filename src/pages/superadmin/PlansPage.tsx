@@ -18,7 +18,6 @@ import {
     TextField,
     FormControlLabel,
     Checkbox,
-    CircularProgress,
     Chip,
     Divider,
     Stack,
@@ -28,6 +27,7 @@ import Grid from '@mui/material/Grid2';
 import { Edit as EditIcon, Add as AddIcon, Delete as DeleteIcon, Close as CloseIcon } from '@mui/icons-material';
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 const MODULES: { key: string; label: string }[] = [
     { key: 'dashboard', label: 'Dashboard' },
@@ -63,6 +63,8 @@ const MODULES: { key: string; label: string }[] = [
     { key: 'customersupport', label: 'Customer Tickets' },
     { key: 'settings', label: 'Settings' },
     { key: 'managenotifications', label: 'Manage Notifications' },
+    { key: 'payroll', label: 'Employees & Payroll' },
+    { key: 'helpguide', label: 'Help & Guide' },
 ];
 // Legacy plans stored a single bundled "core" feature. Before the module-level split,
 // every one of these pages was ungated (open to any admin/manager), so a legacy "core"
@@ -92,6 +94,7 @@ interface SubscriptionPlan {
     maxEmail?: number;
     isActive: boolean;
     stripePriceId?: string;
+    baseplanId?: string | null;
 }
 
 const PlansPage: React.FC = () => {
@@ -119,6 +122,7 @@ const PlansPage: React.FC = () => {
         modules: [] as string[],
         isLegacyCore: false,
     });
+    const [baseplanId, setBaseplanId] = useState('');
 
     const fetchPlans = async () => {
         setLoading(true);
@@ -164,6 +168,7 @@ const PlansPage: React.FC = () => {
                 modules,
                 isLegacyCore: plan.features.includes('core'),
             });
+            setBaseplanId(plan.baseplanId || '');
         } else {
             setEditingPlan(null);
             setFormData({
@@ -183,8 +188,25 @@ const PlansPage: React.FC = () => {
                 modules: [],
                 isLegacyCore: false,
             });
+            setBaseplanId('');
         }
         setDialogOpen(true);
+    };
+
+    const handleInheritFromBaseplan = (planId: string) => {
+        setBaseplanId(planId);
+        if (!planId) return;
+        const basePlan = plans.find(p => p._id === planId);
+        if (!basePlan) return;
+        const moduleKeys = new Set(MODULES.map(m => m.key));
+        const baseModules = basePlan.features.includes('core')
+            ? Array.from(new Set([...basePlan.features.filter(f => moduleKeys.has(f)), ...CORE_FEATURES]))
+            : basePlan.features.filter(f => moduleKeys.has(f));
+        setFormData(prev => ({
+            ...prev,
+            isLegacyCore: false,
+            modules: Array.from(new Set([...prev.modules, ...baseModules])),
+        }));
     };
 
     const toggleModule = (key: string) => {
@@ -220,6 +242,7 @@ const PlansPage: React.FC = () => {
             const planData = {
                 ...formData,
                 features: featuresList,
+                baseplanId: baseplanId || null,
             };
             // Remove auxiliary fields before sending to API.
             delete (planData as any).modules;
@@ -337,20 +360,29 @@ const PlansPage: React.FC = () => {
                 )}
 
                 <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                        Features:
-                    </Typography>
-                    {plan.features.map((feature, index) => {
+                    {(() => {
                         const featureLabels: Record<string, string> = {
                             ...Object.fromEntries(MODULES.map(m => [m.key, m.label])),
                             core: 'Core Restaurant Operations (legacy: Dashboard, Orders, POS, Tables, Bookings, Kitchen, Promo/Coupons, Disputes)',
                         };
+                        const basePlan = plan.baseplanId ? plans.find(p => p._id === plan.baseplanId) : null;
+                        const baseFeatureSet = new Set(basePlan?.features || []);
+                        const inherited = basePlan ? plan.features.filter(f => baseFeatureSet.has(f)) : [];
+                        const extra = basePlan ? plan.features.filter(f => !baseFeatureSet.has(f)) : plan.features;
+
                         return (
-                            <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
-                                ✓ {featureLabels[feature] || feature}
-                            </Typography>
+                            <>
+                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                    {basePlan && inherited.length > 0 ? `Everything in ${basePlan.name}, plus:` : 'Features:'}
+                                </Typography>
+                                {extra.map((feature, index) => (
+                                    <Typography key={`extra-${index}`} variant="body2" sx={{ mb: 0.5 }}>
+                                        ✓ {featureLabels[feature] || feature}
+                                    </Typography>
+                                ))}
+                            </>
                         );
-                    })}
+                    })()}
                 </Box>
             </Paper>
         </Grid>
@@ -399,9 +431,7 @@ const PlansPage: React.FC = () => {
             </Box>
 
             {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                    <CircularProgress />
-                </Box>
+                <CardGridSkeleton count={6} cardHeight={280} />
             ) : (
                 <>
                     <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>Subscription Plans</Typography>
@@ -615,6 +645,24 @@ const PlansPage: React.FC = () => {
                                 </Grid>
                                 
                                 <Divider sx={{ my: 1 }} />
+                                <TextField
+                                    select
+                                    label="Inherit modules from plan"
+                                    value={baseplanId}
+                                    onChange={(e) => handleInheritFromBaseplan(e.target.value)}
+                                    fullWidth
+                                    SelectProps={{ native: true }}
+                                    InputLabelProps={{ shrink: true }}
+                                    helperText="Pulls in all modules from the selected plan; you can still add or remove modules below before saving."
+                                >
+                                    <option value="">None</option>
+                                    {plans
+                                        .filter(p => p.type !== 'topup' && p._id !== editingPlan?._id)
+                                        .map(p => (
+                                            <option key={p._id} value={p._id}>{p.name}</option>
+                                        ))}
+                                </TextField>
+
                                 <Typography variant="subtitle2" color="primary">Modules</Typography>
                                 <Typography variant="caption" color="text.secondary">
                                     Select exactly which modules this plan grants access to.

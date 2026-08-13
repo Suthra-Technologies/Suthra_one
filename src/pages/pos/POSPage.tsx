@@ -59,6 +59,7 @@ import CustomItemDialog from './components/CustomItemDialog';
 import { validateEmail, validatePhone } from '../../utils/validation';
 import { getMaxGuests, getMergedGroup } from './utils/tableCapacity';
 import { getActivePaymentMethods, getPaymentMethodLabel } from '../../utils/orderWorkflows';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 
 type Variant = {
@@ -992,14 +993,17 @@ const POSPage: React.FC = () => {
     }, [searchQuery, selectedCategory, foodTypeFilter]);
 
 
-    // Refresh coupons when order type or cart total changes
+    // Refresh the available-coupons list only when order type changes — the list of
+    // coupon definitions doesn't depend on cart contents, only their validity does.
     useEffect(() => {
         fetchAvailableCoupons();
+    }, [orderType]);
 
-        // Re-validate the coupon whenever cart changes:
-        // - If there's already an applied discount, re-check it's still valid
-        // - If there's a code but no discount yet (min amount wasn't met before),
-        //   attempt validation again now that the cart total may have increased
+    // Re-validate the applied/entered coupon whenever cart or order type changes:
+    // - If there's already an applied discount, re-check it's still valid
+    // - If there's a code but no discount yet (min amount wasn't met before),
+    //   attempt validation again now that the cart total may have increased
+    useEffect(() => {
         if (couponCode) {
             handleValidateCoupon(true); // Silent re-validation
         }
@@ -2228,9 +2232,7 @@ const POSPage: React.FC = () => {
 
                 {/* Items grid */}
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                        <CircularProgress />
-                    </Box>
+                    <CardGridSkeleton count={12} cardHeight={200} />
                 ) : (
                     <Box sx={{ pb: 2 }}>
                         <Grid container spacing={2}>
@@ -3114,7 +3116,18 @@ const POSPage: React.FC = () => {
                                             Slide to the spice level you want, and we'll send that choice to the kitchen.
                                         </Typography>
 
-                                        <Box sx={{ px: { xs: 1, sm: 2 }, mb: { xs: 0, sm: 2 } }}>
+                                        {/* Short scales get a narrower track, centred — stretching two
+                                            points across the full width leaves a long empty run. */}
+                                        <Box sx={{
+                                            px: { xs: 1, sm: 2 },
+                                            mb: { xs: 0, sm: 2 },
+                                            width: (selectedItem as any).spiceLevels.length <= 2
+                                                ? { xs: '70%', sm: '55%' }
+                                                : (selectedItem as any).spiceLevels.length === 3
+                                                    ? { xs: '85%', sm: '75%' }
+                                                    : '100%',
+                                            mx: 'auto',
+                                        }}>
                                             <Slider
                                                 value={Math.max(0, (selectedItem as any).spiceLevels.indexOf(tempSelectedSpiceLevel || (selectedItem as any).spiceLevels[0]))}
                                                 min={0}
@@ -3155,19 +3168,27 @@ const POSPage: React.FC = () => {
                                                     }
                                                 }}
                                             />
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: { xs: 1, sm: 3 } }}>
+                                            {/* Labels are pinned to the same percentages as the slider
+                                                marks. Equal-width flex cells only line up by coincidence
+                                                at four levels and drift badly at two or three. */}
+                                            <Box sx={{ position: 'relative', height: { xs: 20, sm: 34 }, mt: { xs: 1, sm: 3 } }}>
                                                 {(selectedItem as any).spiceLevels.map((level: string, i: number) => {
-                                                    const isSel = (tempSelectedSpiceLevel || (selectedItem as any).spiceLevels[0]) === level;
+                                                    const allLevels = (selectedItem as any).spiceLevels;
+                                                    const isSel = (tempSelectedSpiceLevel || allLevels[0]) === level;
                                                     const normalizedLevel = level?.toLowerCase().replace(/_/g, ' ');
+                                                    const pct = allLevels.length > 1 ? (i / (allLevels.length - 1)) * 100 : 50;
                                                     return (
                                                         <Box
                                                             key={i}
                                                             onClick={() => setTempSelectedSpiceLevel(level)}
                                                             sx={{
+                                                                position: 'absolute',
+                                                                left: `${pct}%`,
+                                                                transform: 'translateX(-50%)',
                                                                 textAlign: 'center',
-                                                                flex: 1,
                                                                 cursor: 'pointer',
-                                                                userSelect: 'none'
+                                                                userSelect: 'none',
+                                                                whiteSpace: 'nowrap'
                                                             }}
                                                         >
                                                             <Typography sx={{

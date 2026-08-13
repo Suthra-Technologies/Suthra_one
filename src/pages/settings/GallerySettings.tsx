@@ -31,6 +31,7 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { galleryAPI, uploadAPI } from '../../services/api';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 interface GalleryItem {
     _id: string;
@@ -156,11 +157,7 @@ const GallerySettings: React.FC = () => {
     };
 
     if (loading && items.length === 0) {
-        return (
-            <Box display="flex" justifyContent="center" p={5}>
-                <CircularProgress />
-            </Box>
-        );
+        return <CardGridSkeleton count={6} cardHeight={280} />;
     }
 
     return (

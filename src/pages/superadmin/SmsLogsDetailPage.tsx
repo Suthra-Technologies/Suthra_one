@@ -9,6 +9,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5006';
 
@@ -50,6 +51,10 @@ const SmsLogsDetailPage: React.FC = () => {
         navigator.clipboard.writeText(sid);
         toast.success('SID copied to clipboard');
     };
+
+    if (loading && logs.length === 0) {
+        return <TableSkeleton rows={8} columns={7} />;
+    }
 
     return (
         <Box sx={{ px: { xs: 2, md: 3 }, pb: { xs: 2, md: 3 }, pt: { xs: 0.75, md: 3 } }}>

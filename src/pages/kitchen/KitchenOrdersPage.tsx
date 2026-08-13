@@ -10,7 +10,6 @@ import {
     CardActions,
     CardContent,
     Chip,
-    CircularProgress,
     Grid,
     IconButton,
     LinearProgress,
@@ -27,6 +26,7 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { ordersAPI } from '../../services/api';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 const KitchenOrdersPage: React.FC = () => {
     const [orders, setOrders] = useState<any[]>([]);
@@ -60,8 +60,8 @@ const KitchenOrdersPage: React.FC = () => {
                 const orderDate = new Date(order.createdAt);
                 const isToday = orderDate >= todayStart && orderDate <= todayEnd;
                 const isValidStatus = !['ready_to_takeaway', 'ready_to_pickup', 'on_the_way', 'served', 'delivered', 'completed', 'cancelled'].includes(order.status);
-                
-                return isToday && isValidStatus;
+
+                return isToday && isValidStatus && !order.isDisputed;
             });
             setOrders(kitchenOrders);
         } catch (error) {
@@ -283,9 +283,7 @@ const KitchenOrdersPage: React.FC = () => {
 
 
             {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                    <CircularProgress color="warning" />
-                </Box>
+                <CardGridSkeleton count={8} cardHeight={260} />
             ) : orders.length === 0 ? (
                 <Box sx={{ textAlign: 'center', p: 5, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
                     <Typography variant="h6" color="text.secondary" sx={{ fontSize: headingFontSize }}>

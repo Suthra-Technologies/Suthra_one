@@ -47,6 +47,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../../context/SettingsContext';
 import { cateringAPI, commissionAPI, customersAPI, usersAPI } from '../../../services/api';
+import { TableSkeleton } from '../../../components/common/PageSkeleton';
 
 const CateringCommissionsPage = () => {
     const { formatCurrency } = useSettings();
@@ -353,9 +354,7 @@ const CateringCommissionsPage = () => {
             </Box>
 
             {loading ? (
-                <Box display="flex" justifyContent="center" p={4}>
-                    <CircularProgress />
-                </Box>
+                <TableSkeleton rows={8} columns={8} />
             ) : commissions.length === 0 ? (
                 <Box textAlign="center" p={{ xs: 2, sm: 4 }}>
                     <Typography color="textSecondary" sx={{ fontSize: bodyFontSize }}>No commissions found.</Typography>

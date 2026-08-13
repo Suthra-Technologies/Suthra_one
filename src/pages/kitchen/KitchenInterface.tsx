@@ -14,8 +14,10 @@ import {
   Print as PrintIcon,
   CurrencyExchange as RefundIcon,
   Add as AddIcon,
-  Remove as RemoveIcon
+  Remove as RemoveIcon,
+  Event as EventIcon
 } from '@mui/icons-material';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 import {
   alpha,
   Badge,
@@ -133,10 +135,9 @@ const KitchenInterface: React.FC = () => {
     }
 
     // Try direct printing via local print agent first (QZ Tray style fast path)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s fast timeout
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s fast timeout
-
       const response = await fetch('http://127.0.0.1:19001/print', {
         method: 'POST',
         headers: {
@@ -158,8 +159,6 @@ const KitchenInterface: React.FC = () => {
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
-
       if (response.ok) {
         const resData = await response.json();
         if (resData.success) {
@@ -178,6 +177,8 @@ const KitchenInterface: React.FC = () => {
           toast.error('Check your printer connection');
           return;
       }
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     if (Capacitor.isNativePlatform()) {
@@ -309,7 +310,7 @@ const KitchenInterface: React.FC = () => {
 
       const filteredByDate = ordersData.filter((order: any) => {
         const orderDate = new Date(order.createdAt);
-        return orderDate >= todayStart && orderDate <= todayEnd;
+        return orderDate >= todayStart && orderDate <= todayEnd && !order.isDisputed;
       });
 
       // Sort by most recent first
@@ -731,9 +732,7 @@ const KitchenInterface: React.FC = () => {
 
       {/* Orders Grid */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-          <CircularProgress size={60} />
-        </Box>
+        <CardGridSkeleton count={6} cardHeight={280} />
       ) : filteredOrders.length === 0 ? (
         <Paper sx={{ textAlign: 'center', p: 4, bgcolor: alpha(theme.palette.success.main, 0.1), borderRadius: 3 }}>
           <Typography variant="h5" color="success.main" gutterBottom sx={{ fontSize: headingFontSize }}>
@@ -834,6 +833,21 @@ const KitchenInterface: React.FC = () => {
                                 : getElapsedTime(order.createdAt)}
                             </Typography>
                           </Stack>
+                          {!order.isPreOrder && order.scheduledTime && (
+                            <Chip
+                              icon={<EventIcon sx={{ fontSize: '0.85rem !important' }} />}
+                              label={`Was Sch: ${new Date(order.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: '0.65rem',
+                                fontWeight: 'bold',
+                                bgcolor: alpha('#7c3aed', 0.1),
+                                color: '#7c3aed',
+                                border: '1px solid rgba(124,58,237,0.25)',
+                              }}
+                            />
+                          )}
                           {order.tableNumber && (
                             <Chip
                               label={`TABLE ${order.tableNumber}`}

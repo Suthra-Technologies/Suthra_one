@@ -10,6 +10,7 @@ import ReceiptIcon from '@mui/icons-material/Receipt';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5006';
 
@@ -52,6 +53,10 @@ const SmsOverviewPage: React.FC = () => {
         acc.cost += (tenant.totalCost || 0);
         return acc;
     }, { total: 0, delivered: 0, failed: 0, cost: 0 });
+
+    if (loading && usageData.length === 0) {
+        return <TableSkeleton rows={8} columns={6} />;
+    }
 
     return (
         <Box sx={{ px: { xs: 1, sm: 2, md: 3 }, pb: { xs: 2, sm: 3 }, pt: { xs: 1, sm: 2, md: 3 }, overflowX: 'hidden' }}>

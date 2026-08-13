@@ -15,7 +15,6 @@ import {
     Button,
     Divider,
     Stack,
-    CircularProgress,
     Card,
     CardMedia,
     useMediaQuery,
@@ -29,6 +28,7 @@ import {
     Edit as EditIcon
 } from '@mui/icons-material';
 import ActionHistoryList from '../../components/common/ActionHistoryList';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 import { purchaseOrdersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
@@ -100,11 +100,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
     };
 
     if (loading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
-                <CircularProgress />
-            </Box>
-        );
+        return <TableSkeleton rows={5} columns={4} />;
     }
 
     if (!po) {

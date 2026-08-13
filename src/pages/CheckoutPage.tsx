@@ -45,7 +45,7 @@ import {
   useTheme
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import CustomerRegistration from '../components/auth/CustomerRegistration';
@@ -414,6 +414,13 @@ const CheckoutPage: React.FC = () => {
     return slots;
   };
 
+  // Stable signature of the quantities/prices the delivery quote actually depends on —
+  // unlike cart.items, this doesn't change when unrelated fields (e.g. item notes) are edited.
+  const cartQuoteSignature = useMemo(
+    () => (cart?.items || []).map(i => `${i.id}:${i.quantity}:${i.price}`).join('|'),
+    [cart?.items]
+  );
+
   // Handle live DoorDash quotes
   useEffect(() => {
     if (activeStep < 2 || orderType !== 'delivery' || !deliveryInfo.address || deliveryInfo.address.length < 10) {
@@ -484,7 +491,11 @@ const CheckoutPage: React.FC = () => {
       isCancelled = true;
       clearTimeout(debounceTimer);
     };
-  }, [orderType, deliveryInfo.address, cart.items, slug, activeStep]);
+    // Depend on a stable signature of quantity/price rather than the cart.items array
+    // reference, so unrelated cart updates (e.g. editing an item note) don't trigger
+    // a new delivery-quote request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderType, deliveryInfo.address, cartQuoteSignature, slug, activeStep]);
 
   const handleNext = () => {
     if (activeStep === 1 && !isAuthenticated && authMethod !== 'guest') {

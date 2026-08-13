@@ -402,15 +402,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
       }
 
       // Attempt to refresh profile to get full user data (savedAddresses, etc.).
-      // On a fresh handover, `user.tenant` is just the JWT's bare tenant ID string,
-      // not the populated tenant/currentPlan object RequireFeature needs — so keep
-      // isLoading true until the real profile lands, to avoid a flash of "unauthorized"
-      // while tenant.currentPlan.features is still unavailable.
-      if (isFreshHandover) {
-        refreshProfile().finally(() => setIsLoading(false));
-        return;
-      }
-      refreshProfile();
+      // The cached `user` in localStorage can be stale — e.g. tenant.currentPlan.features
+      // may have changed server-side since last login — so on every load (not just a
+      // fresh handover) we keep isLoading true until the real profile lands, to avoid
+      // RequireFeature evaluating access against stale data and wrongly redirecting to
+      // /unauthorized before the refresh resolves. refreshProfile() only ever logs on
+      // failure and leaves the cached user in place, so this never clears the session.
+      refreshProfile().finally(() => setIsLoading(false));
+      return;
     }
     setIsLoading(false);
   }, [initialUser]);

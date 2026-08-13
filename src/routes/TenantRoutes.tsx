@@ -15,6 +15,7 @@ import CustomiseScreensPage from '../pages/admin/customise-screens/CustomiseScre
 import ServiceUsagePage from '../pages/admin/ServiceUsagePage';
 import CustomerActivitiesPage from '../pages/admin/CustomerActivitiesPage';
 import AttendancePage from '../pages/AttendancePage';
+import PayrollPage from '../pages/PayrollPage';
 import CateringPage from '../pages/catering/CateringPage';
 import CateringTrackPage from '../pages/customer/CateringTrackPage';
 import CustomersPage from '../pages/customers/CustomersPage';
@@ -124,6 +125,9 @@ export const TenantRoutes = () => (
         </Route>
         <Route element={<RequireFeature feature="menu" />}>
           <Route path="menu" element={<MenuPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="payroll" />}>
+          <Route path="payroll" element={<PayrollPage />} />
         </Route>
         <Route element={<RequireFeature feature="globaladdons" />}>
           <Route path="global-add-ons" element={<AddOnGroupsPage />} />

@@ -59,6 +59,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 import { customersAPI } from '../../services/api';
+import { TableSkeleton, ListSkeleton } from '../../components/common/PageSkeleton';
 
 interface Customer {
     name?: string;
@@ -298,7 +299,7 @@ const CustomersPage: React.FC = () => {
                 <Stack spacing={2}>
 
                     {loading ? (
-                        <Box sx={{ py: 4, textAlign: 'center' }}>Loading...</Box>
+                        <ListSkeleton count={6} />
                     ) : (!Array.isArray(customers) || customers.length === 0) ? (
                         <Box sx={{ py: 4, textAlign: 'center' }}>
                             <Typography color="text.secondary">No customers found</Typography>
@@ -351,6 +352,8 @@ const CustomersPage: React.FC = () => {
                         onRowsPerPageChange={handleChangeRowsPerPage}
                     />
                 </Stack>
+            ) : loading ? (
+                <TableSkeleton rows={8} columns={6} />
             ) : (
                 <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
                     <Table>
@@ -365,11 +368,7 @@ const CustomersPage: React.FC = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={5} align="center" sx={{ py: 4 }}>Loading...</TableCell>
-                                </TableRow>
-                            ) : (!Array.isArray(customers) || customers.length === 0) ? (
+                            {(!Array.isArray(customers) || customers.length === 0) ? (
                                 <TableRow>
                                     <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                                         <Typography color="text.secondary">No customers found</Typography>

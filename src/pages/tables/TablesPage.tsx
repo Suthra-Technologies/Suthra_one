@@ -88,6 +88,7 @@ import { validatePhone, validateEmail } from '../../utils/validation';
 import { useSettings } from '../../context/SettingsContext';
 import PhoneInput from '../../components/PhoneInput';
 import { tablesAPI, bookingsAPI, usersAPI, floorElementsAPI, settingsAPI } from '../../services/api';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 // Extracted Dialog Components
 import AddTableDialog from './components/AddTableDialog';
@@ -1197,9 +1198,7 @@ const TablesPage: React.FC = () => {
             {/* Tab Panel: Tables */}
             <TabPanel value={tabValue} index={0}>
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                        <CircularProgress />
-                    </Box>
+                    <CardGridSkeleton count={8} cardHeight={220} />
                 ) : tableViewMode === 'floor' ? (
                     /* Interactive 2D Floor Plan Canvas */
                     <FloorPlanView

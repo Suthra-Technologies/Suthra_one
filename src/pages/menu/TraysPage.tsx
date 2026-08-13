@@ -33,6 +33,7 @@ import {
 import { traysAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import CustomInput from '../../components/common/CustomInput';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 interface Tray {
     _id: string;
@@ -183,7 +184,7 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
             )}
 
             {loading ? (
-                <Box display="flex" justifyContent="center" p={5}><CircularProgress /></Box>
+                <TableSkeleton rows={6} columns={3} />
             ) : trays.length === 0 ? (
                 <Paper sx={{ p: 5, textAlign: 'center', borderRadius: 3, bgcolor: 'grey.50', border: '1px dashed', borderColor: 'divider' }}>
                     <StraightenIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />

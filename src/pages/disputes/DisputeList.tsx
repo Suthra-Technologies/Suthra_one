@@ -19,7 +19,6 @@ import {
   Stack,
   useTheme,
   alpha,
-  CircularProgress,
   InputAdornment,
   Avatar,
   Tooltip,
@@ -40,6 +39,7 @@ import { disputesAPI } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const DisputeList: React.FC = () => {
   const theme = useTheme();
@@ -170,9 +170,7 @@ const DisputeList: React.FC = () => {
 
       {/* List / Table */}
       {loading ? (
-        <Paper sx={{ p: 10, textAlign: 'center', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-          <CircularProgress />
-        </Paper>
+        <TableSkeleton rows={8} columns={6} />
       ) : (
         <>
           {isMobile ? (

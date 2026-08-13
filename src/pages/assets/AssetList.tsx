@@ -50,6 +50,7 @@ import {
 import { assetsAPI } from '../../services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const AssetList: React.FC = () => {
   const theme = useTheme();
@@ -352,9 +353,7 @@ const AssetList: React.FC = () => {
 
       {/* Content: Mobile cards OR Desktop table */}
       {loading ? (
-        <Box sx={{ p: 10, textAlign: 'center' }}>
-          <CircularProgress />
-        </Box>
+        <TableSkeleton rows={8} columns={6} />
       ) : assets.length === 0 ? (
         <Box sx={{ p: 6, textAlign: 'center' }}>
           <Typography color="text.secondary">No assets found</Typography>

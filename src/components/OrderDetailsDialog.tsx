@@ -36,11 +36,11 @@ import {
     alpha,
     useTheme,
 } from '@mui/material';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
-import { ordersAPI, ubereatsAPI } from '../services/api';
+import { disputesAPI, ordersAPI, ubereatsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useActiveTenant } from '../hooks/useActiveTenant';
 import {
@@ -122,6 +122,17 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
         refund_amount: '',
     });
     const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
+    const [disputes, setDisputes] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (!open || !order?._id) {
+            setDisputes([]);
+            return;
+        }
+        disputesAPI.getAll({ orderId: order._id })
+            .then(res => setDisputes(res.data || []))
+            .catch(err => console.error('Failed to load disputes for order:', err));
+    }, [open, order?._id]);
 
     if (!order) return null;
 
@@ -133,6 +144,33 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
     const allItemsDisputed = (order.items || []).length > 0 && (order.items || []).every(
         (item: any) => Number(item?.quantity || 0) - Number(item?.disputedQuantity || 0) <= 0
     );
+
+    const getDisputeReasonLabel = (reason: string) => (reason || '').replace(/_/g, ' ').toUpperCase();
+    const getDisputeStatusLabel = (status: string) => {
+        switch (status) {
+            case 'open': return 'Open';
+            case 'under_investigation': return 'Investigating';
+            case 'resolution_pending': return 'Resolution Pending';
+            case 'resolved': return 'Resolved';
+            case 'rejected': return 'Rejected';
+            default: return status;
+        }
+    };
+    const getDisputeStatusColor = (status: string) => {
+        switch (status) {
+            case 'resolved': return 'success';
+            case 'rejected': return 'default';
+            case 'under_investigation': return 'warning';
+            case 'resolution_pending': return 'info';
+            default: return 'error';
+        }
+    };
+
+    // Merge status-change events and dispute events into one chronological timeline.
+    const timelineEvents = [
+        ...(order.statusHistory || []).map((history: any) => ({ kind: 'status' as const, timestamp: history.timestamp, data: history })),
+        ...disputes.map((dispute: any) => ({ kind: 'dispute' as const, timestamp: dispute.createdAt, data: dispute })),
+    ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     const getPaymentBadgeColor = (method: string | string[]) => {
         let m = method;
@@ -676,6 +714,12 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                     <Typography variant="body2">{formatCurrency(order.serviceCharge?.amount ?? 0)}</Typography>
                                 </Box>
                             )}
+                            {(order.utensilsFee ?? 0) > 0 && (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="body2">Utensils Fee:</Typography>
+                                    <Typography variant="body2">{formatCurrency(order.utensilsFee ?? 0)}</Typography>
+                                </Box>
+                            )}
                             {(order.discount?.amount > 0 || order.couponDiscount > 0) && (
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main' }}>
                                     <Typography variant="body2">
@@ -850,7 +894,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                     )}
 
                     {/* Status History */}
-                    {order.statusHistory && order.statusHistory.length > 0 && (
+                    {timelineEvents.length > 0 && (
                         <>
                             <Divider sx={{ my: 2 }} />
                             <Box>
@@ -858,55 +902,127 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                     Status History
                                 </Typography>
                                 <Stack spacing={2} sx={{ mt: 2 }}>
-                                    {order.statusHistory.map((history: any, index: number) => (
-                                        <Box
-                                            key={index}
-                                            sx={{
-                                                display: 'flex',
-                                                alignItems: 'flex-start',
-                                                gap: 2,
-                                                p: 2,
-                                                bgcolor: 'background.paper',
-                                                borderRadius: 1,
-                                                border: '1px solid',
-                                                borderColor: 'divider',
-                                            }}
-                                        >
+                                    {timelineEvents.map((event, index) => {
+                                        if (event.kind === 'dispute') {
+                                            const dispute = event.data;
+                                            return (
+                                                <Box
+                                                    key={`dispute-${dispute._id || index}`}
+                                                    sx={{
+                                                        display: 'flex',
+                                                        alignItems: 'flex-start',
+                                                        gap: 2,
+                                                        p: 2,
+                                                        bgcolor: (t) => alpha(t.palette.error.main, 0.06),
+                                                        borderRadius: 1,
+                                                        border: '1px solid',
+                                                        borderColor: 'error.main',
+                                                    }}
+                                                >
+                                                    <Box
+                                                        sx={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            width: 40,
+                                                            height: 40,
+                                                            borderRadius: '50%',
+                                                            bgcolor: 'error.main',
+                                                            color: 'white',
+                                                            flexShrink: 0,
+                                                        }}
+                                                    >
+                                                        <DisputeIcon fontSize="small" />
+                                                    </Box>
+                                                    <Box sx={{ flex: 1 }}>
+                                                        <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+                                                            <Typography variant="body2" fontWeight="bold" color="error.main">
+                                                                Dispute Raised
+                                                            </Typography>
+                                                            <Chip
+                                                                label={getDisputeStatusLabel(dispute.status)}
+                                                                color={getDisputeStatusColor(dispute.status) as any}
+                                                                size="small"
+                                                            />
+                                                        </Stack>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {formatTime(dispute.createdAt)}
+                                                        </Typography>
+                                                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                                            Reason: {getDisputeReasonLabel(dispute.reason)}
+                                                        </Typography>
+                                                        {dispute.description && (
+                                                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                                                {dispute.description}
+                                                            </Typography>
+                                                        )}
+                                                        {dispute.disputedAmount > 0 && (
+                                                            <Typography variant="body2" fontWeight="bold" sx={{ mt: 0.5 }}>
+                                                                Disputed Amount: {formatCurrency(dispute.disputedAmount)}
+                                                            </Typography>
+                                                        )}
+                                                        {dispute.resolution && (
+                                                            <Typography variant="body2" color="success.main" sx={{ mt: 0.5 }}>
+                                                                Resolution: {dispute.resolution.type?.replace(/_/g, ' ')}
+                                                                {dispute.resolution.notes ? ` — ${dispute.resolution.notes}` : ''}
+                                                            </Typography>
+                                                        )}
+                                                    </Box>
+                                                </Box>
+                                            );
+                                        }
+
+                                        const history = event.data;
+                                        return (
                                             <Box
+                                                key={`status-${index}`}
                                                 sx={{
                                                     display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    width: 40,
-                                                    height: 40,
-                                                    borderRadius: '50%',
-                                                    bgcolor: `${getStatusColor(history.status)}.main`,
-                                                    color: 'white',
+                                                    alignItems: 'flex-start',
+                                                    gap: 2,
+                                                    p: 2,
+                                                    bgcolor: 'background.paper',
+                                                    borderRadius: 1,
+                                                    border: '1px solid',
+                                                    borderColor: 'divider',
                                                 }}
                                             >
-                                                {history.status.includes('completed') || history.status.includes('delivered') ? (
-                                                    <CheckCircleIcon fontSize="small" />
-                                                ) : history.status === 'cancelled' ? (
-                                                    <CancelIcon fontSize="small" />
-                                                ) : (
-                                                    <CircleIcon fontSize="small" />
-                                                )}
-                                            </Box>
-                                            <Box sx={{ flex: 1 }}>
-                                                <Typography variant="body2" fontWeight="bold">
-                                                    {getStatusLabel(history.status)}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {formatTime(history.timestamp)}
-                                                </Typography>
-                                                {history.notes && (
-                                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                                        {history.notes}
+                                                <Box
+                                                    sx={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        width: 40,
+                                                        height: 40,
+                                                        borderRadius: '50%',
+                                                        bgcolor: `${getStatusColor(history.status)}.main`,
+                                                        color: 'white',
+                                                    }}
+                                                >
+                                                    {history.status.includes('completed') || history.status.includes('delivered') ? (
+                                                        <CheckCircleIcon fontSize="small" />
+                                                    ) : history.status === 'cancelled' ? (
+                                                        <CancelIcon fontSize="small" />
+                                                    ) : (
+                                                        <CircleIcon fontSize="small" />
+                                                    )}
+                                                </Box>
+                                                <Box sx={{ flex: 1 }}>
+                                                    <Typography variant="body2" fontWeight="bold">
+                                                        {getStatusLabel(history.status)}
                                                     </Typography>
-                                                )}
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {formatTime(history.timestamp)}
+                                                    </Typography>
+                                                    {history.notes && (
+                                                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                                            {history.notes}
+                                                        </Typography>
+                                                    )}
+                                                </Box>
                                             </Box>
-                                        </Box>
-                                    ))}
+                                        );
+                                    })}
                                 </Stack>
                             </Box>
                         </>
@@ -959,6 +1075,9 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                 onClose={() => setDisputeDialogOpen(false)}
                 onSuccess={() => {
                     setDisputeDialogOpen(false);
+                    disputesAPI.getAll({ orderId: order._id })
+                        .then(res => setDisputes(res.data || []))
+                        .catch(err => console.error('Failed to reload disputes for order:', err));
                     if (onUpdate) onUpdate();
                 }}
             />
