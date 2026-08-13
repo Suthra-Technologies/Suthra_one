@@ -42,6 +42,8 @@ import {
     Alert,
     InputAdornment,
     TablePagination,
+    Checkbox,
+    OutlinedInput,
     useTheme,
     useMediaQuery,
     alpha,
@@ -186,7 +188,12 @@ const TablesPage: React.FC = () => {
     // Add Table Dialog
     const [addDialogOpen, setAddDialogOpen] = useState(false);
 
-    const isValidRoomName = (r: string) => Boolean(r && r.length >= 2 && r.length <= 20 && /[aeiouy]/i.test(r) && !/^(sdh|asdf|qwer|test|junk|inside)/i.test(r));
+    const isValidRoomName = (r: string) => {
+        if (!r || typeof r !== 'string') return false;
+        const cleaned = r.trim().toLowerCase();
+        if (cleaned.length < 2 || cleaned.length > 30) return false;
+        return !/^(sdh|asdf|qwer|zxcv|junk)$/i.test(cleaned);
+    };
 
     const getStoredCustomRooms = (slug?: string): string[] => {
         try {
@@ -283,7 +290,7 @@ const TablesPage: React.FC = () => {
             return;
         }
         if (!isValidRoomName(newNorm)) {
-            toast.error('Invalid room name. Must be 2-20 letters.');
+            toast.error('Invalid room name. Must be 2-30 characters.');
             return;
         }
         if (allAvailableSections.some(sec => sec.toLowerCase() === newNorm)) {
@@ -300,6 +307,13 @@ const TablesPage: React.FC = () => {
             setCustomLocations(prev => {
                 const updated = [...new Set([...prev.filter(r => r.toLowerCase() !== oldNorm), newNorm])];
                 saveStoredCustomRooms(updated, tenantSlug || undefined);
+                return updated;
+            });
+            setHiddenSections(prev => {
+                const updated = prev.filter(s => s.toLowerCase() !== newNorm && s.toLowerCase() !== oldNorm);
+                try {
+                    localStorage.setItem('pos_hidden_sections', JSON.stringify(updated));
+                } catch (e) {}
                 return updated;
             });
             toast.success(`Room renamed to "${newNorm.toUpperCase()}"`);
@@ -980,26 +994,7 @@ const TablesPage: React.FC = () => {
                 >
                     Table Management
                 </Typography>
-                <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', sm: 'auto' }, justifyContent: 'center' }}>
-                    {/* <Button
-                        variant={selectionMode ? "contained" : "outlined"}
-                        color={selectionMode ? "secondary" : "primary"}
-                        startIcon={<SelectionIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
-                        onClick={() => {
-                            setSelectionMode(!selectionMode);
-                            setSelectedTableIds([]);
-                        }}
-                        size={isMobile ? "small" : "medium"}
-                        sx={{ 
-                            fontSize: { xs: '0.65rem', sm: '0.875rem' },
-                            px: { xs: 1, sm: 2 },
-                            borderRadius: 2,
-                            textTransform: 'none',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        {selectionMode ? "Exit" : "Select Tables"}
-                    </Button> */}
+                <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', sm: 'auto' }, flexWrap: 'wrap', gap: 1, justifyContent: { xs: 'center', sm: 'flex-end' }, alignItems: 'center' }}>
                     {selectionMode && selectedTableIds.length >= 2 && (
                         <Button
                             variant="contained"
@@ -1011,8 +1006,9 @@ const TablesPage: React.FC = () => {
                             }}
                             size={isMobile ? "small" : "medium"}
                             sx={{ 
-                                fontSize: { xs: '0.65rem', sm: '0.875rem' },
-                                px: { xs: 1, sm: 2 },
+                                fontSize: { xs: '0.75rem', sm: '0.85rem' },
+                                px: { xs: 1.5, sm: 2 },
+                                height: 38,
                                 borderRadius: 2,
                                 textTransform: 'none',
                                 fontWeight: 'bold'
@@ -1022,7 +1018,7 @@ const TablesPage: React.FC = () => {
                         </Button>
                     )}
                     {/* View Mode Switcher (Floor Plan vs Grid Cards) */}
-                    <Stack direction="row" spacing={0.5} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.08), p: 0.5, borderRadius: 2.5 }}>
+                    <Stack direction="row" spacing={0.5} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.08), p: 0.5, borderRadius: 2.5, height: 38, alignItems: 'center' }}>
                         <Button
                             size={isMobile ? "small" : "medium"}
                             variant={tableViewMode === 'floor' ? "contained" : "text"}
@@ -1030,8 +1026,9 @@ const TablesPage: React.FC = () => {
                             startIcon={<FloorPlanIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
                             onClick={() => setTableViewMode('floor')}
                             sx={{
-                                fontSize: { xs: '0.65rem', sm: '0.8rem' },
-                                px: { xs: 1, sm: 1.5 },
+                                fontSize: { xs: '0.75rem', sm: '0.825rem' },
+                                px: { xs: 1.25, sm: 1.75 },
+                                height: 30,
                                 borderRadius: 2,
                                 textTransform: 'none',
                                 fontWeight: 800,
@@ -1047,8 +1044,9 @@ const TablesPage: React.FC = () => {
                             startIcon={<GridIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
                             onClick={() => setTableViewMode('grid')}
                             sx={{
-                                fontSize: { xs: '0.65rem', sm: '0.8rem' },
-                                px: { xs: 1, sm: 1.5 },
+                                fontSize: { xs: '0.75rem', sm: '0.825rem' },
+                                px: { xs: 1.25, sm: 1.75 },
+                                height: 30,
                                 borderRadius: 2,
                                 textTransform: 'none',
                                 fontWeight: 800,
@@ -1063,38 +1061,76 @@ const TablesPage: React.FC = () => {
                     <Button
                         variant="outlined"
                         color="inherit"
-                        startIcon={<QrCodeIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
+                        startIcon={<QrCodeIcon sx={{ fontSize: { xs: '1rem !important', sm: '1.1rem' } }} />}
                         onClick={() => setContactlessModalOpen(true)}
                         size={isMobile ? "small" : "medium"}
                         sx={{
-                            fontSize: { xs: '0.65rem', sm: '0.825rem' },
-                            px: { xs: 1, sm: 1.75 },
+                            fontSize: { xs: '0.75rem', sm: '0.825rem' },
+                            px: { xs: 1.25, sm: 1.75 },
+                            height: 38,
                             borderRadius: 2.5,
                             textTransform: 'none',
                             fontWeight: 700,
-                            borderColor: 'divider',
+                            borderColor: alpha(theme.palette.divider, 0.8),
                             color: 'text.primary',
+                            bgcolor: 'background.paper',
                             '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05), borderColor: 'primary.main' }
                         }}
                     >
                         Contactless QR Dining
                     </Button>
 
+                    {/* Merge Tables Action */}
+                    <Button
+                        variant="outlined"
+                        color="inherit"
+                        startIcon={<LinkIcon sx={{ fontSize: { xs: '1rem !important', sm: '1.1rem' } }} />}
+                        onClick={() => {
+                            if (selectedTableIds.length < 2 && tables.length >= 2) {
+                                const activeTables = tables.filter(t => t.isActive !== false);
+                                if (activeTables.length >= 2) {
+                                    setSelectedTableIds([activeTables[0]._id, activeTables[1]._id]);
+                                    setPrimaryTableId(activeTables[0]._id);
+                                }
+                            } else if (selectedTableIds.length >= 1 && !primaryTableId) {
+                                setPrimaryTableId(selectedTableIds[0]);
+                            }
+                            setMergeDialogOpen(true);
+                        }}
+                        size={isMobile ? "small" : "medium"}
+                        sx={{
+                            fontSize: { xs: '0.75rem', sm: '0.825rem' },
+                            px: { xs: 1.25, sm: 1.75 },
+                            height: 38,
+                            borderRadius: 2.5,
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            borderColor: alpha(theme.palette.divider, 0.8),
+                            color: 'text.primary',
+                            bgcolor: 'background.paper',
+                            '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05), borderColor: 'primary.main' }
+                        }}
+                    >
+                        Merge Tables
+                    </Button>
+
                     {/* Merge Rooms Action */}
                     <Button
                         variant="outlined"
                         color="inherit"
-                        startIcon={<MergeTypeIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
+                        startIcon={<MergeTypeIcon sx={{ fontSize: { xs: '1rem !important', sm: '1.1rem' } }} />}
                         onClick={() => setMergeSectionsDialogOpen(true)}
                         size={isMobile ? "small" : "medium"}
                         sx={{
-                            fontSize: { xs: '0.65rem', sm: '0.825rem' },
-                            px: { xs: 1, sm: 1.75 },
+                            fontSize: { xs: '0.75rem', sm: '0.825rem' },
+                            px: { xs: 1.25, sm: 1.75 },
+                            height: 38,
                             borderRadius: 2.5,
                             textTransform: 'none',
                             fontWeight: 700,
-                            borderColor: 'divider',
+                            borderColor: alpha(theme.palette.divider, 0.8),
                             color: 'text.primary',
+                            bgcolor: 'background.paper',
                             '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05), borderColor: 'primary.main' }
                         }}
                     >
@@ -1105,40 +1141,23 @@ const TablesPage: React.FC = () => {
                     <Button
                         variant="outlined"
                         color="inherit"
-                        startIcon={<RoomIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
+                        startIcon={<RoomIcon sx={{ fontSize: { xs: '1rem !important', sm: '1.1rem' } }} />}
                         onClick={() => setManageRoomsDialogOpen(true)}
                         size={isMobile ? "small" : "medium"}
                         sx={{
-                            fontSize: { xs: '0.65rem', sm: '0.825rem' },
-                            px: { xs: 1, sm: 1.75 },
+                            fontSize: { xs: '0.75rem', sm: '0.825rem' },
+                            px: { xs: 1.25, sm: 1.75 },
+                            height: 38,
                             borderRadius: 2.5,
                             textTransform: 'none',
                             fontWeight: 700,
-                            borderColor: 'divider',
+                            borderColor: alpha(theme.palette.divider, 0.8),
                             color: 'text.primary',
+                            bgcolor: 'background.paper',
                             '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05), borderColor: 'primary.main' }
                         }}
                     >
-                        Manage Rooms 🚪
-                    </Button>
-
-                    {/* Primary CTA: Add Table */}
-                    <Button 
-                        variant="contained" 
-                        color="primary"
-                        startIcon={<AddIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />} 
-                        onClick={() => setAddDialogOpen(true)}
-                        size={isMobile ? "small" : "medium"}
-                        sx={{ 
-                            fontSize: { xs: '0.65rem', sm: '0.875rem' },
-                            px: { xs: 1.5, sm: 2.5 },
-                            borderRadius: 2.5,
-                            textTransform: 'none',
-                            fontWeight: 800,
-                            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
-                        }}
-                    >
-                        Add Table
+                        Manage Rooms
                     </Button>
                 </Stack>
             </Box>
@@ -2425,9 +2444,40 @@ const TablesPage: React.FC = () => {
                             value={newLocationName}
                             inputProps={{ maxLength: 40 }}
                             onChange={(e) => {
-                                const val = e.target.value;
-                                if (/^[a-zA-Z_\s]*$/.test(val)) {
+                                const val = e.target.value.replace(/^\s+/, '');
+                                if (/^[a-zA-Z0-9_\-\s]*$/.test(val)) {
                                     setNewLocationName(val);
+                                }
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (newLocationName.trim()) {
+                                        const formatted = newLocationName.trim().replace(/\s+/g, '_')?.toLowerCase();
+                                        if (!isValidRoomName(formatted)) {
+                                            toast.error('Invalid room name. Must be 2-30 characters.');
+                                            return;
+                                        }
+                                        if (allAvailableSections.some(sec => sec.toLowerCase() === formatted)) {
+                                            toast.error(`Room "${formatted.replace(/_/g, ' ').toUpperCase()}" already exists!`);
+                                            return;
+                                        }
+                                        const updatedCustom = [...new Set([...customLocations, formatted])];
+                                        const updatedHidden = hiddenSections.filter(s => s.toLowerCase() !== formatted);
+                                        setCustomLocations(updatedCustom);
+                                        setHiddenSections(updatedHidden);
+                                        saveStoredCustomRooms(updatedCustom, tenantSlug || undefined);
+                                        try {
+                                            localStorage.setItem('pos_hidden_sections', JSON.stringify(updatedHidden));
+                                            settingsAPI.update('dining_rooms', { customRooms: updatedCustom, hiddenSections: updatedHidden }).catch(() => null);
+                                        } catch (e) {}
+                                        if (editDialogOpen && selectedTable) {
+                                            setSelectedTable({ ...selectedTable, location: formatted });
+                                        }
+                                        setAddLocationDialogOpen(false);
+                                        setNewLocationName('');
+                                        toast.success(`Room "${formatted.replace(/_/g, ' ').toUpperCase()}" created & saved`);
+                                    }
                                 }
                             }}
                             placeholder="e.g. Poolside"
@@ -2440,11 +2490,23 @@ const TablesPage: React.FC = () => {
                         onClick={() => {
                             if (newLocationName.trim()) {
                                 const formatted = newLocationName.trim().replace(/\s+/g, '_')?.toLowerCase();
-                                setCustomLocations(prev => {
-                                    const updated = [...new Set([...prev, formatted])];
-                                    saveStoredCustomRooms(updated, tenantSlug || undefined);
-                                    return updated;
-                                });
+                                if (!isValidRoomName(formatted)) {
+                                    toast.error('Invalid room name. Must be 2-30 characters.');
+                                    return;
+                                }
+                                if (allAvailableSections.some(sec => sec.toLowerCase() === formatted)) {
+                                    toast.error(`Room "${formatted.replace(/_/g, ' ').toUpperCase()}" already exists!`);
+                                    return;
+                                }
+                                const updatedCustom = [...new Set([...customLocations, formatted])];
+                                const updatedHidden = hiddenSections.filter(s => s.toLowerCase() !== formatted);
+                                setCustomLocations(updatedCustom);
+                                setHiddenSections(updatedHidden);
+                                saveStoredCustomRooms(updatedCustom, tenantSlug || undefined);
+                                try {
+                                    localStorage.setItem('pos_hidden_sections', JSON.stringify(updatedHidden));
+                                    settingsAPI.update('dining_rooms', { customRooms: updatedCustom, hiddenSections: updatedHidden }).catch(() => null);
+                                } catch (e) {}
                                 if (editDialogOpen && selectedTable) {
                                     setSelectedTable({ ...selectedTable, location: formatted });
                                 }
@@ -2465,19 +2527,58 @@ const TablesPage: React.FC = () => {
             <Dialog
                 open={mergeDialogOpen}
                 onClose={() => setMergeDialogOpen(false)}
-                maxWidth="xs"
+                maxWidth="sm"
                 fullWidth
             >
-                <DialogTitle>Merge Tables</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>Merge Tables 🔗</DialogTitle>
                 <DialogContent>
-                    <Typography variant="body2" sx={{ mb: 2 }}>
-                        Select the <strong>primary table</strong>. The order session will be linked to this table.
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+                        Select 2 or more tables to combine into a single seating group. The <strong>primary table</strong> will hold the order billing session.
                     </Typography>
-                    <FormControl fullWidth size="small">
-                        <InputLabel>Primary Table</InputLabel>
+
+                    <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                        <InputLabel id="select-tables-to-merge-label">Select Tables to Merge</InputLabel>
                         <Select
+                            labelId="select-tables-to-merge-label"
+                            multiple
+                            value={selectedTableIds}
+                            onChange={(e) => {
+                                const val = typeof e.target.value === 'string' ? e.target.value.split(',') : (e.target.value as string[]);
+                                setSelectedTableIds(val);
+                                if (!val.includes(primaryTableId)) {
+                                    setPrimaryTableId(val[0] || '');
+                                }
+                            }}
+                            input={<OutlinedInput label="Select Tables to Merge" />}
+                            renderValue={(selected) => (
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                    {selected.map((id) => {
+                                        const t = tables.find(item => item._id === id);
+                                        return (
+                                            <Chip key={id} size="small" color="primary" variant="outlined" label={t ? `T-${t.tableNumber || t.tableName}` : id} />
+                                        );
+                                    })}
+                                </Box>
+                            )}
+                        >
+                            {tables.filter(t => t.isActive !== false).map((t) => (
+                                <MenuItem key={t._id} value={t._id}>
+                                    <Checkbox checked={selectedTableIds.indexOf(t._id) > -1} />
+                                    <ListItemText
+                                        primary={`Table ${t.tableNumber || t.tableName} (${t.capacity} seats)`}
+                                        secondary={`Room: ${(t.section || t.location || 'Indoor').toUpperCase()} • Status: ${t.status}`}
+                                    />
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+
+                    <FormControl fullWidth size="small" disabled={selectedTableIds.length < 2} sx={{ mb: 2 }}>
+                        <InputLabel id="primary-table-select-label">Primary Table (Bill / Main Seating)</InputLabel>
+                        <Select
+                            labelId="primary-table-select-label"
                             value={primaryTableId}
-                            label="Primary Table"
+                            label="Primary Table (Bill / Main Seating)"
                             onChange={(e) => setPrimaryTableId(e.target.value)}
                         >
                             {selectedTableIds.map(id => {
@@ -2491,12 +2592,12 @@ const TablesPage: React.FC = () => {
                         </Select>
                     </FormControl>
 
-                    <Box sx={{ mt: 2, p: 1.5, bgcolor: 'info.lighter', borderRadius: 1, border: '1px solid', borderColor: 'info.light' }}>
+                    <Box sx={{ p: 2, bgcolor: alpha(theme.palette.primary.main, 0.06), borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.primary.main, 0.2) }}>
                         <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Typography variant="body2" color="info.darker" fontWeight="bold">
+                            <Typography variant="body2" color="primary.main" fontWeight="bold">
                                 Combined Capacity:
                             </Typography>
-                            <Typography variant="body1" color="info.darker" fontWeight="bold">
+                            <Typography variant="subtitle1" color="primary.dark" fontWeight="800">
                                 {selectedTableIds.reduce((sum, id) => {
                                     const table = tables.find(t => t._id === id);
                                     return sum + (table?.capacity || 0);
@@ -2509,7 +2610,7 @@ const TablesPage: React.FC = () => {
                         const prim = tables.find(t => t._id === primaryTableId);
                         if (prim?.status === 'occupied') {
                             return (
-                                <Alert severity="warning" sx={{ mt: 2 }}>
+                                <Alert severity="warning" sx={{ mt: 2, borderRadius: 2 }}>
                                     The primary table is currently occupied. Ensure the combined capacity can accommodate the guest count.
                                 </Alert>
                             );
@@ -2517,14 +2618,15 @@ const TablesPage: React.FC = () => {
                         return null;
                     })()}
                 </DialogContent>
-                <DialogActions sx={{ pb: 3, px: 3 }}>
+                <DialogActions sx={{ pb: 2.5, px: 3 }}>
                     <Button onClick={() => setMergeDialogOpen(false)}>Cancel</Button>
                     <Button
                         onClick={handleMerge}
                         variant="contained"
-                        disabled={!primaryTableId}
+                        disabled={selectedTableIds.length < 2 || !primaryTableId || isProcessing}
+                        startIcon={isProcessing && <CircularProgress size={16} color="inherit" />}
                     >
-                        Merge {selectedTableIds.length} Tables
+                        {isProcessing ? 'Merging...' : `Merge ${selectedTableIds.length} Tables`}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -2628,23 +2730,34 @@ const TablesPage: React.FC = () => {
                                 size="small"
                                 placeholder="e.g. Rooftop Terrace, VIP Lounge..."
                                 value={inlineAddRoomName}
-                                onChange={(e) => setInlineAddRoomName(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/^\s+/, '');
+                                    if (/^[a-zA-Z0-9_\-\s]*$/.test(val)) {
+                                        setInlineAddRoomName(val);
+                                    }
+                                }}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                         e.preventDefault();
                                         if (inlineAddRoomName.trim()) {
                                             const norm = inlineAddRoomName.trim().toLowerCase();
                                             if (!isValidRoomName(norm)) {
-                                                toast.error('Invalid room name. Must be 2-20 letters.');
+                                                toast.error('Invalid room name. Must be 2-30 characters.');
                                                 return;
                                             }
                                             if (allAvailableSections.some(sec => sec.toLowerCase() === norm)) {
                                                 toast.error(`Room "${norm.toUpperCase()}" already exists!`);
                                                 return;
                                             }
-                                            const updated = [...new Set([...customLocations, norm])];
-                                            setCustomLocations(updated);
-                                            saveStoredCustomRooms(updated, tenantSlug || undefined);
+                                            const updatedCustom = [...new Set([...customLocations, norm])];
+                                            const updatedHidden = hiddenSections.filter(s => s.toLowerCase() !== norm);
+                                            setCustomLocations(updatedCustom);
+                                            setHiddenSections(updatedHidden);
+                                            saveStoredCustomRooms(updatedCustom, tenantSlug || undefined);
+                                            try {
+                                                localStorage.setItem('pos_hidden_sections', JSON.stringify(updatedHidden));
+                                                settingsAPI.update('dining_rooms', { customRooms: updatedCustom, hiddenSections: updatedHidden }).catch(() => null);
+                                            } catch (e) {}
                                             toast.success(`Room "${norm.toUpperCase()}" created successfully`);
                                             setInlineAddRoomName('');
                                         }
@@ -2655,21 +2768,27 @@ const TablesPage: React.FC = () => {
                             <Button
                                 variant="contained"
                                 startIcon={<AddIcon />}
-                                disabled={!inlineAddRoomName.trim()}
+                                disabled={inlineAddRoomName.trim().length < 2}
                                 onClick={() => {
                                     if (inlineAddRoomName.trim()) {
                                         const norm = inlineAddRoomName.trim().toLowerCase();
                                         if (!isValidRoomName(norm)) {
-                                            toast.error('Invalid room name. Must be 2-20 letters.');
+                                            toast.error('Invalid room name. Must be 2-30 characters.');
                                             return;
                                         }
                                         if (allAvailableSections.some(sec => sec.toLowerCase() === norm)) {
                                             toast.error(`Room "${norm.toUpperCase()}" already exists!`);
                                             return;
                                         }
-                                        const updated = [...new Set([...customLocations, norm])];
-                                        setCustomLocations(updated);
-                                        saveStoredCustomRooms(updated, tenantSlug || undefined);
+                                        const updatedCustom = [...new Set([...customLocations, norm])];
+                                        const updatedHidden = hiddenSections.filter(s => s.toLowerCase() !== norm);
+                                        setCustomLocations(updatedCustom);
+                                        setHiddenSections(updatedHidden);
+                                        saveStoredCustomRooms(updatedCustom, tenantSlug || undefined);
+                                        try {
+                                            localStorage.setItem('pos_hidden_sections', JSON.stringify(updatedHidden));
+                                            settingsAPI.update('dining_rooms', { customRooms: updatedCustom, hiddenSections: updatedHidden }).catch(() => null);
+                                        } catch (e) {}
                                         toast.success(`Room "${norm.toUpperCase()}" created successfully`);
                                         setInlineAddRoomName('');
                                     }
@@ -2776,7 +2895,12 @@ const TablesPage: React.FC = () => {
                         autoFocus
                         label="New Room Name"
                         value={newRoomSectionName}
-                        onChange={(e) => setNewRoomSectionName(e.target.value)}
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/^\s+/, '');
+                            if (/^[a-zA-Z0-9_\-\s]*$/.test(val)) {
+                                setNewRoomSectionName(val);
+                            }
+                        }}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleRenameRoomConfirm(); }}
                         sx={{ mt: 1 }}
                     />
@@ -2789,7 +2913,7 @@ const TablesPage: React.FC = () => {
                         onClick={handleRenameRoomConfirm}
                         variant="contained"
                         color="primary"
-                        disabled={isProcessing || !newRoomSectionName.trim()}
+                        disabled={isProcessing || newRoomSectionName.trim().length < 2}
                     >
                         {isProcessing ? 'Renaming...' : 'Confirm Rename'}
                     </Button>
