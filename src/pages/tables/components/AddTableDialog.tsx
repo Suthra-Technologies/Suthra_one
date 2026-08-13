@@ -269,20 +269,18 @@ const AddTableDialog: React.FC<AddTableDialogProps> = ({
                                     }
                                 }}
                             >
-                                <MenuItem value="indoor">Indoor</MenuItem>
-                                <MenuItem value="outdoor">Outdoor</MenuItem>
-                                <MenuItem value="private_room">Private Room</MenuItem>
-                                <MenuItem value="bar">Bar</MenuItem>
-                                <MenuItem value="patio">Patio</MenuItem>
-                                <MenuItem value="main_dining">Main Dining</MenuItem>
-                                <MenuItem value="vip_section">VIP Section</MenuItem>
-                                <MenuItem value="party_hall">Party Hall</MenuItem>
-                                <MenuItem value="terrace">Terrace</MenuItem>
-                                {customLocations.map(loc => (
-                                    <MenuItem key={loc} value={loc} sx={{ textTransform: 'capitalize' }}>
-                                        {loc.replace(/_/g, ' ')}
-                                    </MenuItem>
-                                ))}
+                                {(() => {
+                                    const locSet = new Set<string>(['indoor', 'outdoor', 'private_room', 'bar']);
+                                    customLocations.forEach(loc => {
+                                        const norm = loc.trim().toLowerCase();
+                                        if (norm && norm !== 'inside') locSet.add(norm);
+                                    });
+                                    return Array.from(locSet).map(loc => (
+                                        <MenuItem key={loc} value={loc} sx={{ textTransform: 'capitalize' }}>
+                                            {loc.replace(/_/g, ' ')}
+                                        </MenuItem>
+                                    ));
+                                })()}
                             </Select>
                         </FormControl>
                         <Button

@@ -6,6 +6,7 @@ import {
     LocationOn as LocationOnIcon,
     Payment as PaymentIcon,
     Person as PersonIcon,
+    PeopleAlt as PeopleIcon,
     Receipt as ReceiptIcon,
     Restaurant as RestaurantIcon,
     Star as StarIcon,
@@ -174,6 +175,15 @@ const OrderCard: React.FC<OrderCardProps> = ({
         e.stopPropagation();
         if (isProcessing) return;
 
+        // Pre-order time lock guard
+        if ((order as any).isPreOrder && (order as any).scheduledTime) {
+            const minsUntil = (new Date((order as any).scheduledTime).getTime() - Date.now()) / 60_000;
+            if (minsUntil > 60) {
+                toast.error('⏰ This pre-order is locked until 1 hour before its scheduled time');
+                return;
+            }
+        }
+
         const availableNextStatuses = getAvailableStatuses(order.status, order.orderType);
         const nextStatus = availableNextStatuses.find((s: string) => s !== 'cancelled');
 
@@ -194,6 +204,12 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
     const nextAvailableStatuses = getAvailableStatuses(order.status, order.orderType);
     const nextStatus = nextAvailableStatuses.find((s: string) => s !== 'cancelled');
+
+    // Pre-order time lock: true when scheduled >60 mins away
+    const isPreOrderLocked =
+        !!(order as any).isPreOrder &&
+        !!(order as any).scheduledTime &&
+        (new Date((order as any).scheduledTime).getTime() - Date.now()) > 60 * 60 * 1000;
     const handlePaymentSuccess = () => {
         setPaymentDialogOpen(false);
         if (onRefresh) onRefresh();
@@ -426,6 +442,34 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     </Box>
                 </Box>
 
+                {/* Pre-Order Lock Banner */}
+                {isPreOrderLocked && order.status === 'pending' && (
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            px: 1.5,
+                            py: 0.75,
+                            mb: 1.5,
+                            borderRadius: 2,
+                            bgcolor: (theme) => theme.palette.mode === 'dark'
+                                ? alpha('#f59e0b', 0.15)
+                                : alpha('#f59e0b', 0.10),
+                            border: '1px solid rgba(245,158,11,0.45)',
+                        }}
+                    >
+                        <TimeIcon sx={{ fontSize: 16, color: '#b45309', flexShrink: 0 }} />
+                        <Box>
+                            <Typography variant="caption" fontWeight="bold" sx={{ display: 'block', fontSize: '0.72rem', color: '#b45309', lineHeight: 1.3 }}>
+                                ⏰ Locked · Scheduled for {new Date((order as any).scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', lineHeight: 1.2 }}>
+                                Actions unlock 1 hour before
+                            </Typography>
+                        </Box>
+                    </Box>
+                )}
 
                 {/* Customer & Waiter Info */}
                 <Stack spacing={0.5} sx={{ mb: 1.5 }}>
@@ -450,6 +494,14 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                     </Typography>
                                 )}
                             </Box>
+                        </Box>
+                    )}
+                    {order.orderType === 'dine_in' && order.guestCount > 0 && (
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <PeopleIcon sx={{ fontSize: 18, mr: 1, color: 'text.secondary' }} />
+                            <Typography variant="body2">
+                                <strong>Guests:</strong> {order.guestCount}
+                            </Typography>
                         </Box>
                     )}
                     {order.waiter?.name && (
@@ -1303,6 +1355,31 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                                             }}
                                                         >
                                                             {`Next: ${getStatusLabel(nextStatus)}`}
+                                                        </Button>
+                                                    </span>
+                                                </Tooltip>
+                                            );
+                                        }
+                                        // Pre-order lock: disable Next button when >60 mins before scheduled time
+                                        if (isPreOrderLocked) {
+                                            return (
+                                                <Tooltip title="⏰ Locked until 1 hour before scheduled time">
+                                                    <span>
+                                                        <Button
+                                                            variant="contained"
+                                                            color="warning"
+                                                            size="small"
+                                                            disabled
+                                                            sx={{
+                                                                fontSize: '0.65rem',
+                                                                padding: '4px 8px',
+                                                                textTransform: 'none',
+                                                                fontWeight: 'bold',
+                                                                minWidth: 'auto',
+                                                                height: '28px'
+                                                            }}
+                                                        >
+                                                            🔒 Locked
                                                         </Button>
                                                     </span>
                                                 </Tooltip>
