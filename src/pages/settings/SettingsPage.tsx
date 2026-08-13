@@ -91,6 +91,7 @@ import {
 } from '../../context/SettingsContext';
 
 import { apiBaseUrl, menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, uploadAPI } from '../../services/api';
+import { VerifyEmailWithGoogle } from './components/VerifyEmailWithGoogle';
 import { isThermalPrintAvailable, startPrintStation, stopPrintStation } from '../../services/thermalPrint';
 import { connectUsbPrinter, disconnectUsbPrinter, isUsbPrintAvailable, isUsbPrinterConnected } from '../../services/usbPrint';
 import { printKotThermal } from '../../utils/kotThermal';
@@ -675,6 +676,7 @@ const SettingsPage: React.FC = () => {
     const [showStripeWebhookSecret, setShowStripeWebhookSecret] = useState(false);
 
     const [stripeStatus, setStripeStatus] = useState<{ stripeMode?: string; hasPublishableKey?: boolean; hasSecretKey?: boolean; hasWebhookSecret?: boolean }>({});
+    const [tenant, setTenant] = useState<{ contactEmail?: string; contactEmailVerified?: boolean } | null>(null);
     const [newPaymentMethod, setNewPaymentMethod] = useState<string>('');
     const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
     const [pairedAgents, setPairedAgents] = useState<any[]>([]);
@@ -890,11 +892,13 @@ const SettingsPage: React.FC = () => {
     const fetchSettings = async () => {
         try {
             setLoading(true);
-            const [response, webhookResp, stripeStatusResp] = await Promise.all([
+            const [response, webhookResp, stripeStatusResp, tenantResp] = await Promise.all([
                 settingsAPI.getAll(),
                 paymentsAPI.getWebhookUrl(),
                 tenantAPI.getStripeSettings(),
+                tenantAPI.getCurrent(),
             ]);
+            setTenant(tenantResp.data);
             const defaults = createDefaultSettings();
 
             if (Array.isArray(response.data)) {
@@ -3033,14 +3037,10 @@ const SettingsPage: React.FC = () => {
                             />
                         </Grid>
                         <Grid size={{ xs: 12 }}>
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={settings.system.autoPrint}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('system', 'autoPrint', e.target.checked)}
-                                    />
-                                }
-                                label="Auto-print receipts after payment"
+                            <VerifyEmailWithGoogle
+                                contactEmail={tenant?.contactEmail}
+                                contactEmailVerified={tenant?.contactEmailVerified}
+                                onVerified={(result) => setTenant((prev: any) => ({ ...prev, ...result }))}
                             />
                         </Grid>
                         <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
@@ -3062,6 +3062,17 @@ const SettingsPage: React.FC = () => {
                             >
                                 Save Preferences
                             </Button>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={settings.system.autoPrint}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('system', 'autoPrint', e.target.checked)}
+                                    />
+                                }
+                                label="Auto-print receipts after payment"
+                            />
                         </Grid>
                         {/* EXTERNAL INTEGRATIONS REMOVED — Google Maps API key is managed via env (VITE_GOOGLE_MAPS_API_KEY) / stored value, not editable here.
                         <Grid size={{ xs: 12 }}>

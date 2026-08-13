@@ -883,6 +883,7 @@ export const tenantAPI = {
   updateSettings: (data: any) => api.patch('/tenants/settings', data),
   getStripeSettings: () => api.get('/tenants/stripe-settings'),
   updateStripeSettings: (data: any) => api.patch('/tenants/stripe-settings', data),
+  verifyEmailWithGoogle: (idToken: string) => api.post('/tenants/verify-email', { idToken }),
   // Restaurant open/close status
   updateRestaurantStatus: (data: { isOpen: boolean; reopenAt?: string; closeReason?: string; customerMessage?: string }) => api.patch('/tenants/restaurant-status', data),
   getRestaurantStatus: (slug: string) => api.get(`/tenants/${slug}/status`),

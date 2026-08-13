@@ -327,6 +327,25 @@ const TenantsPage: React.FC = () => {
                       )}
                     </Box>
 
+                    {tenant.contactEmail && (
+                      <Box mb={1.5}>
+                        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.65rem', letterSpacing: 0.5, mb: 0.25 }}>
+                          Contact Email
+                        </Typography>
+                        <Stack direction="row" spacing={0.75} alignItems="center">
+                          <Typography variant="body2" noWrap title={tenant.contactEmail} sx={{ lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {tenant.contactEmail}
+                          </Typography>
+                          <Chip
+                            label={tenant.contactEmailVerified ? 'Verified' : 'Unverified'}
+                            color={tenant.contactEmailVerified ? 'success' : 'default'}
+                            size="small"
+                            sx={{ height: 18, fontSize: '0.6rem', fontWeight: 700, flexShrink: 0 }}
+                          />
+                        </Stack>
+                      </Box>
+                    )}
+
                     <Grid container spacing={1.5}>
                       <Grid size={{ xs: 6 }}>
                         <Typography variant="caption" color="textSecondary" sx={{ textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.65rem', letterSpacing: 0.5 }}>Plan</Typography>
