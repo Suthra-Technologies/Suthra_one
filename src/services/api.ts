@@ -444,6 +444,8 @@ export const tablesAPI = {
   updateStatus: (id: string, status: string) => api.patch(`/tables/${id}/status`, { status }),
   merge: (primaryId: string, secondaryIds: string[]) => api.post('/tables/merge', { primaryId, secondaryIds }),
   unmerge: (primaryId: string) => api.post('/tables/unmerge', { primaryId }),
+  mergeSections: (sourceSection: string, targetSection: string) => api.post('/tables/merge-sections', { sourceSection, targetSection }),
+  deleteSection: (section: string, targetSection?: string) => api.post('/tables/delete-section', { section, targetSection }),
 };
 
 // -------------------- Floor Elements API (Architectural: doors, bar, windows, etc.) --------------------

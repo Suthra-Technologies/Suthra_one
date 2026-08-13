@@ -9,6 +9,7 @@ import {
     LocationOn as LocationOnIcon,
     StickyNote2 as NoteIcon,
     Gavel as DisputeIcon,
+    PeopleAlt as PeopleIcon,
 } from '@mui/icons-material';
 import {
     Box,
@@ -337,6 +338,14 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                 <Typography variant="body2">
                                     <strong>Waiter:</strong> {order.waiter.name}
                                 </Typography>
+                            )}
+                            {order.guestCount > 0 && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                                    <PeopleIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                    <Typography variant="body2">
+                                        <strong>Guests:</strong> {order.guestCount}
+                                    </Typography>
+                                </Box>
                             )}
                             {order.notes && (
                                 <Box sx={{ mt: 1, p: 1.5, bgcolor: alpha(theme.palette.warning.main, 0.08), borderRadius: 1.5, borderLeft: `4px solid ${theme.palette.warning.main}` }}>

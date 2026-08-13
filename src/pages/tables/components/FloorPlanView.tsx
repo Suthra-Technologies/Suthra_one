@@ -1,6 +1,7 @@
-// src/pages/tables/components/FloorPlanView.tsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { floorElementsAPI } from '../../../services/api';
 import {
     Box,
     Typography,
@@ -56,7 +57,7 @@ import {
     ViewInAr as ThreeDIcon,
     TableRows as TwoDIcon,
     MeetingRoomOutlined as DoorIcon,
-    KitchenOutlined as KitchenIcon,
+    SoupKitchenOutlined as KitchenIcon,
     LocalBarOutlined as BarIcon,
     WindowOutlined as WindowIcon,
     WcOutlined as RestroomIcon,
@@ -86,6 +87,7 @@ export interface TableItem {
     assignedWaiter?: any;
     currentOrder?: any;
     isActive?: boolean;
+    isDeleted?: boolean;
     deletedAt?: string | Date;
     seatingMode?: 'standard' | 'communal';
     seatTickets?: Array<{
@@ -114,6 +116,7 @@ interface FloorPlanViewProps {
     customLocations?: string[];
     canDeleteTables?: boolean;
     isMobile?: boolean;
+    hiddenSections?: string[];
     mode?: 'admin' | 'customer';
     selectedTableId?: string | null;
     floorElements?: FloorElementItem[];
@@ -150,20 +153,26 @@ const getSeatingTimerInfo = (occupiedAt?: string | Date) => {
     return { text: '>1h 30m', color: '#DC2626', isAlert: true };
 };
 
-// Default Architectural Landmarks (positioned cleanly away from table grid)
-const DEFAULT_ARCHITECTURAL_ELEMENTS: FloorElementItem[] = [
-    { _id: 'elem-entrance', type: 'door', label: 'Main Entrance 🚪', section: 'indoor', coordinates: { x: 45, y: 10 }, width: 105, height: 32 },
-    { _id: 'elem-kitchen', type: 'kitchen_door', label: 'Kitchen Pickup 🍳', section: 'indoor', coordinates: { x: 740, y: 10 }, width: 115, height: 32 },
-    { _id: 'elem-bar', type: 'bar', label: 'Bar Counter 🍺', section: 'indoor', coordinates: { x: 45, y: 560 }, width: 200, height: 38 },
-    { _id: 'elem-window-1', type: 'window', label: 'Window View 🪟', section: 'indoor', coordinates: { x: 890, y: 160 }, width: 18, height: 160 },
-    { _id: 'elem-restroom', type: 'restroom', label: 'Restrooms 🚻', section: 'indoor', coordinates: { x: 740, y: 560 }, width: 95, height: 35 },
-];
+// Default Architectural Landmarks (Disabled per preference to display tables only)
+const DEFAULT_ARCHITECTURAL_ELEMENTS: FloorElementItem[] = [];
 
-const renderArchitecturalElement = (item: FloorElementItem, is3D: boolean) => {
+const renderArchitecturalElement = (
+    item: FloorElementItem,
+    is3D: boolean,
+    opts?: {
+        elementPositions?: { [id: string]: { x: number; y: number } };
+        isCustomizeMode?: boolean;
+        draggingElementId?: string | null;
+        onDragStart?: (e: React.MouseEvent, id: string) => void;
+        onTouchStart?: (e: React.TouchEvent, id: string) => void;
+        onContextMenu?: (e: React.MouseEvent, item: FloorElementItem) => void;
+        onDeleteElement?: (id: string, label: string) => void;
+    }
+) => {
     const w = item.width || 80;
     const h = item.height || 35;
 
-    let icon = <DoorIcon sx={{ fontSize: 17 }} />;
+    let icon: React.ReactNode = <DoorIcon sx={{ fontSize: 17 }} />;
     let bgColor = '#F1F5F9';
     let borderColor = '#64748B';
     let textColor = '#334155';
@@ -174,7 +183,7 @@ const renderArchitecturalElement = (item: FloorElementItem, is3D: boolean) => {
             bgColor = '#EFF6FF'; borderColor = '#3B82F6'; textColor = '#1D4ED8';
             break;
         case 'kitchen_door':
-            icon = <KitchenIcon sx={{ fontSize: 17, color: '#F97316' }} />;
+            icon = null;
             bgColor = '#FFF7ED'; borderColor = '#F97316'; textColor = '#C2410C';
             break;
         case 'bar':
@@ -198,19 +207,29 @@ const renderArchitecturalElement = (item: FloorElementItem, is3D: boolean) => {
     }
 
     const depth = is3D ? 4 : 0;
+    const isCustomize = Boolean(opts?.isCustomizeMode);
+    const currentCoords = (opts?.elementPositions && opts.elementPositions[item._id]) || item.coordinates;
 
     return (
         <Box
             key={item._id}
+            onMouseDown={(e) => opts?.onDragStart && opts.onDragStart(e, item._id)}
+            onTouchStart={(e) => opts?.onTouchStart && opts.onTouchStart(e, item._id)}
+            onContextMenu={(e) => opts?.onContextMenu && opts.onContextMenu(e, item)}
+            onClick={(e) => {
+                if (isCustomize && opts?.onContextMenu) {
+                    opts.onContextMenu(e, item);
+                }
+            }}
             sx={{
                 position: 'absolute',
-                left: item.coordinates.x,
-                top: item.coordinates.y,
+                left: currentCoords.x,
+                top: currentCoords.y,
                 width: w,
                 height: h,
-                zIndex: 1,
+                zIndex: isCustomize ? 12 : 1,
                 bgcolor: bgColor,
-                border: `2px dashed ${borderColor}`,
+                border: `2px ${isCustomize ? 'solid' : 'dashed'} ${borderColor}`,
                 borderRadius: 2,
                 display: 'flex',
                 alignItems: 'center',
@@ -219,14 +238,16 @@ const renderArchitecturalElement = (item: FloorElementItem, is3D: boolean) => {
                 px: 1,
                 boxShadow: is3D
                     ? `${depth}px ${depth + 2}px 0 ${alpha(borderColor, 0.3)}, 0 4px 10px rgba(0,0,0,0.08)`
-                    : 'none',
-                pointerEvents: 'none',
+                    : (isCustomize ? '0 4px 12px rgba(0,0,0,0.15)' : 'none'),
+                pointerEvents: 'auto',
+                cursor: isCustomize ? (opts?.draggingElementId === item._id ? 'grabbing' : 'grab') : 'pointer',
                 userSelect: 'none',
+                transition: opts?.draggingElementId === item._id ? 'none' : 'all 0.1s ease',
             }}
         >
             {icon}
             <Typography variant="caption" fontWeight={900} sx={{ fontSize: '0.7rem', color: textColor, whiteSpace: 'nowrap' }}>
-                {item.label}
+                {item.type === 'kitchen_door' ? (item.label || '').replace(/[\u{1F300}-\u{1F9FF}]|🍳/gu, '').trim() || 'Kitchen Pickup' : item.label}
             </Typography>
         </Box>
     );
@@ -418,8 +439,9 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     tables,
     tenantSlug,
     customLocations = [],
-    canDeleteTables = true,
+    canDeleteTables = false,
     isMobile = false,
+    hiddenSections = [],
     mode = 'admin',
     selectedTableId = null,
     floorElements = [],
@@ -433,41 +455,112 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     onQuickStatusChange,
     onOpenHistory,
     onSaveTableCoordinates,
+    onAddFloorElement,
 }) => {
     const theme = useTheme();
     const navigate = useNavigate();
     const isCustomerMode = mode === 'customer';
 
-    const activeFloorElements = useMemo(() => {
-        if (floorElements && floorElements.length > 0) return floorElements;
-        return DEFAULT_ARCHITECTURAL_ELEMENTS;
-    }, [floorElements]);
+    const [isCustomizeMode, setIsCustomizeMode] = useState<boolean>(false);
+    const [deletedElementIds, setDeletedElementIds] = useState<string[]>([]);
+
+    const activeFloorElements = useMemo<FloorElementItem[]>(() => {
+        const dbElems = floorElements || [];
+        return dbElems.filter((e: FloorElementItem) => !deletedElementIds.includes(e._id));
+    }, [floorElements, deletedElementIds]);
+
+    const isValidRoom = (s: string) => Boolean(s && s.length >= 2 && s.length <= 20 && /[aeiouy]/i.test(s) && !/^(sdh|asdf|qwer|test|junk|inside)/i.test(s));
+    const getEffectiveRoom = (t: { section?: string; location?: string }) => {
+        const raw = (t?.section || t?.location || 'indoor').toLowerCase();
+        return isValidRoom(raw) ? raw : 'indoor';
+    };
 
     const sections = useMemo(() => {
-        const set = new Set<string>();
-        tables.forEach(t => set.add((t.section || t.location || 'indoor').toLowerCase()));
-        customLocations.forEach(loc => set.add(loc.toLowerCase()));
-        if (set.size === 0) { set.add('indoor'); set.add('outdoor'); set.add('private_room'); set.add('bar'); }
-        return Array.from(set);
-    }, [tables, customLocations]);
+        const BASE_ROOMS = ['indoor', 'outdoor', 'private_room', 'bar'];
+        const set = new Set<string>(BASE_ROOMS);
+        tables.forEach(t => set.add(getEffectiveRoom(t)));
+        customLocations.forEach(loc => {
+            const norm = loc.trim().toLowerCase();
+            if (norm && isValidRoom(norm)) set.add(norm);
+        });
+        const allSecs = Array.from(set).filter(isValidRoom);
+        if (allSecs.length === 0) allSecs.push('indoor');
+        if (hiddenSections && hiddenSections.length > 0 && !isCustomizeMode) {
+            return allSecs.filter(s => !hiddenSections.includes(s.toLowerCase()));
+        }
+        return allSecs;
+    }, [tables, customLocations, hiddenSections, isCustomizeMode]);
 
     const [activeSection, setActiveSection]       = useState<string>(() => sections.length > 0 ? sections[0] : 'indoor');
     const [searchQuery, setSearchQuery]           = useState<string>('');
-    const [isCustomizeMode, setIsCustomizeMode]   = useState<boolean>(false);
     const [legendOpen, setLegendOpen]             = useState<boolean>(false);
     const [zoomLevel, setZoomLevel]               = useState<number>(1);
     const [is3DMode, setIs3DMode]                 = useState<boolean>(true);
     const [roomSwitchToast, setRoomSwitchToast]   = useState<string | null>(null);
+    const [elementMenuAnchorEl, setElementMenuAnchorEl] = useState<null | HTMLElement>(null);
     const [tablePositions, setTablePositions]     = useState<{ [id: string]: { x: number; y: number } }>({});
+    const [elementPositions, setElementPositions] = useState<{ [id: string]: { x: number; y: number } }>({});
+    const [customRoomHeight, setCustomRoomHeight] = useState<number>(660);
     const [isSavingLayout, setIsSavingLayout]     = useState(false);
     const [, setHasUnsavedChanges]                = useState(false);
     const [contextMenu, setContextMenu]           = useState<{ mouseX: number; mouseY: number; table: TableItem | null } | null>(null);
+    const [elementContextMenu, setElementContextMenu] = useState<{ mouseX: number; mouseY: number; element: FloorElementItem | null } | null>(null);
+    const [deleteElementConfirm, setDeleteElementConfirm] = useState<{ id: string; label: string } | null>(null);
     const [selectedTableDetails, setSelectedTableDetails] = useState<TableItem | null>(null);
     const [qrCodeDialogTable, setQrCodeDialogTable] = useState<TableItem | null>(null);
     const [draggingTableId, setDraggingTableId]   = useState<string | null>(null);
+    const [draggingElementId, setDraggingElementId] = useState<string | null>(null);
     const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     const canvasRef     = useRef<HTMLDivElement>(null);
     const [, setTick]   = useState(0);
+
+    const handleAddLandmarkElement = (type: string, label: string) => {
+        setElementMenuAnchorEl(null);
+        let defaultCoords = { x: 740, y: 15 };
+        if (type === 'window') defaultCoords = { x: 920, y: 120 };
+        else if (type === 'bar') defaultCoords = { x: 45, y: 560 };
+        else if (type === 'door') defaultCoords = { x: 45, y: 15 };
+        else if (type === 'restroom') defaultCoords = { x: 740, y: 560 };
+
+        const newElem: FloorElementItem = {
+            _id: `elem-${Date.now()}`,
+            type: type as any,
+            label,
+            section: activeSection === 'all' ? 'indoor' : activeSection,
+            coordinates: defaultCoords,
+            width: type === 'window' ? 18 : (type === 'bar' ? 180 : 100),
+            height: type === 'window' ? 150 : 35,
+        };
+        if (onAddFloorElement) {
+            onAddFloorElement({
+                type: newElem.type,
+                label: newElem.label,
+                section: newElem.section,
+                coordinates: newElem.coordinates,
+                width: newElem.width,
+                height: newElem.height,
+            });
+        }
+        toast.success(`Added "${label}" to floor map`);
+    };
+
+    const handleDeleteLandmarkElement = async (elemId: string, label: string) => {
+        try {
+            if (!elemId.startsWith('elem-')) {
+                await floorElementsAPI.remove(elemId).catch(() => null);
+            }
+            setDeletedElementIds(prev => [...prev, elemId]);
+            toast.success(`Deleted "${label}" from floor map`);
+            setElementPositions(prev => {
+                const next = { ...prev };
+                delete next[elemId];
+                return next;
+            });
+        } catch (err) {
+            setDeletedElementIds(prev => [...prev, elemId]);
+            toast.success(`Removed "${label}"`);
+        }
+    };
 
     useEffect(() => {
         const interval = setInterval(() => setTick(t => t + 1), 60000);
@@ -475,9 +568,9 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     }, []);
 
     const currentSectionTables = useMemo(() => {
-        let list = tables;
+        let list = tables.filter(t => !t.isDeleted && t.isActive !== false);
         if (activeSection !== 'all') {
-            list = list.filter(t => (t.section || t.location || 'indoor').toLowerCase() === activeSection.toLowerCase());
+            list = list.filter(t => getEffectiveRoom(t) === activeSection.toLowerCase());
         }
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase().trim();
@@ -492,12 +585,33 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         return list;
     }, [tables, activeSection, searchQuery]);
 
-    const currentSectionElements = useMemo(() => {
-        if (activeSection === 'all') return activeFloorElements;
-        return activeFloorElements.filter(e => (e.section || 'indoor').toLowerCase() === activeSection.toLowerCase());
-    }, [activeFloorElements, activeSection]);
+    const dynamicCanvasHeight = useMemo(() => {
+        let maxY = 540;
+        currentSectionTables.forEach(table => {
+            const pos = tablePositions[table._id] || { x: 45, y: 75 };
+            const isRound = table.shape === 'round';
+            const { h } = getTableDimensions(table.capacity, isRound);
+            const bottomEdge = pos.y + h + 110;
+            if (bottomEdge > maxY) {
+                maxY = bottomEdge;
+            }
+        });
+        return Math.max(maxY, customRoomHeight);
+    }, [currentSectionTables, tablePositions, customRoomHeight]);
 
-    // Grid calculations start cleanly at y = 70 to prevent overlap with top landmark banners
+    const currentSectionElements = useMemo<FloorElementItem[]>(() => [], []);
+
+    useEffect(() => {
+        setCustomRoomHeight(660);
+    }, [activeSection]);
+
+    useEffect(() => {
+        if (activeSection !== 'all' && !sections.includes(activeSection.toLowerCase())) {
+            setActiveSection(sections[0] || 'indoor');
+        }
+    }, [sections, activeSection]);
+
+    // Grid calculations start cleanly at y = 90 to prevent overlap with top landmark banners
     useEffect(() => {
         const pos: { [id: string]: { x: number; y: number } } = {};
         const COLS = isMobile ? 2 : 4;
@@ -506,13 +620,13 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                 pos[table._id] = { x: table.coordinates.x, y: table.coordinates.y };
             } else {
                 const { w, h } = getTableDimensions(table.capacity, table.shape === 'round');
-                const GAP_X = 60, GAP_Y = 58;
+                const GAP_X = 65, GAP_Y = 65;
                 const col = index % COLS;
                 const row = Math.floor(index / COLS);
-                pos[table._id] = { x: 45 + col * (w + GAP_X), y: 75 + row * (h + GAP_Y) };
+                pos[table._id] = { x: 50 + col * (w + GAP_X), y: 90 + row * (h + GAP_Y) };
             }
         });
-        setTablePositions(prev => ({ ...prev, ...pos }));
+        setTablePositions(pos);
     }, [currentSectionTables, isMobile]);
 
     const handleDragStart = (e: React.MouseEvent, tableId: string) => {
@@ -531,36 +645,94 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         setDraggingTableId(tableId);
     };
 
+    const handleElementDragStart = (e: React.MouseEvent, elemId: string) => {
+        if (!isCustomizeMode || isCustomerMode) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const elem = currentSectionElements.find((item: FloorElementItem) => item._id === elemId);
+        const currentPos = elementPositions[elemId] || elem?.coordinates || { x: 50, y: 50 };
+        dragOffsetRef.current = { x: e.clientX - currentPos.x * zoomLevel, y: e.clientY - currentPos.y * zoomLevel };
+        setDraggingElementId(elemId);
+    };
+
+    const handleElementTouchStart = (e: React.TouchEvent, elemId: string) => {
+        if (!isCustomizeMode || isCustomerMode || e.touches.length === 0) return;
+        e.stopPropagation();
+        const touch = e.touches[0];
+        const elem = currentSectionElements.find((item: FloorElementItem) => item._id === elemId);
+        const currentPos = elementPositions[elemId] || elem?.coordinates || { x: 50, y: 50 };
+        dragOffsetRef.current = { x: touch.clientX - currentPos.x * zoomLevel, y: touch.clientY - currentPos.y * zoomLevel };
+        setDraggingElementId(elemId);
+    };
+
     const handleMouseMove = (e: React.MouseEvent) => {
-        if (!draggingTableId || !isCustomizeMode || isCustomerMode) return;
-        const newX = Math.max(15, Math.round((e.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10);
-        const newY = Math.max(15, Math.round((e.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10);
-        setTablePositions(prev => ({ ...prev, [draggingTableId]: { x: newX, y: newY } }));
-        setHasUnsavedChanges(true);
+        if (!isCustomizeMode || isCustomerMode) return;
+        if (draggingTableId) {
+            const rawX = Math.round((e.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10;
+            const rawY = Math.round((e.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10;
+            const clampedX = Math.min(Math.max(20, rawX), 920);
+            const clampedY = Math.min(Math.max(20, rawY), 580);
+            setTablePositions(prev => ({ ...prev, [draggingTableId]: { x: clampedX, y: clampedY } }));
+            setHasUnsavedChanges(true);
+        } else if (draggingElementId) {
+            const rawX = Math.round((e.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10;
+            const rawY = Math.round((e.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10;
+            const clampedX = Math.min(Math.max(20, rawX), 920);
+            const clampedY = Math.min(Math.max(20, rawY), 580);
+            setElementPositions(prev => ({ ...prev, [draggingElementId]: { x: clampedX, y: clampedY } }));
+            setHasUnsavedChanges(true);
+        }
     };
 
     const handleTouchMove = (e: React.TouchEvent) => {
-        if (!draggingTableId || !isCustomizeMode || isCustomerMode || e.touches.length === 0) return;
+        if (!isCustomizeMode || isCustomerMode || e.touches.length === 0) return;
         const touch = e.touches[0];
-        const newX = Math.max(15, Math.round((touch.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10);
-        const newY = Math.max(15, Math.round((touch.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10);
-        setTablePositions(prev => ({ ...prev, [draggingTableId]: { x: newX, y: newY } }));
-        setHasUnsavedChanges(true);
+        if (draggingTableId) {
+            const rawX = Math.round((touch.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10;
+            const rawY = Math.round((touch.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10;
+            const clampedX = Math.min(Math.max(20, rawX), 920);
+            const clampedY = Math.min(Math.max(20, rawY), 580);
+            setTablePositions(prev => ({ ...prev, [draggingTableId]: { x: clampedX, y: clampedY } }));
+            setHasUnsavedChanges(true);
+        } else if (draggingElementId) {
+            const rawX = Math.round((touch.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10;
+            const rawY = Math.round((touch.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10;
+            const clampedX = Math.min(Math.max(20, rawX), 920);
+            const clampedY = Math.min(Math.max(20, rawY), 580);
+            setElementPositions(prev => ({ ...prev, [draggingElementId]: { x: clampedX, y: clampedY } }));
+            setHasUnsavedChanges(true);
+        }
     };
 
-    const handleDragEnd = () => { if (draggingTableId) setDraggingTableId(null); };
+    const handleDragEnd = () => {
+        if (draggingTableId) setDraggingTableId(null);
+        if (draggingElementId) setDraggingElementId(null);
+    };
 
     const handleAutoArrange = () => {
         const pos: { [id: string]: { x: number; y: number } } = {};
-        const COLS = isMobile ? 2 : 4;
-        currentSectionTables.forEach((table, index) => {
+        const sorted = [...currentSectionTables].sort((a, b) => (b.capacity || 0) - (a.capacity || 0));
+        let currentX = 45;
+        let currentY = 85;
+        let rowMaxHeight = 0;
+        const MAX_CANVAS_WIDTH = 860;
+        const GAP_X = 65;
+        const GAP_Y = 65;
+
+        sorted.forEach((table) => {
             const { w, h } = getTableDimensions(table.capacity, table.shape === 'round');
-            const GAP_X = 60, GAP_Y = 58;
-            const col = index % COLS;
-            const row = Math.floor(index / COLS);
-            pos[table._id] = { x: 45 + col * (w + GAP_X), y: 75 + row * (h + GAP_Y) };
+            if (currentX > 45 && (currentX + w > MAX_CANVAS_WIDTH)) {
+                currentX = 45;
+                currentY += rowMaxHeight + GAP_Y;
+                rowMaxHeight = 0;
+            }
+            pos[table._id] = { x: currentX, y: currentY };
+            currentX += w + GAP_X;
+            if (h > rowMaxHeight) rowMaxHeight = h;
         });
-        setTablePositions(prev => ({ ...prev, ...pos }));
+        setTablePositions(pos);
+        const requiredHeight = currentY + rowMaxHeight + 130;
+        setCustomRoomHeight(Math.max(660, requiredHeight));
         setHasUnsavedChanges(true);
     };
 
@@ -573,10 +745,37 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                 .filter(([id]) => validTableIds.has(id))
                 .map(([id, coords]) => ({ _id: id, coordinates: coords }));
             await onSaveTableCoordinates(updates);
+
+            // Save moved doors, windows, bar counters, restrooms coordinates to MongoDB
+            const elemEntries = Object.entries(elementPositions);
+            if (elemEntries.length > 0) {
+                await Promise.all(
+                    elemEntries.map(async ([id, coords]) => {
+                        if (id.startsWith('elem-')) {
+                            const elem = activeFloorElements.find((e: FloorElementItem) => e._id === id);
+                            if (elem) {
+                                await floorElementsAPI.create({
+                                    type: elem.type,
+                                    label: elem.label,
+                                    section: elem.section || activeSection,
+                                    coordinates: coords,
+                                    width: elem.width,
+                                    height: elem.height,
+                                }).catch(() => null);
+                            }
+                        } else {
+                            await floorElementsAPI.update(id, { coordinates: coords }).catch(() => null);
+                        }
+                    })
+                );
+            }
+
+            toast.success('Floor plan layout saved successfully');
             setHasUnsavedChanges(false);
             setIsCustomizeMode(false);
         } catch (error) {
-            console.error('Error saving table positions:', error);
+            console.error('Error saving floor layout:', error);
+            toast.error('Failed to save floor layout');
         } finally {
             setIsSavingLayout(false);
         }
@@ -590,14 +789,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             return;
         }
         if (table.isActive === false) { if (onRestoreTable) onRestoreTable(table); return; }
-        if (table.status === 'available' || table.status === 'occupied' || table.status === 'partially_occupied') {
-            if (!tenantSlug) return;
-            navigate(`/${tenantSlug}/pos?tableId=${table._id}`);
-        } else if (table.status === 'cleaning') {
-            if (onQuickStatusChange) onQuickStatusChange(table._id, 'available');
-        } else {
-            if (onOpenBooking) onOpenBooking(table);
-        }
+        setSelectedTableDetails(table);
     };
 
     const handleContextMenu = (e: React.MouseEvent, table: TableItem) => {
@@ -647,10 +839,10 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                             startIcon={is3DMode ? <ThreeDIcon /> : <TwoDIcon />}
                             onClick={() => setIs3DMode(v => !v)}
                             sx={{
-                                borderRadius: 2.5, textTransform: 'none', fontWeight: 900, height: 36,
-                                bgcolor: is3DMode ? '#7C3AED' : 'transparent',
-                                borderColor: '#7C3AED', color: is3DMode ? '#FFFFFF' : '#7C3AED',
-                                '&:hover': { bgcolor: is3DMode ? '#6D28D9' : alpha('#7C3AED', 0.08) },
+                                borderRadius: 2.5, textTransform: 'none', fontWeight: 800, height: 36,
+                                bgcolor: is3DMode ? 'primary.main' : 'transparent',
+                                borderColor: 'primary.main', color: is3DMode ? '#FFFFFF' : 'primary.main',
+                                '&:hover': { bgcolor: is3DMode ? 'primary.dark' : alpha(theme.palette.primary.main, 0.08) },
                             }}
                         >
                             {is3DMode ? '3D' : '2D'}
@@ -676,26 +868,42 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                 sx={{ width: { xs: 130, sm: 165 } }}
                             />
 
-                            {onOpenAddLocation && (
-                                <Button size="small" variant="outlined" startIcon={<RoomIcon />} onClick={onOpenAddLocation}
-                                    sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 800, height: 36, borderColor: 'divider', color: 'text.primary', display: { xs: 'none', sm: 'inline-flex' } }}>
-                                    + Add Room
-                                </Button>
-                            )}
-
                             {onOpenAddTable && (
                                 <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={onOpenAddTable}
-                                    sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 800, height: 36, borderColor: 'divider', color: 'text.primary', display: { xs: 'none', sm: 'inline-flex' } }}>
-                                    + Add Table
+                                    sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 700, height: 36, borderColor: 'divider', color: 'text.primary', display: { xs: 'none', sm: 'inline-flex' } }}>
+                                     Add Table
                                 </Button>
                             )}
 
                             {isCustomizeMode ? (
-                                <Stack direction="row" spacing={1}>
+                                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ gap: 1 }}>
                                     <Button size="small" variant="outlined" startIcon={<AutoArrangeIcon />} onClick={handleAutoArrange}
                                         sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 800, height: 36 }}>
                                         Auto-Arrange
                                     </Button>
+
+                                    {/* Room Wall Height Controls */}
+                                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.06), p: 0.4, px: 1, borderRadius: 2.5, border: '1px solid', borderColor: alpha(theme.palette.primary.main, 0.2) }}>
+                                        <Typography variant="caption" fontWeight={800} sx={{ color: 'text.primary', fontSize: '0.72rem', mr: 0.5 }}>
+                                            Wall Height: {Math.round(dynamicCanvasHeight)}px
+                                        </Typography>
+                                        <Tooltip title="Expand Room Border (+100px)">
+                                            <Button size="small" variant="contained" onClick={() => setCustomRoomHeight(h => h + 100)} sx={{ minWidth: 26, height: 26, p: 0, fontWeight: 900, fontSize: '0.85rem', borderRadius: 1.5 }}>
+                                                +
+                                            </Button>
+                                        </Tooltip>
+                                        <Tooltip title="Shrink Room Border (-100px)">
+                                            <Button size="small" variant="outlined" onClick={() => setCustomRoomHeight(h => Math.max(450, h - 100))} sx={{ minWidth: 26, height: 26, p: 0, fontWeight: 900, fontSize: '0.85rem', borderRadius: 1.5, ml: 0.5 }}>
+                                                -
+                                            </Button>
+                                        </Tooltip>
+                                        <Tooltip title="Auto-Fit Border to Tables">
+                                            <Button size="small" onClick={() => setCustomRoomHeight(660)} sx={{ px: 1, height: 26, textTransform: 'none', fontSize: '0.7rem', fontWeight: 800, ml: 0.5 }}>
+                                                Auto-Fit
+                                            </Button>
+                                        </Tooltip>
+                                    </Stack>
+
                                     <Button size="small" variant="contained" color="success" startIcon={<SaveIcon />}
                                         onClick={handleSaveLayout} disabled={isSavingLayout}
                                         sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 900, bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' }, height: 36 }}>
@@ -707,9 +915,9 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                     </Button>
                                 </Stack>
                             ) : (
-                                <Button size="small" variant="contained" startIcon={<CustomizeIcon />} onClick={() => setIsCustomizeMode(true)}
-                                    sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 900, height: 36, px: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                                    Move Tables
+                                <Button size="small" variant="outlined" color="primary" startIcon={<CustomizeIcon />} onClick={() => setIsCustomizeMode(true)}
+                                    sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 800, height: 36, px: 2 }}>
+                                    Move Tables & Elements
                                 </Button>
                             )}
                         </>
@@ -721,7 +929,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1.2, overflowX: 'auto', pb: 0.5 }}>
                 {sections.map(section => {
                     const isActive = activeSection === section;
-                    const count = tables.filter(t => (t.section || t.location || 'indoor').toLowerCase() === section.toLowerCase()).length;
+                    const count = tables.filter(t => !t.isDeleted && t.isActive !== false && getEffectiveRoom(t) === section.toLowerCase()).length;
                     return (
                         <Box key={section} onClick={() => handleSectionSwitch(section)} sx={{
                             px: 2.2, py: 0.85, borderRadius: 3, cursor: 'pointer', fontWeight: 800, fontSize: '0.84rem',
@@ -736,17 +944,16 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                         </Box>
                     );
                 })}
-
-                {!isCustomerMode && (
-                    <Box onClick={() => handleSectionSwitch('all')} sx={{
-                        px: 2.2, py: 0.85, borderRadius: 3, cursor: 'pointer', fontWeight: 800, fontSize: '0.84rem',
-                        bgcolor: activeSection === 'all' ? 'primary.main' : '#FFFFFF',
-                        color: activeSection === 'all' ? '#FFFFFF' : 'text.secondary',
-                        border: '1.5px solid', borderColor: activeSection === 'all' ? 'primary.main' : 'divider',
-                        display: 'flex', alignItems: 'center', gap: 0.8, flexShrink: 0,
+                {onOpenAddLocation && !isCustomerMode && (
+                    <Box onClick={onOpenAddLocation} sx={{
+                        px: 2, py: 0.85, borderRadius: 3, cursor: 'pointer', fontWeight: 800, fontSize: '0.84rem',
+                        bgcolor: '#FFFFFF', color: 'primary.main',
+                        border: '1.5px dashed', borderColor: 'primary.main',
+                        transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: 0.6, flexShrink: 0,
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.08) },
                     }}>
-                        <span>All Rooms</span>
-                        <Chip label={tables.length} size="small" sx={{ height: 20, fontSize: '0.68rem', fontWeight: 800, bgcolor: activeSection === 'all' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)', color: activeSection === 'all' ? '#FFFFFF' : 'text.secondary' }} />
+                        <AddIcon sx={{ fontSize: 18 }} />
+                        <span>Add Room</span>
                     </Box>
                 )}
             </Box>
@@ -785,6 +992,37 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                     transition: 'border-color 0.2s ease, background-color 0.3s ease',
                 }}
             >
+                {/* Architectural Room Perimeter Wall Border */}
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        top: 12,
+                        left: 12,
+                        right: 12,
+                        height: dynamicCanvasHeight + 20,
+                        border: '3px double #475569',
+                        borderRadius: 3,
+                        pointerEvents: 'none',
+                        zIndex: 0,
+                        transition: 'height 0.2s ease',
+                        '&::before': {
+                            content: `"${formatSectionName(activeSection).toUpperCase()} PERIMETER WALL • ${Math.round(dynamicCanvasHeight)}PX"`,
+                            position: 'absolute',
+                            top: -12,
+                            left: 24,
+                            bgcolor: '#334155',
+                            color: '#FFFFFF',
+                            fontSize: '0.65rem',
+                            fontWeight: 900,
+                            letterSpacing: 0.8,
+                            px: 1.2,
+                            py: 0.2,
+                            borderRadius: 1,
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                        }
+                    }}
+                />
+
                 {/* Move Mode Banner */}
                 {isCustomizeMode && !isCustomerMode && (
                     <Paper elevation={2} sx={{
@@ -795,7 +1033,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                     }}>
                         <MoveIcon sx={{ fontSize: 18, color: '#38BDF8' }} />
                         <Typography variant="caption" fontWeight={800} sx={{ fontSize: '0.8rem' }}>
-                            Move Mode Active: Drag tables to reposition, then click Save Layout.
+                            Move Mode Active: Drag tables & room boundary resizers to adjust layout, then click Save Layout.
                         </Typography>
                     </Paper>
                 )}
@@ -829,15 +1067,12 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                     <Box sx={{
                         position: 'relative',
                         minWidth: 960,
-                        minHeight: 600,
+                        minHeight: dynamicCanvasHeight + 40,
                         transform: `scale(${zoomLevel})`,
                         transformOrigin: 'top left',
                         transition: draggingTableId ? 'none' : 'transform 0.15s ease',
                     }}>
-                        {/* ── ARCHITECTURAL LANDMARKS (Doors, Kitchen, Bar, Windows) ── */}
-                        {currentSectionElements.map(element => renderArchitecturalElement(element, is3DMode))}
-
-                        {/* ── REALISTIC DINING TABLES ── */}
+                        {/* ── REALISTIC DINING TABLES ONLY ── */}
                         {currentSectionTables.map(table => {
                             const pos = tablePositions[table._id] || { x: 45, y: 75 };
                             const isOccupied  = table.status === 'occupied' || table.status === 'partially_occupied';
@@ -876,6 +1111,9 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                 ? `${depth3D}px ${depth3D + 2}px 0 ${alpha(statusColor, 0.35)}, ${depth3D + 4}px ${depth3D + 8}px 18px rgba(0,0,0,0.18)`
                                 : `0 3px 10px rgba(0,0,0,0.06)`;
 
+                            // Industry-standard: pulsing red border for overdue (>90min) tables
+                            const isOverdue = !isCustomerMode && isOccupied && timerInfo?.isAlert === true;
+
                             return (
                                 <Box
                                     key={table._id}
@@ -898,6 +1136,17 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                         '&:hover': {
                                             transform: isCustomizeMode ? 'none' : (is3DMode ? 'translateY(-3px) scale(1.02)' : 'translateY(-2px)'),
                                         },
+                                        // Industry-standard overdue pulse (like Toast POS)
+                                        ...(isOverdue && {
+                                            borderRadius: isRound ? '50%' : 2,
+                                            animation: 'overdueTablePulse 2s ease-in-out infinite',
+                                            '@keyframes overdueTablePulse': {
+                                                '0%':   { boxShadow: '0 0 0 0 rgba(220,38,38,0.0)' },
+                                                '40%':  { boxShadow: '0 0 0 6px rgba(220,38,38,0.35)' },
+                                                '70%':  { boxShadow: '0 0 0 10px rgba(220,38,38,0.12)' },
+                                                '100%': { boxShadow: '0 0 0 0 rgba(220,38,38,0.0)' },
+                                            },
+                                        }),
                                     }}
                                 >
                                     {/* REALISTIC SEATING FORMULA CHAIRS */}
@@ -912,13 +1161,16 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                                 width: '100%',
                                                 height: '100%',
                                                 borderRadius: isRound ? '50%' : (is3DMode ? 2 : 2.5),
-                                                border: `2px solid ${statusColor}`,
+                                                // Overdue: thicker dark-red border (industry standard visual cue)
+                                                border: isOverdue
+                                                    ? `2.5px solid #DC2626`
+                                                    : `2px solid ${statusColor}`,
                                                 background: is3DMode
-                                                    ? `linear-gradient(145deg, #FFFFFF 30%, ${alpha(statusColor, 0.06)} 100%)`
-                                                    : '#FFFFFF',
+                                                    ? `linear-gradient(145deg, #FFFFFF 30%, ${alpha(isOverdue ? '#DC2626' : statusColor, 0.06)} 100%)`
+                                                    : (isOverdue ? '#FFF5F5' : '#FFFFFF'),
                                                 boxShadow: isDragging
                                                     ? `${depth3D + 4}px ${depth3D + 8}px 28px rgba(0,0,0,0.28)`
-                                                    : boxShadow3D,
+                                                    : (isOverdue ? `${depth3D}px ${depth3D + 2}px 0 rgba(220,38,38,0.3), ${depth3D + 4}px ${depth3D + 8}px 18px rgba(220,38,38,0.15)` : boxShadow3D),
                                                 position: 'relative',
                                                 zIndex: 3,
                                                 display: 'flex',
@@ -942,8 +1194,10 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
                                                 <Box sx={{
                                                     width: 7, height: 7, borderRadius: '50%',
-                                                    bgcolor: statusColor,
-                                                    boxShadow: `0 0 0 1.5px #FFFFFF, 0 0 6px ${statusColor}`,
+                                                    bgcolor: isOverdue ? '#DC2626' : statusColor,
+                                                    boxShadow: isOverdue
+                                                        ? `0 0 0 1.5px #FFFFFF, 0 0 8px #DC2626`
+                                                        : `0 0 0 1.5px #FFFFFF, 0 0 6px ${statusColor}`,
                                                     flexShrink: 0,
                                                 }} />
                                                 <Typography sx={{ fontWeight: 900, fontSize: '0.88rem', color: '#0F172A', letterSpacing: -0.3, lineHeight: 1.1, textAlign: 'center' }}>
@@ -955,6 +1209,42 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                                 {table.capacity} seats
                                             </Typography>
 
+                                            {/* Overdue timer badge — prominent like Toast POS */}
+                                            {timerInfo && !isCustomerMode && (
+                                                <Chip
+                                                    label={timerInfo.text}
+                                                    size="small"
+                                                    sx={{
+                                                        height: 16,
+                                                        fontSize: '0.58rem',
+                                                        fontWeight: 900,
+                                                        mt: 0.3,
+                                                        bgcolor: timerInfo.color,
+                                                        color: '#FFFFFF',
+                                                        letterSpacing: 0,
+                                                        border: isOverdue ? '1px solid #B91C1C' : 'none',
+                                                    }}
+                                                />
+                                            )}
+
+                                            {/* Guest count badge — only when occupied and guestCount is set */}
+                                            {isOccupied && !isCustomerMode && table.currentOrder?.guestCount > 0 && (
+                                                <Chip
+                                                    label={`👥 ${table.currentOrder.guestCount}`}
+                                                    size="small"
+                                                    sx={{
+                                                        height: 15,
+                                                        fontSize: '0.56rem',
+                                                        fontWeight: 900,
+                                                        mt: 0.25,
+                                                        bgcolor: alpha('#6366F1', 0.12),
+                                                        color: '#4338CA',
+                                                        border: '1px solid rgba(99,102,241,0.3)',
+                                                        letterSpacing: 0,
+                                                    }}
+                                                />
+                                            )}
+
                                             {isSelectedByCustomer && (
                                                 <Chip label="Selected" size="small" color="secondary" sx={{ height: 16, fontSize: '0.6rem', fontWeight: 900, mt: 0.2 }} />
                                             )}
@@ -963,6 +1253,47 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                 </Box>
                             );
                         })}
+
+                        {/* Interactive Room Boundary Bottom Resizer Bar (Customize Mode) */}
+                        {isCustomizeMode && !isCustomerMode && (
+                            <Box sx={{
+                                position: 'absolute',
+                                top: dynamicCanvasHeight + 2,
+                                left: 20,
+                                width: 'calc(100% - 40px)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 1.5,
+                                py: 0.8,
+                                px: 2,
+                                borderRadius: 2.5,
+                                bgcolor: alpha('#1E293B', 0.92),
+                                color: '#FFFFFF',
+                                zIndex: 25,
+                                boxShadow: '0 6px 18px rgba(0,0,0,0.2)',
+                                border: '1.5px dashed #38BDF8',
+                                transition: 'top 0.2s ease',
+                            }}>
+                                <Typography variant="caption" fontWeight={800} sx={{ fontSize: '0.76rem', color: '#F8FAFC', display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                                    🧱 <strong>{formatSectionName(activeSection).toUpperCase()} ROOM WALL BOUNDARY</strong> ({Math.round(dynamicCanvasHeight)}px Height)
+                                </Typography>
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                    <Button size="small" variant="contained" onClick={() => setCustomRoomHeight(h => h + 100)}
+                                        sx={{ height: 26, fontSize: '0.7rem', fontWeight: 800, bgcolor: '#38BDF8', color: '#0F172A', '&:hover': { bgcolor: '#0284C7', color: '#FFF' }, textTransform: 'none', borderRadius: 2 }}>
+                                        + Extend Wall (+100px)
+                                    </Button>
+                                    <Button size="small" variant="outlined" onClick={() => setCustomRoomHeight(h => Math.max(450, h - 100))}
+                                        sx={{ height: 26, fontSize: '0.7rem', fontWeight: 800, color: '#F1F5F9', borderColor: '#64748B', '&:hover': { borderColor: '#94A3B8' }, textTransform: 'none', borderRadius: 2 }}>
+                                        - Shrink Wall (-100px)
+                                    </Button>
+                                    <Button size="small" variant="outlined" onClick={() => setCustomRoomHeight(660)}
+                                        sx={{ height: 26, fontSize: '0.7rem', fontWeight: 800, color: '#34D399', borderColor: '#059669', '&:hover': { bgcolor: alpha('#10B981', 0.2) }, textTransform: 'none', borderRadius: 2 }}>
+                                        ⚡ Auto-Fit
+                                    </Button>
+                                </Stack>
+                            </Box>
+                        )}
                     </Box>
                 )}
             </Paper>
@@ -1057,6 +1388,76 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                     ].filter(Boolean)}
                 </Menu>
             )}
+
+            {/* ── ARCHITECTURAL LANDMARK CONTEXT MENU ── */}
+            <Menu
+                open={elementContextMenu !== null}
+                onClose={() => setElementContextMenu(null)}
+                anchorReference="anchorPosition"
+                anchorPosition={elementContextMenu ? { top: elementContextMenu.mouseY, left: elementContextMenu.mouseX } : undefined}
+            >
+                <MenuItem onClick={() => {
+                    if (elementContextMenu?.element) {
+                        setDeleteElementConfirm({ id: elementContextMenu.element._id, label: elementContextMenu.element.label });
+                    }
+                    setElementContextMenu(null);
+                }}>
+                    <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
+                    <ListItemText primary="Delete Landmark" primaryTypographyProps={{ color: 'error.main', fontWeight: 'bold' }} />
+                </MenuItem>
+            </Menu>
+
+            {/* ── LANDMARK DELETE CONFIRMATION DIALOG ── */}
+            <Dialog
+                open={Boolean(deleteElementConfirm)}
+                onClose={() => setDeleteElementConfirm(null)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+            >
+                <DialogTitle sx={{ m: 0, p: 2, position: 'relative', fontWeight: 900 }}>
+                    Delete Floor Element
+                    <IconButton
+                        onClick={() => setDeleteElementConfirm(null)}
+                        size="small"
+                        sx={{ position: 'absolute', right: 16, top: 16 }}
+                    >
+                        <ClearIcon fontSize="small" />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1">
+                        Are you sure you want to delete <strong>{deleteElementConfirm?.label}</strong>?
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        This element will be permanently removed from the floor layout.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 2, px: 3 }}>
+                    <Button
+                        onClick={() => setDeleteElementConfirm(null)}
+                        variant="outlined"
+                        fullWidth
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800 }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={async () => {
+                            if (deleteElementConfirm) {
+                                await handleDeleteLandmarkElement(deleteElementConfirm.id, deleteElementConfirm.label);
+                                setDeleteElementConfirm(null);
+                            }
+                        }}
+                        variant="contained"
+                        color="error"
+                        fullWidth
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800 }}
+                    >
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* ── LIVE OCCUPIED & COMMUNAL TABLE DETAILS MODAL ── */}
             <Dialog
@@ -1153,14 +1554,23 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                                     {customerName}
                                                 </Typography>
                                             </Box>
-                                            <Chip
-                                                icon={<TimeIcon sx={{ fontSize: 14 }} />}
-                                                label={formatSeatedDuration(seatedTimeMin)}
-                                                size="small"
-                                                variant="outlined"
-                                                color={isOverdue ? 'error' : seatedTimeMin > 60 ? 'warning' : 'default'}
-                                                sx={{ fontWeight: 800, fontSize: '0.72rem' }}
-                                            />
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                {order?.guestCount > 0 && (
+                                                    <Chip
+                                                        label={`👥 ${order.guestCount} Guests`}
+                                                        size="small"
+                                                        sx={{ fontWeight: 800, fontSize: '0.72rem', bgcolor: alpha('#6366F1', 0.1), color: '#4338CA', border: '1px solid rgba(99,102,241,0.25)' }}
+                                                    />
+                                                )}
+                                                <Chip
+                                                    icon={<TimeIcon sx={{ fontSize: 14 }} />}
+                                                    label={formatSeatedDuration(seatedTimeMin)}
+                                                    size="small"
+                                                    variant="outlined"
+                                                    color={isOverdue ? 'error' : seatedTimeMin > 60 ? 'warning' : 'default'}
+                                                    sx={{ fontWeight: 800, fontSize: '0.72rem' }}
+                                                />
+                                            </Box>
                                         </Box>
 
                                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

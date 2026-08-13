@@ -88,13 +88,13 @@ const SubscriptionStatus: React.FC = () => {
                 }}
             >
                 <Chip label={statusText} color={chipColor} size="small" sx={{ fontWeight: 600 }} />
-                {currentPlan?.name && statusText !== currentPlan.name && (
+                {currentPlan?.name && statusText.toLowerCase() !== currentPlan.name.toLowerCase() && (
                     <Typography
                         variant="caption"
                         color="text.secondary"
-                        sx={{ ml: 0.5, display: { xs: 'none', sm: 'block' } }}
+                        sx={{ ml: 0.5, display: { xs: 'none', sm: 'block' }, textTransform: 'capitalize', fontWeight: 600 }}
                     >
-                        {currentPlan.name}
+                        {currentPlan.name.replace(/_/g, ' ')}
                     </Typography>
                 )}
                 <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5, ml: 1 }}>

@@ -707,6 +707,19 @@ const GuestPOSPage: React.FC = () => {
 
     const SuccessData = () => (
         <Dialog open={!!successOrderNumber} fullWidth maxWidth="xs">
+            <IconButton
+                aria-label="close"
+                onClick={() => { setSuccessOrderNumber(null); setSuccessTokenNumber(null); }}
+                sx={{
+                    position: 'absolute',
+                    right: 12,
+                    top: 12,
+                    color: (theme) => theme.palette.grey[500],
+                    zIndex: 10,
+                }}
+            >
+                <CloseIcon />
+            </IconButton>
             <DialogContent sx={{
                 display: 'flex',
                 flexDirection: 'column',

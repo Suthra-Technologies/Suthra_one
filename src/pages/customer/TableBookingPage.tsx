@@ -410,6 +410,27 @@ const TableBookingPage = () => {
                                             required
                                             sx={{ '& .MuiInputLabel-asterisk': { color: 'error.main' } }}
                                         />
+                                        {/* Dynamic Large Party Contact Card */}
+                                        <Paper
+                                            variant="outlined"
+                                            sx={{
+                                                mt: 1.5,
+                                                p: 2,
+                                                borderRadius: 2.5,
+                                                bgcolor: '#FFFDF9',
+                                                borderColor: alpha('#B45309', 0.3),
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 1
+                                            }}
+                                        >
+                                            <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#8B4A29', display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                                                🎉 Planning a Large Party or Special Event (20+ Guests)?
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                                                For large group celebrations, banquets, or custom hall seating, please contact our Events Coordinator directly for dedicated table arrangements and group dining packages.
+                                            </Typography>
+                                        </Paper>
                                     </Grid>
                                     <Grid size={{ xs: 12 }}>
                                         <FormControl fullWidth>

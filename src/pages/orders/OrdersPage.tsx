@@ -276,8 +276,16 @@ const OrdersPage = () => {
       await ordersAPI.updateStatus(orderId, 'confirmed');
       toast.success('Order accepted');
       handleOrderRefresh(orderId);
-    } catch {
-      toast.error('Failed to accept order');
+    } catch (error: any) {
+      const backendMsg: string = error?.response?.data?.message || '';
+      const isPreOrderLockError =
+        error?.response?.status === 400 &&
+        backendMsg.toLowerCase().includes('pre-order');
+      toast.error(
+        isPreOrderLockError
+          ? '⏰ This pre-order is locked until 1 hour before its scheduled time'
+          : backendMsg || 'Failed to accept order'
+      );
     } finally {
       setIsProcessing(false);
     }
