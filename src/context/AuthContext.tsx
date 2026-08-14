@@ -3,6 +3,7 @@ import { jwtDecode } from 'jwt-decode';
 import api from '../services/api';
 import { socketService } from '../services/socket.service';
 import { getTenantSlugFromHostname, redirectToTenant } from '../utils/tenant.utils';
+import { planFeaturesOf, resolveLandingPath } from '../utils/landingPath';
 import { toast } from 'react-hot-toast';
 
 // JWT payload shape
@@ -278,9 +279,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         }
 
         // Reload into the new subdomain, transferring the session via a one-time
-        // code (no token in the URL). Accountant has no dashboard access, so it
-        // lands on Reports instead.
-        const landingPath = userObj.roles?.[0] === 'accountant' ? '/reports' : '/dashboard';
+        // code (no token in the URL). Land on the first page this role can open
+        // under the new tenant's plan — not every role has Dashboard.
+        const landingPath = resolveLandingPath(userObj.roles?.[0], planFeaturesOf(userObj));
         await redirectToTenant(slug, landingPath, newToken);
       }
     } catch (error: any) {

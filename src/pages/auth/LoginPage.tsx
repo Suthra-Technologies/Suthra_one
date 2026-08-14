@@ -38,6 +38,7 @@ import { useActiveTenant } from '../../hooks/useActiveTenant';
 import { toast } from 'react-hot-toast';
 import logo from '../../assets/images/icons/logo.jpeg';
 import { getTenantSlugFromHostname, redirectToTenant } from '../../utils/tenant.utils';
+import { planFeaturesOf, resolveLandingPath } from '../../utils/landingPath';
 
 
 const LoginPage: React.FC = () => {
@@ -63,7 +64,7 @@ const LoginPage: React.FC = () => {
 
   // Company picker: shown after login when an admin belongs to >1 company.
   const [companyChoices, setCompanyChoices] = useState<Array<{ slug: string; name: string }> | null>(null);
-  const [pendingLogin, setPendingLogin] = useState<{ slug?: string; token?: string } | null>(null);
+  const [pendingLogin, setPendingLogin] = useState<{ slug?: string; token?: string; user?: any } | null>(null);
   const [switching, setSwitching] = useState(false);
   
   // Dynamic Tenant Branding
@@ -198,7 +199,7 @@ const LoginPage: React.FC = () => {
         if (result.deferred) {
           const choices = result.availableTenants || [];
           console.log('LoginPage: Admin has multiple companies, showing picker', choices);
-          setPendingLogin({ slug: targetSlug, token: result.token });
+          setPendingLogin({ slug: targetSlug, token: result.token, user: result.user });
           setCompanyChoices(choices);
           setLoading(false);
           return;
@@ -236,22 +237,16 @@ const LoginPage: React.FC = () => {
             } else {
               await redirectToTenant(targetSlug, '/customer/order', result.token);
             }
-          } else if (userRole === 'accountant') {
-            // Accountant has no dashboard access — land on Reports instead.
-            console.log('LoginPage: Accountant detected. Navigating to /reports');
-            if (isSubdomain) {
-              setTimeout(() => navigate('/reports', { replace: true }), 100);
-            } else {
-              await redirectToTenant(targetSlug, '/reports', result.token);
-            }
           } else {
-            console.log('LoginPage: Staff/Admin detected. isSubdomain:', isSubdomain);
+            // Not every role/plan includes Dashboard, so land on the first page
+            // this user can actually open instead of bouncing to /unauthorized.
+            const landingPath = resolveLandingPath(userRole, planFeaturesOf(result.user));
+            console.log('LoginPage: Staff/Admin detected. Landing on', landingPath, 'isSubdomain:', isSubdomain);
 
             if (isSubdomain) {
-              console.log(`LoginPage: Navigating to /dashboard`);
-              setTimeout(() => navigate('/dashboard', { replace: true }), 100);
+              setTimeout(() => navigate(landingPath, { replace: true }), 100);
             } else {
-              await redirectToTenant(targetSlug, '/dashboard', result.token);
+              await redirectToTenant(targetSlug, landingPath, result.token);
             }
           }
         } else {
@@ -281,6 +276,9 @@ const LoginPage: React.FC = () => {
     setApiError('');
     try {
       let tokenForCompany = pendingLogin?.token;
+      // Role and plan can differ per restaurant, so land using the picked
+      // restaurant's own user payload rather than the login-default one.
+      let userForCompany = pendingLogin?.user;
 
       // If they picked a restaurant other than the login-default, re-scope the token.
       if (!pendingLogin?.slug || slug !== pendingLogin.slug) {
@@ -289,9 +287,14 @@ const LoginPage: React.FC = () => {
           { headers: { Authorization: `Bearer ${pendingLogin?.token}` } },
         );
         tokenForCompany = res.data?.token || tokenForCompany;
+        userForCompany = res.data?.user || userForCompany;
       }
 
-      await redirectToTenant(slug, '/dashboard', tokenForCompany);
+      const landingPath = resolveLandingPath(
+        userForCompany?.role || userForCompany?.roles?.[0],
+        planFeaturesOf(userForCompany),
+      );
+      await redirectToTenant(slug, landingPath, tokenForCompany);
     } catch (error: any) {
       console.error('Restaurant select error:', error);
       setApiError(error?.response?.data?.message || 'Failed to open the selected restaurant. Please try again.');
