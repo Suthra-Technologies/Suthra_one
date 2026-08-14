@@ -11,6 +11,7 @@ import LoginPage from './pages/auth/LoginPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import { TenantRoutes } from './routes/TenantRoutes';
 import { getTenantSlugFromHostname } from './utils/tenant.utils';
+import { planFeaturesOf, resolveLandingPath } from './utils/landingPath';
 
 import HomePage from './pages/public/HomePage';
 import PrivacyPolicyPage from './pages/public/PrivacyPolicyPage';
@@ -134,6 +135,15 @@ const ThemedAppContent: React.FC = () => {
 
 const AppPlugin = registerPlugin<any>('App');
 
+/** The back handler runs outside AuthContext, so read the persisted user. */
+const readStoredUser = (): any => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || 'null');
+  } catch {
+    return null;
+  }
+};
+
 const MobileBackHandler: React.FC = () => {
   const location = useLocation();
   const isNative = Capacitor.isNativePlatform();
@@ -147,7 +157,13 @@ const MobileBackHandler: React.FC = () => {
         const currentPath = location.pathname;
         const storedTenantSlug = localStorage.getItem('tenantSlug');
         const isAuthScreen = ['/login', '/reset-password', '/register', '/customer-register'].some((path) => currentPath === path || currentPath.startsWith(`${path}/`));
-        const defaultPath = storedTenantSlug ? `/${storedTenantSlug}/dashboard` : '/dashboard';
+        // Home is whatever this role can actually open, not always Dashboard.
+        const storedUser = readStoredUser();
+        const home = resolveLandingPath(
+          localStorage.getItem('activeRole'),
+          planFeaturesOf(storedUser),
+        );
+        const defaultPath = storedTenantSlug ? `/${storedTenantSlug}${home}` : home;
 
         // If we have browser history, go back within app.
         if (canGoBack && !isAuthScreen) {
@@ -187,9 +203,14 @@ const AppRoutes: React.FC = () => {
   const role = activeRole || (typeof window !== 'undefined' ? localStorage.getItem('activeRole') : null);
   const isSuperAdmin = role === 'superadmin';
 
+  // Land on the first page this role can open under the tenant's plan —
+  // Dashboard is not available to every role, and gating it by plan is fine,
+  // but sending the user there regardless produced an /unauthorized bounce.
+  const landingPath = resolveLandingPath(role, planFeaturesOf(user));
+
   const defaultAuthedPath = isSuperAdmin
     ? '/superadmin'
-    : (hostnameSlug ? '/dashboard' : (storedTenantSlug ? `/${storedTenantSlug}/dashboard` : '/dashboard'));
+    : (hostnameSlug ? landingPath : (storedTenantSlug ? `/${storedTenantSlug}${landingPath}` : landingPath));
 
   const hasStoredSession = isAuthenticated || !!storedToken;
   console.log('AppRoutes: Rendering. Token present:', hasStoredSession, 'Role:', role, 'Tenant:', storedTenantSlug, 'AuthedPath:', defaultAuthedPath);
@@ -257,6 +278,8 @@ const AppRoutes: React.FC = () => {
       )}
 
       {/* Fallback for old routes without slug - redirect to login or default authed path */}
+      {/* No slug in the URL. defaultAuthedPath resolves to a page this user can
+          open; only fall through to /unauthorized if that would loop back here. */}
       <Route path="/dashboard" element={<Navigate to={hasStoredSession ? (defaultAuthedPath === '/dashboard' ? '/unauthorized' : defaultAuthedPath) : '/login'} replace />} />
       <Route path="/users" element={<Navigate to={hasStoredSession ? defaultAuthedPath : '/login'} replace />} />
       <Route path="/unauthorized" element={<Unauthorized />} />

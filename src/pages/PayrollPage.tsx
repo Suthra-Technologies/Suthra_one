@@ -22,6 +22,7 @@ import {
     Button,
     Card,
     CardContent,
+    Checkbox,
     Chip,
     CircularProgress,
     Dialog,
@@ -30,10 +31,12 @@ import {
     DialogTitle,
     Divider,
     FormControl,
+    FormHelperText,
     Grid,
     IconButton,
     InputAdornment,
     InputLabel,
+    ListItemText,
     MenuItem,
     Pagination,
     Paper,
@@ -99,6 +102,70 @@ const DAY_LABELS: Record<string, string> = {
     weekly_off: '–',
 };
 
+/**
+ * Job titles only — letters, digits, spaces and the punctuation real titles
+ * use. Keeps URLs and markup out of the field. Mirrors the server rule in
+ * payroll.service.ts.
+ */
+const DESIGNATION_MAX = 60;
+const DESIGNATION_PATTERN = /^[\p{L}\p{M}0-9 &'./-]*$/u;
+/** Dots are legal in titles ("Asst. Manager"), so domains need their own check. */
+const DESIGNATION_URL_PATTERN =
+    /(^|\s)(https?:|www\.|[\p{L}0-9-]+\.(com|net|org|io|co|in|us|uk|info|biz|xyz|dev|app)\b)/iu;
+
+const designationError = (value: string): string => {
+    const trimmed = (value || '').trim();
+    if (trimmed.length > DESIGNATION_MAX) return `Maximum ${DESIGNATION_MAX} characters`;
+    if (!DESIGNATION_PATTERN.test(trimmed)) return "Only letters, numbers, spaces and & ' . / -";
+    if (DESIGNATION_URL_PATTERN.test(trimmed)) return 'Cannot contain a web address';
+    return '';
+};
+
+/**
+ * Numeric inputs are held as strings while the dialog is open so the field can
+ * actually be emptied. Binding them straight to a number makes a cleared box
+ * snap back to "0", which then sits in front of whatever is typed next ("05").
+ */
+const numText = (v: any): string => (v === null || v === undefined || v === '' ? '' : String(v));
+const numValue = (v: string): number => (v === '' ? 0 : Number(v));
+
+/** Blocks "-", "e"/"E" and "+" — type=number alone lets all of them through. */
+const blockNonNumericKeys = (e: React.KeyboardEvent) => {
+    if (['-', 'e', 'E', '+'].includes(e.key)) e.preventDefault();
+};
+
+/**
+ * Keeps the leading numeric run and drops the rest, so a stray character ends
+ * the value instead of being spliced out. Splicing would silently turn "22.9"
+ * into "229" in an integer field — a different number, not a rejected one.
+ */
+const sanitizeNumText = (raw: string, allowDecimal: boolean): string => {
+    const match = raw.trimStart().match(allowDecimal ? /^\d*\.?\d*/ : /^\d*/);
+    return match ? match[0] : '';
+};
+
+/** US bank account numbers are digits only, typically 4–17 long. */
+const ACCOUNT_MIN = 4;
+const ACCOUNT_MAX = 17;
+const accountNumberError = (value: string): string => {
+    const v = (value || '').trim();
+    if (!v) return '';
+    if (!/^\d+$/.test(v)) return 'Digits only — no letters or special characters';
+    if (v.length < ACCOUNT_MIN) return `Must be at least ${ACCOUNT_MIN} digits`;
+    if (v.length > ACCOUNT_MAX) return `Must be ${ACCOUNT_MAX} digits or fewer`;
+    return '';
+};
+
+const routingNumberError = (value: string): string => {
+    const v = (value || '').trim();
+    if (!v) return '';
+    if (!/^\d{9}$/.test(v)) return 'Must be exactly 9 digits';
+    return '';
+};
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 const emptyProfile = {
     user: '',
     designation: '',
@@ -147,8 +214,50 @@ const PayrollPage: React.FC = () => {
     const [staffUsers, setStaffUsers] = useState<any[]>([]);
     const [saving, setSaving] = useState(false);
 
+    // ----- profile form validation -----
+    const staffError = !editingId && !form.user ? 'Select a staff member' : '';
+    const designationIssue = designationError(form.designation || '');
+    const salaryError = numValue(numText(form.basicSalary)) <= 0 ? 'Enter an amount greater than 0' : '';
+    const shiftHoursValue = numValue(numText(form.shiftHours));
+    const shiftHoursError =
+        shiftHoursValue <= 0 ? 'Enter hours greater than 0'
+            : shiftHoursValue > 24 ? 'Cannot exceed 24 hours'
+                : '';
+    const workingDaysValue = numValue(numText(form.monthlyWorkingDays));
+    const workingDaysError = workingDaysValue > 31 ? 'Cannot exceed 31 days' : '';
+    const accountError = accountNumberError(form.bank?.accountNumber || '');
+    const routingError = routingNumberError(form.bank?.routingNumber || '');
+
+    const formInvalid = !!(
+        staffError || designationIssue || salaryError ||
+        shiftHoursError || workingDaysError || accountError || routingError
+    );
+
     const [detail, setDetail] = useState<any>(null);
     const [detailTab, setDetailTab] = useState(0);
+
+    /**
+     * Per-action busy flags. Several buttons only open their dialog after an
+     * API round-trip, so without this the page looks frozen and users click
+     * again. Keyed by action name — row-level actions append the row id.
+     */
+    const [busy, setBusy] = useState<Record<string, boolean>>({});
+    const isBusy = (key: string) => !!busy[key];
+    const runBusy = useCallback(async (key: string, fn: () => Promise<void>) => {
+        setBusy((prev) => {
+            if (prev[key]) return prev;
+            return { ...prev, [key]: true };
+        });
+        try {
+            await fn();
+        } finally {
+            setBusy((prev) => {
+                const next = { ...prev };
+                delete next[key];
+                return next;
+            });
+        }
+    }, []);
 
     const [processTarget, setProcessTarget] = useState<any>(null);
     const [processForm, setProcessForm] = useState({ otherDeductions: 0, advanceRecovered: 0, status: 'pending', note: '' });
@@ -236,23 +345,24 @@ const PayrollPage: React.FC = () => {
     // Profile actions
     // ------------------------------------------------------------------
 
-    const openCreate = async () => {
-        setEditingId(null);
-        setForm(emptyProfile);
-        try {
-            const res = await usersAPI.getUsers({ limit: 200 });
-            const list = res.data?.data || res.data?.users || res.data || [];
-            const covered = new Set(profiles.map((p: any) => String(p.user?._id)));
-            setStaffUsers(
-                (Array.isArray(list) ? list : []).filter(
-                    (u: any) => !u.roles?.includes('customer') && !covered.has(String(u._id)),
-                ),
-            );
-        } catch {
-            setStaffUsers([]);
-        }
-        setFormOpen(true);
-    };
+    const openCreate = () =>
+        runBusy('create', async () => {
+            setEditingId(null);
+            setForm(emptyProfile);
+            try {
+                const res = await usersAPI.getUsers({ limit: 200 });
+                const list = res.data?.data || res.data?.users || res.data || [];
+                const covered = new Set(profiles.map((p: any) => String(p.user?._id)));
+                setStaffUsers(
+                    (Array.isArray(list) ? list : []).filter(
+                        (u: any) => !u.roles?.includes('customer') && !covered.has(String(u._id)),
+                    ),
+                );
+            } catch {
+                setStaffUsers([]);
+            }
+            setFormOpen(true);
+        });
 
     const openEdit = (profile: any) => {
         setEditingId(profile._id);
@@ -267,17 +377,36 @@ const PayrollPage: React.FC = () => {
     };
 
     const saveProfile = async () => {
-        if (!editingId && !form.user) {
-            toast.error('Select a staff member');
+        const firstIssue =
+            staffError ||
+            (designationIssue && `Designation: ${designationIssue}`) ||
+            (salaryError && `Basic Salary: ${salaryError}`) ||
+            (shiftHoursError && `Full Shift Hours: ${shiftHoursError}`) ||
+            (workingDaysError && `Paid Days / Month: ${workingDaysError}`) ||
+            (accountError && `Account Number: ${accountError}`) ||
+            (routingError && `Routing Number: ${routingError}`);
+        if (firstIssue) {
+            toast.error(firstIssue);
             return;
         }
+        // The numeric inputs hold strings while being typed; coerce before send.
+        const payload = {
+            ...form,
+            designation: (form.designation || '').trim().replace(/\s+/g, ' '),
+            basicSalary: numValue(numText(form.basicSalary)),
+            bonus: numValue(numText(form.bonus)),
+            allowances: numValue(numText(form.allowances)),
+            monthlyWorkingDays: numValue(numText(form.monthlyWorkingDays)),
+            shiftHours: numValue(numText(form.shiftHours)),
+        };
+
         try {
             setSaving(true);
             if (editingId) {
-                await payrollAPI.updateProfile(editingId, form);
+                await payrollAPI.updateProfile(editingId, payload);
                 toast.success('Profile updated');
             } else {
-                await payrollAPI.createProfile(form);
+                await payrollAPI.createProfile(payload);
                 toast.success('Payroll profile created');
             }
             setFormOpen(false);
@@ -289,41 +418,46 @@ const PayrollPage: React.FC = () => {
         }
     };
 
-    const syncUsers = async () => {
-        try {
-            setLoading(true);
-            const res = await payrollAPI.syncUsers();
-            toast.success(`Created ${res.data?.created ?? 0} profile(s)`);
-            loadProfiles();
-        } catch (err: any) {
-            toast.error(err?.response?.data?.message || 'Sync failed');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const syncUsers = () =>
+        runBusy('sync', async () => {
+            try {
+                setLoading(true);
+                const res = await payrollAPI.syncUsers();
+                toast.success(`Created ${res.data?.created ?? 0} profile(s)`);
+                await loadProfiles();
+            } catch (err: any) {
+                toast.error(err?.response?.data?.message || 'Sync failed');
+                setLoading(false);
+            }
+        });
 
     const terminate = async (profile: any) => {
         if (!window.confirm(`Mark ${profile.user?.firstName || profile.employeeCode} as terminated?`)) return;
-        try {
-            await payrollAPI.deactivateProfile(profile._id, { status: 'terminated' });
-            toast.success('Employee marked terminated');
-            loadProfiles();
-        } catch (err: any) {
-            toast.error(err?.response?.data?.message || 'Failed to update');
-        }
+        return runBusy(`terminate:${profile._id}`, async () => {
+            try {
+                await payrollAPI.deactivateProfile(profile._id, { status: 'terminated' });
+                toast.success('Employee marked terminated');
+                await loadProfiles();
+            } catch (err: any) {
+                toast.error(err?.response?.data?.message || 'Failed to update');
+            }
+        });
     };
 
-    const openDetail = async (profile: any) => {
-        try {
-            const res = await payrollAPI.getProfile(profile._id);
-            setDetail(res.data);
-            setDetailTab(0);
-            setMarkForm({ date: todayKey, status: 'present' });
-            loadAttendance(profile._id);
-        } catch (err: any) {
-            toast.error(err?.response?.data?.message || 'Failed to load employee');
-        }
-    };
+    const openDetail = async (profile: any, keepTab = false) =>
+        runBusy(`detail:${profile._id}`, async () => {
+            try {
+                const res = await payrollAPI.getProfile(profile._id);
+                setDetail(res.data);
+                if (!keepTab) {
+                    setDetailTab(0);
+                    setMarkForm({ date: todayKey, status: 'present' });
+                }
+                loadAttendance(profile._id);
+            } catch (err: any) {
+                toast.error(err?.response?.data?.message || 'Failed to load employee');
+            }
+        });
 
     // ------------------------------------------------------------------
     // Payroll actions
@@ -365,35 +499,37 @@ const PayrollPage: React.FC = () => {
 
     const processAll = async () => {
         if (!window.confirm(`Process salary for all active staff for ${MONTHS[month - 1]} ${year}?`)) return;
-        try {
-            setLoading(true);
-            const res = await payrollAPI.processAll({ month, year });
-            const { processed = 0, skipped = 0, failed = 0 } = res.data || {};
-            toast.success(`Processed ${processed}, skipped ${skipped}, failed ${failed}`);
-            loadSheet();
-        } catch (err: any) {
-            toast.error(err?.response?.data?.message || 'Bulk processing failed');
-        } finally {
-            setLoading(false);
-        }
+        return runBusy('processAll', async () => {
+            try {
+                setLoading(true);
+                const res = await payrollAPI.processAll({ month, year });
+                const { processed = 0, skipped = 0, failed = 0 } = res.data || {};
+                toast.success(`Processed ${processed}, skipped ${skipped}, failed ${failed}`);
+                await loadSheet();
+            } catch (err: any) {
+                toast.error(err?.response?.data?.message || 'Bulk processing failed');
+                setLoading(false);
+            }
+        });
     };
 
-    const changeStatus = async (row: any, status: string) => {
-        try {
-            const res = await payrollAPI.updateSalaryStatus(row.profileId, { month, year, status });
-            const posting = res.data?.expensePosting;
-            if (status === 'paid' && posting?.posted) {
-                toast.success(`Marked paid · logged as expense ${posting.expenseNumber}`);
-            } else if (status === 'paid' && posting?.reason === 'already posted') {
-                toast.success('Marked paid · expense already logged');
-            } else {
-                toast.success(`Marked ${status}`);
+    const changeStatus = async (row: any, status: string) =>
+        runBusy(`status:${row.profileId}`, async () => {
+            try {
+                const res = await payrollAPI.updateSalaryStatus(row.profileId, { month, year, status });
+                const posting = res.data?.expensePosting;
+                if (status === 'paid' && posting?.posted) {
+                    toast.success(`Marked paid · logged as expense ${posting.expenseNumber}`);
+                } else if (status === 'paid' && posting?.reason === 'already posted') {
+                    toast.success('Marked paid · expense already logged');
+                } else {
+                    toast.success(`Marked ${status}`);
+                }
+                await loadSheet();
+            } catch (err: any) {
+                toast.error(err?.response?.data?.message || 'Failed to update status');
             }
-            loadSheet();
-        } catch (err: any) {
-            toast.error(err?.response?.data?.message || 'Failed to update status');
-        }
-    };
+        });
 
     /**
      * Single entry point for the status column. Picking a status applies it
@@ -409,38 +545,39 @@ const PayrollPage: React.FC = () => {
         changeStatus(row, value);
     };
 
-    const backfillExpenses = async () => {
-        try {
-            setLoading(true);
-            const res = await payrollAPI.backfillExpenses();
-            const { posted = 0, failed = 0 } = res.data || {};
-            toast.success(
-                posted
-                    ? `Posted ${posted} salary expense(s)${failed ? `, ${failed} failed` : ''}`
-                    : 'All paid salaries are already in Expenses',
-            );
-            loadSheet();
-        } catch (err: any) {
-            toast.error(err?.response?.data?.message || 'Failed to sync expenses');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const backfillExpenses = () =>
+        runBusy('backfill', async () => {
+            try {
+                setLoading(true);
+                const res = await payrollAPI.backfillExpenses();
+                const { posted = 0, failed = 0 } = res.data || {};
+                toast.success(
+                    posted
+                        ? `Posted ${posted} salary expense(s)${failed ? `, ${failed} failed` : ''}`
+                        : 'All paid salaries are already in Expenses',
+                );
+                await loadSheet();
+            } catch (err: any) {
+                toast.error(err?.response?.data?.message || 'Failed to sync expenses');
+                setLoading(false);
+            }
+        });
 
-    const exportPayroll = async () => {
-        try {
-            const res = await payrollAPI.exportPayroll(month, year);
-            const url = window.URL.createObjectURL(new Blob([res.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `payroll-${month}-${year}.xlsx`;
-            link.click();
-            window.URL.revokeObjectURL(url);
-            toast.success('Payroll exported');
-        } catch {
-            toast.error('Export failed');
-        }
-    };
+    const exportPayroll = () =>
+        runBusy('export', async () => {
+            try {
+                const res = await payrollAPI.exportPayroll(month, year);
+                const url = window.URL.createObjectURL(new Blob([res.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `payroll-${month}-${year}.xlsx`;
+                link.click();
+                window.URL.revokeObjectURL(url);
+                toast.success('Payroll exported');
+            } catch {
+                toast.error('Export failed');
+            }
+        });
 
     const submitAdvance = async () => {
         if (!advanceTarget || advanceForm.amount <= 0) {
@@ -453,7 +590,7 @@ const PayrollPage: React.FC = () => {
             toast.success('Advance recorded');
             setAdvanceTarget(null);
             setAdvanceForm({ amount: 0, reason: '' });
-            if (detail) openDetail(detail);
+            if (detail) openDetail(detail, true);
         } catch (err: any) {
             toast.error(err?.response?.data?.message || 'Failed to record advance');
         } finally {
@@ -472,7 +609,7 @@ const PayrollPage: React.FC = () => {
             toast.success('Leave marked');
             setLeaveTarget(null);
             setLeaveForm({ date: '', type: 'paid', reason: '' });
-            if (detail) openDetail(detail);
+            if (detail) openDetail(detail, true);
         } catch (err: any) {
             toast.error(err?.response?.data?.message || 'Failed to mark leave');
         } finally {
@@ -510,20 +647,21 @@ const PayrollPage: React.FC = () => {
         }
     };
 
-    const openDaily = async (date = dailyDate) => {
-        setDailyOpen(true);
-        setDailyDate(date);
-        try {
-            setRosterLoading(true);
-            const res = await payrollAPI.getDailyRoster(date);
-            setRoster(res.data?.data || []);
-        } catch (err: any) {
-            toast.error(err?.response?.data?.message || 'Failed to load roster');
-            setRoster([]);
-        } finally {
-            setRosterLoading(false);
-        }
-    };
+    const openDaily = (date = dailyDate) =>
+        runBusy('daily', async () => {
+            setDailyOpen(true);
+            setDailyDate(date);
+            try {
+                setRosterLoading(true);
+                const res = await payrollAPI.getDailyRoster(date);
+                setRoster(res.data?.data || []);
+            } catch (err: any) {
+                toast.error(err?.response?.data?.message || 'Failed to load roster');
+                setRoster([]);
+            } finally {
+                setRosterLoading(false);
+            }
+        });
 
     const saveDaily = async () => {
         try {
@@ -603,16 +741,36 @@ const PayrollPage: React.FC = () => {
                     direction="row" spacing={1} flexWrap="wrap" useFlexGap
                     sx={{ '& > *': { flex: { xs: '1 1 calc(50% - 4px)', sm: '0 0 auto' } } }}
                 >
-                    <Button startIcon={<TodayIcon />} onClick={() => openDaily(todayKey)} variant="outlined" size="small">
+                    <Button
+                        startIcon={isBusy('daily') ? <CircularProgress size={16} color="inherit" /> : <TodayIcon />}
+                        onClick={() => openDaily(todayKey)}
+                        disabled={isBusy('daily')}
+                        variant="outlined" size="small"
+                    >
                         Daily{!isMobile && ' Attendance'}
                     </Button>
-                    <Button startIcon={<SyncIcon />} onClick={syncUsers} variant="outlined" size="small">
-                        Sync Staff
+                    <Button
+                        startIcon={isBusy('sync') ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+                        onClick={syncUsers}
+                        disabled={isBusy('sync')}
+                        variant="outlined" size="small"
+                    >
+                        {isBusy('sync') ? 'Syncing…' : 'Sync Staff'}
                     </Button>
-                    <Button startIcon={<DownloadIcon />} onClick={exportPayroll} variant="outlined" size="small">
-                        Export
+                    <Button
+                        startIcon={isBusy('export') ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+                        onClick={exportPayroll}
+                        disabled={isBusy('export')}
+                        variant="outlined" size="small"
+                    >
+                        {isBusy('export') ? 'Exporting…' : 'Export'}
                     </Button>
-                    <Button startIcon={<AddIcon />} onClick={openCreate} variant="contained" size="small">
+                    <Button
+                        startIcon={isBusy('create') ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
+                        onClick={openCreate}
+                        disabled={isBusy('create')}
+                        variant="contained" size="small"
+                    >
                         Add{!isMobile && ' Employee'}
                     </Button>
                 </Stack>
@@ -688,11 +846,19 @@ const PayrollPage: React.FC = () => {
                                     </Typography>
 
                                     <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                                        <Button size="small" fullWidth variant="outlined" onClick={() => openDetail(p)}>View</Button>
+                                        <Button
+                                            size="small" fullWidth variant="outlined"
+                                            disabled={isBusy(`detail:${p._id}`)}
+                                            startIcon={isBusy(`detail:${p._id}`) ? <CircularProgress size={14} color="inherit" /> : undefined}
+                                            onClick={() => openDetail(p)}
+                                        >
+                                            View
+                                        </Button>
                                         <Button size="small" fullWidth variant="outlined" onClick={() => openEdit(p)}>Edit</Button>
                                         <Button
                                             size="small" fullWidth color="error" variant="outlined"
-                                            disabled={p.status === 'terminated'}
+                                            disabled={p.status === 'terminated' || isBusy(`terminate:${p._id}`)}
+                                            startIcon={isBusy(`terminate:${p._id}`) ? <CircularProgress size={14} color="inherit" /> : undefined}
                                             onClick={() => terminate(p)}
                                         >
                                             End
@@ -749,7 +915,17 @@ const PayrollPage: React.FC = () => {
                                             </TableCell>
                                             <TableCell align="right">
                                                 <Tooltip title="View">
-                                                    <IconButton size="small" onClick={() => openDetail(p)}><ViewIcon fontSize="small" /></IconButton>
+                                                    <span>
+                                                        <IconButton
+                                                            size="small"
+                                                            disabled={isBusy(`detail:${p._id}`)}
+                                                            onClick={() => openDetail(p)}
+                                                        >
+                                                            {isBusy(`detail:${p._id}`)
+                                                                ? <CircularProgress size={16} />
+                                                                : <ViewIcon fontSize="small" />}
+                                                        </IconButton>
+                                                    </span>
                                                 </Tooltip>
                                                 <Tooltip title="Edit">
                                                     <IconButton size="small" onClick={() => openEdit(p)}><EditIcon fontSize="small" /></IconButton>
@@ -759,10 +935,12 @@ const PayrollPage: React.FC = () => {
                                                         <IconButton
                                                             size="small"
                                                             color="error"
-                                                            disabled={p.status === 'terminated'}
+                                                            disabled={p.status === 'terminated' || isBusy(`terminate:${p._id}`)}
                                                             onClick={() => terminate(p)}
                                                         >
-                                                            <TerminateIcon fontSize="small" />
+                                                            {isBusy(`terminate:${p._id}`)
+                                                                ? <CircularProgress size={16} color="error" />
+                                                                : <TerminateIcon fontSize="small" />}
                                                         </IconButton>
                                                     </span>
                                                 </Tooltip>
@@ -807,18 +985,24 @@ const PayrollPage: React.FC = () => {
                         <Box sx={{ flex: 1 }} />
                         <Stack direction="row" spacing={1} alignItems="center">
                             <Tooltip title="Post already-paid salaries that predate expense logging">
-                                <Button
-                                    variant="outlined" onClick={backfillExpenses} size="small"
-                                    sx={{ flex: { xs: 1, sm: 'none' } }}
-                                >
-                                    Sync Expenses
-                                </Button>
+                                <span>
+                                    <Button
+                                        variant="outlined" onClick={backfillExpenses} size="small"
+                                        disabled={isBusy('backfill')}
+                                        startIcon={isBusy('backfill') ? <CircularProgress size={16} color="inherit" /> : undefined}
+                                        sx={{ flex: { xs: 1, sm: 'none' } }}
+                                    >
+                                        {isBusy('backfill') ? 'Syncing…' : 'Sync Expenses'}
+                                    </Button>
+                                </span>
                             </Tooltip>
                             <Button
-                                startIcon={<ProcessIcon />} variant="contained" onClick={processAll} size="small"
+                                startIcon={isBusy('processAll') ? <CircularProgress size={16} color="inherit" /> : <ProcessIcon />}
+                                variant="contained" onClick={processAll} size="small"
+                                disabled={isBusy('processAll')}
                                 sx={{ flex: { xs: 1, sm: 'none' } }}
                             >
-                                Process All
+                                {isBusy('processAll') ? 'Processing…' : 'Process All'}
                             </Button>
                             <IconButton onClick={loadSheet}><RefreshIcon /></IconButton>
                         </Stack>
@@ -881,6 +1065,7 @@ const PayrollPage: React.FC = () => {
                                         size="small" fullWidth
                                         value={row.processed ? (row.payslipStatus || 'pending') : 'unprocessed'}
                                         onChange={(e) => onStatusSelect(row, e.target.value)}
+                                        disabled={isBusy(`status:${row.profileId}`)}
                                         sx={{
                                             mt: 1.5,
                                             fontSize: '0.78rem',
@@ -946,6 +1131,7 @@ const PayrollPage: React.FC = () => {
                                                     size="small"
                                                     value={row.processed ? (row.payslipStatus || 'pending') : 'unprocessed'}
                                                     onChange={(e) => onStatusSelect(row, e.target.value)}
+                                                    disabled={isBusy(`status:${row.profileId}`)}
                                                     sx={{
                                                         fontSize: '0.75rem',
                                                         minWidth: 132,
@@ -1125,7 +1311,7 @@ const PayrollPage: React.FC = () => {
                     <Grid container spacing={2} sx={{ mt: 0 }}>
                         {!editingId && (
                             <Grid item xs={12}>
-                                <FormControl fullWidth size="small">
+                                <FormControl fullWidth size="small" required error={!!staffError}>
                                     <InputLabel>Staff Member</InputLabel>
                                     <Select
                                         value={form.user}
@@ -1137,7 +1323,13 @@ const PayrollPage: React.FC = () => {
                                                 {u.firstName} {u.lastName} — {u.roles?.[0]}
                                             </MenuItem>
                                         ))}
+                                        {!staffUsers.length && (
+                                            <MenuItem value="" disabled>
+                                                No staff without a payroll profile
+                                            </MenuItem>
+                                        )}
                                     </Select>
+                                    <FormHelperText>{staffError || 'Required'}</FormHelperText>
                                 </FormControl>
                             </Grid>
                         )}
@@ -1145,6 +1337,13 @@ const PayrollPage: React.FC = () => {
                             <TextField
                                 fullWidth size="small" label="Designation" value={form.designation || ''}
                                 onChange={(e) => setForm({ ...form, designation: e.target.value })}
+                                onBlur={(e) => setForm({ ...form, designation: e.target.value.trim().replace(/\s+/g, ' ') })}
+                                inputProps={{ maxLength: DESIGNATION_MAX }}
+                                error={!!designationError(form.designation || '')}
+                                helperText={
+                                    designationError(form.designation || '') ||
+                                    `e.g. Head Chef · ${(form.designation || '').length}/${DESIGNATION_MAX}`
+                                }
                             />
                         </Grid>
                         <Grid item xs={12} sm={6}>
@@ -1162,35 +1361,60 @@ const PayrollPage: React.FC = () => {
                         <Grid item xs={12}><Divider textAlign="left"><Chip icon={<PayrollIcon />} label="Pay Structure" size="small" /></Divider></Grid>
                         <Grid item xs={12} sm={4}>
                             <TextField
-                                fullWidth size="small" type="number" label="Basic Salary" value={form.basicSalary}
-                                onChange={(e) => setForm({ ...form, basicSalary: Number(e.target.value) })}
+                                fullWidth size="small" type="number" label="Basic Salary"
+                                value={numText(form.basicSalary)}
+                                onKeyDown={blockNonNumericKeys}
+                                onChange={(e) => setForm({ ...form, basicSalary: sanitizeNumText(e.target.value, true) })}
+                                onBlur={(e) => setForm({ ...form, basicSalary: numValue(sanitizeNumText(e.target.value, true)) })}
+                                inputProps={{ min: 0, step: '0.01' }}
+                                error={!!salaryError}
+                                helperText={salaryError || 'Monthly gross before deductions'}
                             />
                         </Grid>
                         <Grid item xs={12} sm={4}>
                             <TextField
-                                fullWidth size="small" type="number" label="Bonus / Differential" value={form.bonus}
-                                onChange={(e) => setForm({ ...form, bonus: Number(e.target.value) })}
+                                fullWidth size="small" type="number" label="Bonus / Differential"
+                                value={numText(form.bonus)}
+                                onKeyDown={blockNonNumericKeys}
+                                onChange={(e) => setForm({ ...form, bonus: sanitizeNumText(e.target.value, true) })}
+                                onBlur={(e) => setForm({ ...form, bonus: numValue(sanitizeNumText(e.target.value, true)) })}
+                                inputProps={{ min: 0, step: '0.01' }}
+                                helperText="Leave 0 if none"
                             />
                         </Grid>
                         <Grid item xs={12} sm={4}>
                             <TextField
-                                fullWidth size="small" type="number" label="Allowances" value={form.allowances}
-                                onChange={(e) => setForm({ ...form, allowances: Number(e.target.value) })}
+                                fullWidth size="small" type="number" label="Allowances"
+                                value={numText(form.allowances)}
+                                onKeyDown={blockNonNumericKeys}
+                                onChange={(e) => setForm({ ...form, allowances: sanitizeNumText(e.target.value, true) })}
+                                onBlur={(e) => setForm({ ...form, allowances: numValue(sanitizeNumText(e.target.value, true)) })}
+                                inputProps={{ min: 0, step: '0.01' }}
+                                helperText="Leave 0 if none"
                             />
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <TextField
                                 fullWidth size="small" type="number" label="Paid Days / Month (0 = calendar)"
-                                value={form.monthlyWorkingDays}
-                                onChange={(e) => setForm({ ...form, monthlyWorkingDays: Number(e.target.value) })}
-                                helperText="Divisor for the daily rate"
+                                value={numText(form.monthlyWorkingDays)}
+                                onKeyDown={blockNonNumericKeys}
+                                onChange={(e) => setForm({ ...form, monthlyWorkingDays: sanitizeNumText(e.target.value, false) })}
+                                onBlur={(e) => setForm({ ...form, monthlyWorkingDays: numValue(sanitizeNumText(e.target.value, false)) })}
+                                inputProps={{ min: 0, max: 31, step: 1 }}
+                                error={!!workingDaysError}
+                                helperText={workingDaysError || 'Divisor for the daily rate · 0 = use calendar month'}
                             />
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <TextField
-                                fullWidth size="small" type="number" label="Full Shift Hours" value={form.shiftHours}
-                                onChange={(e) => setForm({ ...form, shiftHours: Number(e.target.value) })}
-                                helperText="Below 75% of this counts as a half day"
+                                fullWidth size="small" type="number" label="Full Shift Hours"
+                                value={numText(form.shiftHours)}
+                                onKeyDown={blockNonNumericKeys}
+                                onChange={(e) => setForm({ ...form, shiftHours: sanitizeNumText(e.target.value, true) })}
+                                onBlur={(e) => setForm({ ...form, shiftHours: numValue(sanitizeNumText(e.target.value, true)) })}
+                                inputProps={{ min: 1, max: 24, step: '0.5' }}
+                                error={!!shiftHoursError}
+                                helperText={shiftHoursError || 'Below 75% of this counts as a half day'}
                             />
                         </Grid>
                         <Grid item xs={12}>
@@ -1200,13 +1424,31 @@ const PayrollPage: React.FC = () => {
                                     multiple
                                     value={form.weeklyOffDays || []}
                                     label="Weekly Offs"
-                                    onChange={(e) => setForm({ ...form, weeklyOffDays: e.target.value })}
+                                    onChange={(e) => {
+                                        const picked = e.target.value as number[];
+                                        setForm({ ...form, weeklyOffDays: [...picked].sort((a, b) => a - b) });
+                                    }}
                                     renderValue={(selected: any) =>
-                                        (selected as number[]).map((d) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]).join(', ')
+                                        !(selected as number[]).length ? (
+                                            <Typography variant="body2" color="text.secondary">None</Typography>
+                                        ) : (
+                                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                                {(selected as number[]).map((d) => (
+                                                    <Chip key={d} size="small" label={WEEKDAYS_SHORT[d]} />
+                                                ))}
+                                            </Stack>
+                                        )
                                     }
                                 >
-                                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => (
-                                        <MenuItem key={d} value={i}>{d}</MenuItem>
+                                    {WEEKDAYS.map((d, i) => (
+                                        <MenuItem key={d} value={i}>
+                                            <Checkbox
+                                                size="small"
+                                                checked={(form.weeklyOffDays || []).includes(i)}
+                                                sx={{ py: 0, mr: 1 }}
+                                            />
+                                            <ListItemText primary={d} />
+                                        </MenuItem>
                                     ))}
                                 </Select>
                             </FormControl>
@@ -1216,7 +1458,13 @@ const PayrollPage: React.FC = () => {
                         <Grid item xs={12} sm={6}>
                             <TextField
                                 fullWidth size="small" label="Account Number" value={form.bank?.accountNumber || ''}
-                                onChange={(e) => setForm({ ...form, bank: { ...form.bank, accountNumber: e.target.value } })}
+                                onChange={(e) => setForm({
+                                    ...form,
+                                    bank: { ...form.bank, accountNumber: e.target.value.replace(/\D/g, '').slice(0, ACCOUNT_MAX) },
+                                })}
+                                inputProps={{ inputMode: 'numeric', maxLength: ACCOUNT_MAX }}
+                                error={!!accountError}
+                                helperText={accountError || `${ACCOUNT_MIN}–${ACCOUNT_MAX} digits`}
                             />
                         </Grid>
                         <Grid item xs={12} sm={6}>
@@ -1228,9 +1476,13 @@ const PayrollPage: React.FC = () => {
                         <Grid item xs={12} sm={6}>
                             <TextField
                                 fullWidth size="small" label="Routing Number" value={form.bank?.routingNumber || ''}
-                                onChange={(e) => setForm({ ...form, bank: { ...form.bank, routingNumber: e.target.value } })}
-                                inputProps={{ maxLength: 9 }}
-                                helperText="9-digit ABA routing number"
+                                onChange={(e) => setForm({
+                                    ...form,
+                                    bank: { ...form.bank, routingNumber: e.target.value.replace(/\D/g, '').slice(0, 9) },
+                                })}
+                                inputProps={{ inputMode: 'numeric', maxLength: 9 }}
+                                error={!!routingError}
+                                helperText={routingError || '9-digit ABA routing number'}
                             />
                         </Grid>
                         <Grid item xs={12} sm={6}>
@@ -1315,7 +1567,11 @@ const PayrollPage: React.FC = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setFormOpen(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={saveProfile} disabled={saving}>
+                    <Button
+                        variant="contained" onClick={saveProfile}
+                        disabled={saving || formInvalid}
+                        startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
+                    >
                         {saving ? 'Saving…' : 'Save'}
                     </Button>
                 </DialogActions>
@@ -1399,7 +1655,10 @@ const PayrollPage: React.FC = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setProcessTarget(null)}>Cancel</Button>
-                    <Button variant="contained" onClick={confirmProcess} disabled={saving}>
+                    <Button
+                        variant="contained" onClick={confirmProcess} disabled={saving}
+                        startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
+                    >
                         {saving ? 'Processing…' : 'Confirm'}
                     </Button>
                 </DialogActions>
@@ -1482,6 +1741,7 @@ const PayrollPage: React.FC = () => {
                                 </FormControl>
                                 <Button
                                     variant="contained" onClick={markDay} disabled={saving}
+                                    startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
                                     sx={{ flex: { xs: 'none', sm: 1 }, width: { xs: '100%', sm: 'auto' } }}
                                 >
                                     {saving ? 'Saving…' : 'Mark'}
@@ -1651,7 +1911,7 @@ const PayrollPage: React.FC = () => {
                                                             try {
                                                                 await payrollAPI.removeLeave(detail._id, new Date(l.date).toISOString().slice(0, 10));
                                                                 toast.success('Leave removed');
-                                                                openDetail(detail);
+                                                                openDetail(detail, true);
                                                             } catch {
                                                                 toast.error('Failed to remove leave');
                                                             }
@@ -1690,7 +1950,12 @@ const PayrollPage: React.FC = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setAdvanceTarget(null)}>Cancel</Button>
-                    <Button variant="contained" onClick={submitAdvance} disabled={saving}>Save</Button>
+                    <Button
+                        variant="contained" onClick={submitAdvance} disabled={saving}
+                        startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
+                    >
+                        {saving ? 'Saving…' : 'Save'}
+                    </Button>
                 </DialogActions>
             </Dialog>
 
@@ -1768,7 +2033,10 @@ const PayrollPage: React.FC = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setDailyOpen(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={saveDaily} disabled={saving || !roster.length}>
+                    <Button
+                        variant="contained" onClick={saveDaily} disabled={saving || rosterLoading || !roster.length}
+                        startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
+                    >
                         {saving ? 'Saving…' : `Save ${roster.length} Record(s)`}
                     </Button>
                 </DialogActions>
@@ -1802,7 +2070,12 @@ const PayrollPage: React.FC = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setLeaveTarget(null)}>Cancel</Button>
-                    <Button variant="contained" onClick={submitLeave} disabled={saving}>Save</Button>
+                    <Button
+                        variant="contained" onClick={submitLeave} disabled={saving}
+                        startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
+                    >
+                        {saving ? 'Saving…' : 'Save'}
+                    </Button>
                 </DialogActions>
             </Dialog>
         </Box>
