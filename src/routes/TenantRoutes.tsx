@@ -126,9 +126,6 @@ export const TenantRoutes = () => (
         <Route element={<RequireFeature feature="menu" />}>
           <Route path="menu" element={<MenuPage />} />
         </Route>
-        <Route element={<RequireFeature feature="payroll" />}>
-          <Route path="payroll" element={<PayrollPage />} />
-        </Route>
         <Route element={<RequireFeature feature="globaladdons" />}>
           <Route path="global-add-ons" element={<AddOnGroupsPage />} />
         </Route>
@@ -198,6 +195,14 @@ export const TenantRoutes = () => (
         <Route element={<RequireFeature feature="disputes" />}>
           <Route path="disputes" element={<DisputeList />} />
           <Route path="disputes/:id" element={<DisputeDetails />} />
+        </Route>
+      </Route>
+
+      {/* Employees & Payroll — accountants need this alongside admin/manager,
+          matching the sidebar entry and the payroll controller's @Roles. */}
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'accountant']} />}>
+        <Route element={<RequireFeature feature="payroll" />}>
+          <Route path="payroll" element={<PayrollPage />} />
         </Route>
       </Route>
 
