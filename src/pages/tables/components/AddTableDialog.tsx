@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box,
     Button,
@@ -14,11 +14,18 @@ import {
     Stack,
     FormHelperText,
     IconButton,
-    CircularProgress
+    CircularProgress,
+    Chip,
+    Alert,
+    Autocomplete,
+    Typography
 } from '@mui/material';
 import {
     Add as AddIcon,
-    Close as CloseIcon
+    Close as CloseIcon,
+    AutoAwesome as SparklesIcon,
+    Warning as WarningIcon,
+    CheckCircle as CheckIcon
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { tablesAPI } from '../../../services/api';
@@ -29,6 +36,8 @@ interface AddTableDialogProps {
     onSuccess: () => void;
     customLocations: string[];
     onOpenAddLocation: () => void;
+    initialLocation?: string;
+    existingTables?: any[];
 }
 
 const CAPACITY_OPTIONS = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
@@ -38,14 +47,78 @@ const AddTableDialog: React.FC<AddTableDialogProps> = ({
     onClose,
     onSuccess,
     customLocations,
-    onOpenAddLocation
+    onOpenAddLocation,
+    initialLocation = 'indoor',
+    existingTables = []
 }) => {
     const [newTableName, setNewTableName] = useState('');
     const [newTableNumber, setNewTableNumber] = useState(0);
     const [newTableCapacity, setNewTableCapacity] = useState(0);
-    const [newTableLocation, setNewTableLocation] = useState('indoor');
+    const [newTableLocation, setNewTableLocation] = useState(initialLocation || 'indoor');
     const [newTableStatus, setNewTableStatus] = useState('available');
     const [isProcessing, setIsProcessing] = useState(false);
+
+    const [fetchedTables, setFetchedTables] = useState<any[]>([]);
+
+    // Process all DB tables (both active & archived) for global duplicate checking
+    const allDbTables = useMemo(() => {
+        const combined = [...(Array.isArray(existingTables) ? existingTables : []), ...fetchedTables];
+        const map = new Map<string, any>();
+        combined.forEach(t => {
+            if (t && (t._id || t.id || t.tableNumber)) {
+                const key = t._id ? t._id.toString() : (t.id ? t.id.toString() : String(t.tableNumber));
+                map.set(key, t);
+            }
+        });
+        return Array.from(map.values());
+    }, [existingTables, fetchedTables]);
+
+    const occupiedNumbersMap = useMemo(() => {
+        const map = new Map<string, { tableNumber: string | number; location: string; isInactive: boolean }>();
+        allDbTables.forEach(t => {
+            const rawVal = t.tableNumber !== undefined && t.tableNumber !== null && t.tableNumber !== ''
+                ? t.tableNumber
+                : (t.number !== undefined && t.number !== null && t.number !== ''
+                    ? t.number
+                    : (t.table_number || t.tableName || t.name || ''));
+            const rawNum = String(rawVal).trim();
+            if (rawNum) {
+                const isInactive = Boolean(t.isDeleted || t.isActive === false);
+                const roomName = (t.section || t.location || 'indoor').replace(/_/g, ' ').toUpperCase();
+                map.set(rawNum.toLowerCase(), {
+                    tableNumber: rawVal,
+                    location: isInactive ? `${roomName} (Inactive/Archived)` : roomName,
+                    isInactive
+                });
+            }
+        });
+        return map;
+    }, [allDbTables]);
+
+    const nextSuggestedNumber = useMemo(() => {
+        let candidate = 1;
+        while (occupiedNumbersMap.has(String(candidate).toLowerCase()) && candidate <= 10000) {
+            candidate++;
+        }
+        return candidate;
+    }, [occupiedNumbersMap]);
+
+    useEffect(() => {
+        if (open) {
+            setNewTableLocation(initialLocation || 'indoor');
+            tablesAPI.getAll({ includeDeleted: true }).then(res => {
+                if (Array.isArray(res?.data)) {
+                    setFetchedTables(res.data);
+                }
+            }).catch(() => null);
+        }
+    }, [open, initialLocation]);
+
+    useEffect(() => {
+        if (open) {
+            setNewTableNumber(nextSuggestedNumber);
+        }
+    }, [open, nextSuggestedNumber]);
 
     const [touched, setTouched] = useState({
         tableName: false,
@@ -138,6 +211,12 @@ const AddTableDialog: React.FC<AddTableDialogProps> = ({
 
     const handleAddTable = async () => {
         if (isProcessing) return;
+        const currentNumStr = String(newTableNumber || '').trim();
+        const existingOccupant = currentNumStr ? occupiedNumbersMap.get(currentNumStr.toLowerCase()) : null;
+        if (existingOccupant) {
+            toast.error(`Table #${newTableNumber} already exists in ${existingOccupant.location}. Use #${nextSuggestedNumber} instead.`);
+            return;
+        }
         if (!validateAll()) {
             toast.error('Please fill all the required fields correctly');
             return;
@@ -206,30 +285,77 @@ const AddTableDialog: React.FC<AddTableDialogProps> = ({
             </DialogTitle>
             <DialogContent>
                 <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-                    <TextField
-                        label="Table Number"
-                        type="number"
-                        value={newTableNumber === 0 ? '' : newTableNumber}
-                        onChange={e => {
-                            const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
-                            if (val >= 0) setNewTableNumber(val);
-                        }}
-                        onBlur={() => {
-                            setTouched(prev => ({ ...prev, tableNumber: true }));
-                            validateField('tableNumber', newTableNumber);
-                        }}
-                        required
-                        error={touched.tableNumber && Boolean(errors.tableNumber)}
-                        helperText={touched.tableNumber && errors.tableNumber ? errors.tableNumber : ''}
-                        slotProps={{ htmlInput: { min: 1 } }}
-                        InputLabelProps={{
-                            sx: {
-                                '& .MuiFormLabel-asterisk': {
-                                    color: 'error.main'
-                                }
-                            }
-                        }}
-                    />
+                    {/* Smart Table Number Suggestion & Live Availability Helper */}
+                    {(() => {
+                        const currentNumStr = String(newTableNumber || '').trim();
+                        const existingOccupant = currentNumStr ? occupiedNumbersMap.get(currentNumStr.toLowerCase()) : null;
+                        const isTaken = Boolean(existingOccupant);
+
+                        return (
+                            <>
+                                <Box sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justify: 'space-between',
+                                    bgcolor: isTaken ? '#FEF2F2' : '#F0FDF4',
+                                    border: '1.5px solid',
+                                    borderColor: isTaken ? '#FCA5A5' : '#BBF7D0',
+                                    p: 1.25,
+                                    borderRadius: 2.5
+                                }}>
+                                    <Stack direction="row" spacing={1} alignItems="center">
+                                        {isTaken ? (
+                                            <WarningIcon sx={{ fontSize: 18, color: '#DC2626' }} />
+                                        ) : (
+                                            <SparklesIcon sx={{ fontSize: 18, color: '#16A34A' }} />
+                                        )}
+                                        <Typography variant="body2" fontWeight={800} sx={{ color: isTaken ? '#991B1B' : '#166534', fontSize: '0.78rem' }}>
+                                            {isTaken 
+                                                ? `⚠️ Table #${currentNumStr} is ALREADY TAKEN in ${existingOccupant?.location}`
+                                                : `💡 Suggested Next Table: #${nextSuggestedNumber}`}
+                                        </Typography>
+                                    </Stack>
+                                    <Button
+                                        size="small"
+                                        variant={isTaken ? "contained" : "text"}
+                                        color={isTaken ? "error" : "success"}
+                                        onClick={() => {
+                                            setNewTableNumber(nextSuggestedNumber);
+                                            setErrors(prev => ({ ...prev, tableNumber: '' }));
+                                        }}
+                                        sx={{ fontWeight: 800, textTransform: 'none', fontSize: '0.72rem', py: 0.2, px: 1 }}
+                                    >
+                                        Use #{nextSuggestedNumber}
+                                    </Button>
+                                </Box>
+
+                                <TextField
+                                    label="Table Number"
+                                    type="number"
+                                    value={newTableNumber === 0 ? '' : newTableNumber}
+                                    onChange={e => {
+                                        const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                                        if (val >= 0) setNewTableNumber(val);
+                                    }}
+                                    onBlur={() => {
+                                        setTouched(prev => ({ ...prev, tableNumber: true }));
+                                        validateField('tableNumber', newTableNumber);
+                                    }}
+                                    required
+                                    error={isTaken || (touched.tableNumber && Boolean(errors.tableNumber))}
+                                    helperText={isTaken ? `Table number #${currentNumStr} already exists in ${existingOccupant?.location}. Click "Use #${nextSuggestedNumber}" above.` : (touched.tableNumber && errors.tableNumber ? errors.tableNumber : '')}
+                                    slotProps={{ htmlInput: { min: 1 } }}
+                                    InputLabelProps={{
+                                        sx: {
+                                            '& .MuiFormLabel-asterisk': {
+                                                color: 'error.main'
+                                            }
+                                        }
+                                    }}
+                                />
+                            </>
+                        );
+                    })()}
                     <FormControl fullWidth required error={touched.capacity && Boolean(errors.capacity)}>
                         <InputLabel id="add-capacity-label" sx={{ '& .MuiFormLabel-asterisk': { color: 'error.main' } }}>Capacity</InputLabel>
                         <Select

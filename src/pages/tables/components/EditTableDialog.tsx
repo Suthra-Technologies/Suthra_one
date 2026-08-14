@@ -30,6 +30,7 @@ interface EditTableDialogProps {
     table: any;
     customLocations: string[];
     onOpenAddLocation: () => void;
+    existingTables?: any[];
 }
 
 const CAPACITY_OPTIONS = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
@@ -40,7 +41,8 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
     onSuccess,
     table,
     customLocations,
-    onOpenAddLocation
+    onOpenAddLocation,
+    existingTables = []
 }) => {
     const [editTable, setEditTable] = useState<any>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -76,6 +78,16 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
                     error = 'Table number must be a whole number';
                 } else if (num < 1) {
                     error = 'Table number must be at least 1';
+                } else if (existingTables && Array.isArray(existingTables) && editTable) {
+                    const isDup = existingTables.some((t: any) =>
+                        t._id !== editTable._id &&
+                        !t.isDeleted &&
+                        t.isActive !== false &&
+                        String(t.tableNumber || '').trim() === String(raw).trim()
+                    );
+                    if (isDup) {
+                        error = `Table number #${raw} is already used by another active table`;
+                    }
                 }
             }
         }

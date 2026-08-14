@@ -66,6 +66,7 @@ import {
     ReceiptLong as OrderReceiptIcon,
     Info as InfoIcon,
     QrCode2 as QrCodeIcon,
+    DragIndicator as DragHandleIcon,
 } from '@mui/icons-material';
 import { QRCodeSVG } from 'qrcode.react';
 import TableLegendDialog from './TableLegendDialog';
@@ -89,6 +90,8 @@ export interface TableItem {
     isActive?: boolean;
     isDeleted?: boolean;
     deletedAt?: string | Date;
+    createdAt?: string | Date;
+    updatedAt?: string | Date;
     seatingMode?: 'standard' | 'communal';
     seatTickets?: Array<{
         seatNumber: number;
@@ -122,11 +125,12 @@ interface FloorPlanViewProps {
     floorElements?: FloorElementItem[];
     onSelectTableForCustomer?: (table: TableItem) => void;
     onOpenBooking?: (table: TableItem) => void;
-    onOpenAddTable?: () => void;
+    onOpenAddTable?: (defaultLocation?: string) => void;
     onOpenAddLocation?: () => void;
     onOpenEditTable?: (table: TableItem) => void;
     onOpenDeleteTable?: (table: TableItem) => void;
     onRestoreTable?: (table: TableItem) => void;
+    onOpenDeletedTables?: () => void;
     onQuickStatusChange?: (tableId: string, status: string) => void;
     onOpenHistory?: (tableId: string, title: string) => void;
     onSaveTableCoordinates?: (updatedTables: { _id: string; coordinates: { x: number; y: number } }[]) => Promise<void>;
@@ -345,9 +349,26 @@ const DiningChair: React.FC<DiningChairProps> = ({ side, positionPercent, accent
 // • Max 1 chair at Right Foot of Table
 // • All other chairs evenly spaced along Top & Bottom long edges!
 // ─────────────────────────────────────────────
-const renderDynamicChairs = (capacity: number, shape: string = 'rectangle', accentColor: string, is3D: boolean) => {
+const renderDynamicChairs = (
+    capacity: number,
+    shape: string = 'rectangle',
+    accentColor: string,
+    is3D: boolean,
+    guestCount: number = 0,
+    isCommunalMode: boolean = false
+) => {
     const cap = Math.max(2, capacity || 2);
     const chairs: React.ReactNode[] = [];
+
+    let chairIdx = 0;
+    const getChairColor = () => {
+        if (isCommunalMode && guestCount > 0) {
+            const color = chairIdx < guestCount ? '#EF4444' : '#10B981';
+            chairIdx++;
+            return color;
+        }
+        return accentColor;
+    };
 
     if (shape === 'round') {
         const perSide = Math.floor(cap / 4);
@@ -359,25 +380,23 @@ const renderDynamicChairs = (capacity: number, shape: string = 'rectangle', acce
 
         for (let i = 0; i < topCount; i++) {
             const pct = topCount === 1 ? 50 : 15 + (i / (topCount - 1)) * 70;
-            chairs.push(<DiningChair key={`t${i}`} side="top" positionPercent={pct} accentColor={accentColor} is3D={is3D} />);
+            chairs.push(<DiningChair key={`t${i}`} side="top" positionPercent={pct} accentColor={getChairColor()} is3D={is3D} />);
         }
         for (let i = 0; i < bottomCount; i++) {
             const pct = bottomCount === 1 ? 50 : 15 + (i / (bottomCount - 1)) * 70;
-            chairs.push(<DiningChair key={`b${i}`} side="bottom" positionPercent={pct} accentColor={accentColor} is3D={is3D} />);
+            chairs.push(<DiningChair key={`b${i}`} side="bottom" positionPercent={pct} accentColor={getChairColor()} is3D={is3D} />);
         }
         for (let i = 0; i < leftCount; i++) {
             const pct = leftCount === 1 ? 50 : 15 + (i / (leftCount - 1)) * 70;
-            chairs.push(<DiningChair key={`l${i}`} side="left" positionPercent={pct} accentColor={accentColor} is3D={is3D} />);
+            chairs.push(<DiningChair key={`l${i}`} side="left" positionPercent={pct} accentColor={getChairColor()} is3D={is3D} />);
         }
         for (let i = 0; i < rightCount; i++) {
             const pct = rightCount === 1 ? 50 : 15 + (i / (rightCount - 1)) * 70;
-            chairs.push(<DiningChair key={`r${i}`} side="right" positionPercent={pct} accentColor={accentColor} is3D={is3D} />);
+            chairs.push(<DiningChair key={`r${i}`} side="right" positionPercent={pct} accentColor={getChairColor()} is3D={is3D} />);
         }
         return chairs;
     }
 
-    // REALISTIC RECTANGULAR/SQUARE SEATING:
-    // Head of table = 1 max left, 1 max right for cap > 4
     const hasHead = cap > 4 ? 1 : 0;
     const hasFoot = cap > 5 ? 1 : 0;
     const remaining = cap - (hasHead + hasFoot);
@@ -386,13 +405,12 @@ const renderDynamicChairs = (capacity: number, shape: string = 'rectangle', acce
     const bottomCount = Math.floor(remaining / 2);
 
     if (hasHead > 0) {
-        chairs.push(<DiningChair key="head-left" side="left" positionPercent={50} accentColor={accentColor} is3D={is3D} />);
+        chairs.push(<DiningChair key="head-left" side="left" positionPercent={50} accentColor={getChairColor()} is3D={is3D} />);
     }
     if (hasFoot > 0) {
-        chairs.push(<DiningChair key="foot-right" side="right" positionPercent={50} accentColor={accentColor} is3D={is3D} />);
+        chairs.push(<DiningChair key="foot-right" side="right" positionPercent={50} accentColor={getChairColor()} is3D={is3D} />);
     }
 
-    // Helper to calculate even % spacing along top and bottom long sides
     const getSpacing = (count: number) => {
         if (count === 1) return [50];
         if (count === 2) return [30, 70];
@@ -402,10 +420,10 @@ const renderDynamicChairs = (capacity: number, shape: string = 'rectangle', acce
     };
 
     getSpacing(topCount).forEach((pct, i) =>
-        chairs.push(<DiningChair key={`top-${i}`} side="top" positionPercent={pct} accentColor={accentColor} is3D={is3D} />)
+        chairs.push(<DiningChair key={`top-${i}`} side="top" positionPercent={pct} accentColor={getChairColor()} is3D={is3D} />)
     );
     getSpacing(bottomCount).forEach((pct, i) =>
-        chairs.push(<DiningChair key={`bot-${i}`} side="bottom" positionPercent={pct} accentColor={accentColor} is3D={is3D} />)
+        chairs.push(<DiningChair key={`bot-${i}`} side="bottom" positionPercent={pct} accentColor={getChairColor()} is3D={is3D} />)
     );
 
     return chairs;
@@ -452,6 +470,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     onOpenEditTable,
     onOpenDeleteTable,
     onRestoreTable,
+    onOpenDeletedTables,
     onQuickStatusChange,
     onOpenHistory,
     onSaveTableCoordinates,
@@ -475,6 +494,10 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         if (cleaned.length < 2 || cleaned.length > 30) return false;
         return !/^(sdh|asdf|qwer|zxcv|junk)$/i.test(cleaned);
     };
+    const canonicalizeRoomKey = (name: string): string => {
+        if (!name || typeof name !== 'string') return '';
+        return name.trim().toLowerCase().replace(/[\s_\-]+/g, '');
+    };
     const getEffectiveRoom = (t: { section?: string; location?: string }) => {
         const raw = (t?.section || t?.location || 'indoor').toLowerCase();
         return isValidRoom(raw) ? raw : 'indoor';
@@ -482,22 +505,33 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
     const sections = useMemo(() => {
         const BASE_ROOMS = ['indoor', 'outdoor', 'private_room', 'bar'];
-        const set = new Set<string>(BASE_ROOMS);
-        tables.forEach(t => set.add(getEffectiveRoom(t)));
+        const map = new Map<string, string>();
+        BASE_ROOMS.forEach(r => map.set(canonicalizeRoomKey(r), r.toLowerCase().trim()));
+        tables.forEach(t => {
+            const eff = getEffectiveRoom(t);
+            const canon = canonicalizeRoomKey(eff);
+            if (isValidRoom(eff) && !map.has(canon)) {
+                map.set(canon, eff);
+            }
+        });
         customLocations.forEach(loc => {
             const norm = loc.trim().toLowerCase();
-            if (norm && isValidRoom(norm)) set.add(norm);
+            const canon = canonicalizeRoomKey(norm);
+            if (norm && isValidRoom(norm) && !map.has(canon)) {
+                map.set(canon, norm);
+            }
         });
-        const allSecs = Array.from(set).filter(isValidRoom);
+        const allSecs = Array.from(map.values()).filter(isValidRoom);
         if (allSecs.length === 0) allSecs.push('indoor');
         if (hiddenSections && hiddenSections.length > 0 && !isCustomizeMode) {
-            return allSecs.filter(s => !hiddenSections.includes(s.toLowerCase()));
+            return allSecs.filter(s => !hiddenSections.some(h => canonicalizeRoomKey(h) === canonicalizeRoomKey(s)));
         }
         return allSecs;
     }, [tables, customLocations, hiddenSections, isCustomizeMode]);
 
     const [activeSection, setActiveSection]       = useState<string>(() => sections.length > 0 ? sections[0] : 'indoor');
     const [searchQuery, setSearchQuery]           = useState<string>('');
+    const [canvasFilter, setCanvasFilter]         = useState<'all' | 'available' | 'occupied' | 'cleaning' | 'long_seating'>('all');
     const [legendOpen, setLegendOpen]             = useState<boolean>(false);
     const [zoomLevel, setZoomLevel]               = useState<number>(1);
     const [is3DMode, setIs3DMode]                 = useState<boolean>(true);
@@ -589,6 +623,37 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         }
         return list;
     }, [tables, activeSection, searchQuery]);
+
+    const filterCounts = useMemo(() => {
+        const all = currentSectionTables.length;
+        const available = currentSectionTables.filter(t => (t.status || 'available').toLowerCase() === 'available' && !t.isDeleted && t.isActive !== false).length;
+        const occupied = currentSectionTables.filter(t => (t.status || '').toLowerCase() === 'occupied' && !t.isDeleted && t.isActive !== false).length;
+        const cleaning = currentSectionTables.filter(t => (t.status || '').toLowerCase() === 'cleaning' && !t.isDeleted && t.isActive !== false).length;
+        const longSeating = currentSectionTables.filter(t => {
+            if ((t.status || '').toLowerCase() !== 'occupied' || t.isDeleted || t.isActive === false) return false;
+            const dt = t.occupiedAt || t.currentOrder?.createdAt || t.updatedAt;
+            if (!dt) return false;
+            const mins = Math.floor((Date.now() - new Date(dt).getTime()) / 60000);
+            return mins >= 90;
+        }).length;
+        return { all, available, occupied, cleaning, longSeating };
+    }, [currentSectionTables]);
+
+    const isMatchingFilter = (table: TableItem) => {
+        if (canvasFilter === 'all') return true;
+        const st = (table.status || 'available').toLowerCase();
+        if (canvasFilter === 'available') return st === 'available';
+        if (canvasFilter === 'occupied') return st === 'occupied';
+        if (canvasFilter === 'cleaning') return st === 'cleaning';
+        if (canvasFilter === 'long_seating') {
+            if (st !== 'occupied') return false;
+            const dt = table.occupiedAt || table.currentOrder?.createdAt || table.updatedAt;
+            if (!dt) return false;
+            const mins = Math.floor((Date.now() - new Date(dt).getTime()) / 60000);
+            return mins >= 90;
+        }
+        return true;
+    };
 
     const dynamicCanvasHeight = useMemo(() => {
         let maxY = 540;
@@ -793,7 +858,6 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                 );
             }
 
-            toast.success('Floor plan layout saved successfully');
             setHasUnsavedChanges(false);
             setIsCustomizeMode(false);
         } catch (error) {
@@ -832,29 +896,44 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
     return (
         <Box sx={{ width: '100%', pb: 3 }}>
-
-            {/* ── TOP TOOLBAR ── */}
-            <Paper elevation={0} sx={{
-                mb: 2, p: { xs: 1.8, sm: 2.2 }, borderRadius: 3.5,
-                bgcolor: '#FFFFFF', border: '1.5px solid', borderColor: 'divider',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                flexWrap: 'wrap', gap: 2, boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
-            }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.6 }}>
-                    <Box sx={{ width: 42, height: 42, borderRadius: 2.5, bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <TableIcon sx={{ fontSize: 24 }} />
-                    </Box>
-                    <Box>
-                        <Typography variant="h6" fontWeight={900} sx={{ letterSpacing: -0.3, lineHeight: 1.1 }}>
-                            {isCustomerMode ? 'Choose Your Table' : 'Dining Floor Plan'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" fontWeight={700}>
-                            {isCustomerMode ? 'Select a table on the 3D map for your booking' : `${is3DMode ? '3D Isometric View' : '2D View'} • Live Dispatch & Navigation Map`}
-                        </Typography>
-                    </Box>
+            {/* ── UNIFIED COMPACT CONTROL BAR ── */}
+            <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5 }}>
+                {/* LEFT: ROOM SELECTION TABS & ADD BUTTONS */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflowX: 'auto', pb: 0.5 }}>
+                    {sections.map(section => {
+                        const isActive = activeSection === section;
+                        const count = tables.filter(t => !t.isDeleted && t.isActive !== false && canonicalizeRoomKey(getEffectiveRoom(t)) === canonicalizeRoomKey(section)).length;
+                        return (
+                            <Box key={section} onClick={() => handleSectionSwitch(section)} sx={{
+                                px: 1.8, py: 0.6, borderRadius: 2.5, cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem',
+                                bgcolor: isActive ? 'primary.main' : '#FFFFFF', color: isActive ? '#FFFFFF' : 'text.primary',
+                                border: '1.5px solid', borderColor: isActive ? 'primary.main' : 'divider',
+                                boxShadow: isActive ? '0 3px 10px rgba(99, 102, 241, 0.25)' : 'none',
+                                transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: 0.6, flexShrink: 0,
+                                '&:hover': { borderColor: 'primary.main' },
+                            }}>
+                                <span>{formatSectionName(section)}</span>
+                                <Chip label={count} size="small" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 800, bgcolor: isActive ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)', color: isActive ? '#FFFFFF' : 'text.secondary' }} />
+                            </Box>
+                        );
+                    })}
+                    {onOpenAddTable && !isCustomerMode && (
+                        <Box onClick={() => onOpenAddTable && onOpenAddTable(activeSection)} sx={{
+                            px: 1.5, py: 0.6, borderRadius: 2.5, cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem',
+                            bgcolor: 'primary.main', color: '#FFFFFF',
+                            border: '1.5px solid', borderColor: 'primary.main',
+                            boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)',
+                            transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0,
+                            '&:hover': { bgcolor: 'primary.dark' },
+                        }}>
+                            <AddIcon sx={{ fontSize: 16 }} />
+                            <span>Add Table</span>
+                        </Box>
+                    )}
                 </Box>
 
-                <Stack direction="row" spacing={1.2} alignItems="center" flexWrap="wrap">
+                {/* RIGHT: VIEW TOGGLE, SEARCH & MOVE CONTROLS */}
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                     <Tooltip title={is3DMode ? 'Switch to 2D View' : 'Switch to 3D View'}>
                         <Button
                             size="small"
@@ -862,10 +941,9 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                             startIcon={is3DMode ? <ThreeDIcon /> : <TwoDIcon />}
                             onClick={() => setIs3DMode(v => !v)}
                             sx={{
-                                borderRadius: 2.5, textTransform: 'none', fontWeight: 800, height: 36,
+                                borderRadius: 2, textTransform: 'none', fontWeight: 800, height: 32,
                                 bgcolor: is3DMode ? 'primary.main' : 'transparent',
                                 borderColor: 'primary.main', color: is3DMode ? '#FFFFFF' : 'primary.main',
-                                '&:hover': { bgcolor: is3DMode ? 'primary.dark' : alpha(theme.palette.primary.main, 0.08) },
                             }}
                         >
                             {is3DMode ? '3D' : '2D'}
@@ -880,114 +958,96 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                                 InputProps={{
-                                    startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary', fontSize: 18 }} /></InputAdornment>,
+                                    startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary', fontSize: 16 }} /></InputAdornment>,
                                     endAdornment: searchQuery ? (
                                         <InputAdornment position="end">
                                             <IconButton size="small" onClick={() => setSearchQuery('')} sx={{ p: 0.2 }}><ClearIcon fontSize="small" /></IconButton>
                                         </InputAdornment>
                                     ) : null,
-                                    sx: { borderRadius: 2.5, fontSize: '0.84rem', height: 36 },
+                                    sx: { borderRadius: 2, fontSize: '0.8rem', height: 32, bgcolor: '#FFFFFF' },
                                 }}
-                                sx={{ width: { xs: 130, sm: 165 } }}
+                                sx={{ width: { xs: 110, sm: 140 } }}
                             />
 
-
-
                             {isCustomizeMode ? (
-                                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ gap: 1 }}>
-                                    <Button size="small" variant="outlined" startIcon={<AutoArrangeIcon />} onClick={handleAutoArrange}
-                                        sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 800, height: 36 }}>
-                                        Auto-Arrange
-                                    </Button>
-
-                                    {/* Room Wall Height Controls */}
-                                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.06), p: 0.4, px: 1, borderRadius: 2.5, border: '1px solid', borderColor: alpha(theme.palette.primary.main, 0.2) }}>
-                                        <Typography variant="caption" fontWeight={800} sx={{ color: 'text.primary', fontSize: '0.72rem', mr: 0.5 }}>
-                                            Wall Height: {Math.round(dynamicCanvasHeight)}px
-                                        </Typography>
-                                        <Tooltip title="Expand Room Border (+100px)">
-                                            <Button size="small" variant="contained" onClick={() => setCustomRoomHeight(h => h + 100)} sx={{ minWidth: 26, height: 26, p: 0, fontWeight: 900, fontSize: '0.85rem', borderRadius: 1.5 }}>
-                                                +
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip title="Shrink Room Border (-100px)">
-                                            <Button size="small" variant="outlined" onClick={() => setCustomRoomHeight(h => Math.max(450, h - 100))} sx={{ minWidth: 26, height: 26, p: 0, fontWeight: 900, fontSize: '0.85rem', borderRadius: 1.5, ml: 0.5 }}>
-                                                -
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip title="Auto-Fit Border to Tables">
-                                            <Button size="small" onClick={() => setCustomRoomHeight(660)} sx={{ px: 1, height: 26, textTransform: 'none', fontSize: '0.7rem', fontWeight: 800, ml: 0.5 }}>
-                                                Auto-Fit
-                                            </Button>
-                                        </Tooltip>
-                                    </Stack>
-
+                                <Stack direction="row" spacing={1} alignItems="center">
                                     <Button size="small" variant="contained" color="success" startIcon={<SaveIcon />}
                                         onClick={handleSaveLayout} disabled={isSavingLayout}
-                                        sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 900, bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' }, height: 36 }}>
-                                        {isSavingLayout ? 'Saving...' : 'Save Layout'}
+                                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 900, height: 32 }}>
+                                        {isSavingLayout ? 'Saving...' : 'Save'}
                                     </Button>
                                     <Button size="small" variant="text" onClick={() => setIsCustomizeMode(false)}
-                                        sx={{ borderRadius: 2.5, textTransform: 'none', color: 'text.secondary', fontWeight: 700 }}>
+                                        sx={{ borderRadius: 2, textTransform: 'none', color: 'text.secondary', fontWeight: 700 }}>
                                         Cancel
                                     </Button>
                                 </Stack>
                             ) : (
-                                <Button size="small" variant="outlined" color="primary" startIcon={<CustomizeIcon />} onClick={() => setIsCustomizeMode(true)}
-                                    sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 800, height: 36, px: 2 }}>
-                                    Move Tables & Elements
-                                </Button>
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                    <Button size="small" variant="outlined" color="primary" startIcon={<CustomizeIcon />} onClick={() => setIsCustomizeMode(true)}
+                                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800, height: 32, px: 1.5, bgcolor: '#FFFFFF' }}>
+                                        Move Mode
+                                    </Button>
+
+                                    {onOpenDeletedTables && (
+                                        <Button size="small" variant="outlined" color="error" startIcon={<RestoreIcon />} onClick={onOpenDeletedTables}
+                                            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800, height: 32, px: 1.5, bgcolor: '#FFFFFF', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#DC2626' }}>
+                                            Audit Logs
+                                        </Button>
+                                    )}
+                                </Stack>
                             )}
                         </>
                     )}
                 </Stack>
-            </Paper>
-
-            {/* ── ROOM TABS ── */}
-            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1.2, overflowX: 'auto', pb: 0.5 }}>
-                {sections.map(section => {
-                    const isActive = activeSection === section;
-                    const count = tables.filter(t => !t.isDeleted && t.isActive !== false && getEffectiveRoom(t) === section.toLowerCase()).length;
-                    return (
-                        <Box key={section} onClick={() => handleSectionSwitch(section)} sx={{
-                            px: 2.2, py: 0.85, borderRadius: 3, cursor: 'pointer', fontWeight: 800, fontSize: '0.84rem',
-                            bgcolor: isActive ? 'primary.main' : '#FFFFFF', color: isActive ? '#FFFFFF' : 'text.primary',
-                            border: '1.5px solid', borderColor: isActive ? 'primary.main' : 'divider',
-                            boxShadow: isActive ? '0 4px 14px rgba(0,0,0,0.12)' : 'none',
-                            transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: 0.8, flexShrink: 0,
-                            '&:hover': { borderColor: 'primary.main' },
-                        }}>
-                            <span>{formatSectionName(section)}</span>
-                            <Chip label={count} size="small" sx={{ height: 20, fontSize: '0.68rem', fontWeight: 800, bgcolor: isActive ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)', color: isActive ? '#FFFFFF' : 'text.secondary' }} />
-                        </Box>
-                    );
-                })}
-                {onOpenAddLocation && !isCustomerMode && (
-                    <Box onClick={onOpenAddLocation} sx={{
-                        px: 2, py: 0.85, borderRadius: 3, cursor: 'pointer', fontWeight: 800, fontSize: '0.84rem',
-                        bgcolor: '#FFFFFF', color: 'primary.main',
-                        border: '1.5px dashed', borderColor: 'primary.main',
-                        transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: 0.6, flexShrink: 0,
-                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.08) },
-                    }}>
-                        <AddIcon sx={{ fontSize: 18 }} />
-                        <span>Add Room</span>
-                    </Box>
-                )}
-                {onOpenAddTable && !isCustomerMode && (
-                    <Box onClick={onOpenAddTable} sx={{
-                        px: 2, py: 0.85, borderRadius: 3, cursor: 'pointer', fontWeight: 800, fontSize: '0.84rem',
-                        bgcolor: 'primary.main', color: '#FFFFFF',
-                        border: '1.5px solid', borderColor: 'primary.main',
-                        boxShadow: '0 3px 10px rgba(99, 102, 241, 0.3)',
-                        transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: 0.6, flexShrink: 0,
-                        '&:hover': { bgcolor: 'primary.dark', transform: 'translateY(-1px)', boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)' },
-                    }}>
-                        <AddIcon sx={{ fontSize: 18 }} />
-                        <span>Add Table</span>
-                    </Box>
-                )}
             </Box>
+
+                {/* STATUS FILTER PILLS */}
+                {!isCustomerMode && currentSectionTables.length > 0 && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, overflowX: 'auto', pb: 0.5 }}>
+                        <Chip
+                            label={`All (${filterCounts.all})`}
+                            size="small"
+                            color={canvasFilter === 'all' ? 'primary' : 'default'}
+                            variant={canvasFilter === 'all' ? 'filled' : 'outlined'}
+                            onClick={() => setCanvasFilter('all')}
+                            sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
+                        />
+                        <Chip
+                            label={`🟢 Available (${filterCounts.available})`}
+                            size="small"
+                            color={canvasFilter === 'available' ? 'success' : 'default'}
+                            variant={canvasFilter === 'available' ? 'filled' : 'outlined'}
+                            onClick={() => setCanvasFilter('available')}
+                            sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
+                        />
+                        <Chip
+                            label={`🟣 Occupied (${filterCounts.occupied})`}
+                            size="small"
+                            color={canvasFilter === 'occupied' ? 'primary' : 'default'}
+                            variant={canvasFilter === 'occupied' ? 'filled' : 'outlined'}
+                            onClick={() => setCanvasFilter('occupied')}
+                            sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
+                        />
+                        <Chip
+                            label={`🔵 Cleaning (${filterCounts.cleaning})`}
+                            size="small"
+                            color={canvasFilter === 'cleaning' ? 'info' : 'default'}
+                            variant={canvasFilter === 'cleaning' ? 'filled' : 'outlined'}
+                            onClick={() => setCanvasFilter('cleaning')}
+                            sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
+                        />
+                        {filterCounts.longSeating > 0 && (
+                            <Chip
+                                label={`⚡ Long Seating >90m (${filterCounts.longSeating})`}
+                                size="small"
+                                color={canvasFilter === 'long_seating' ? 'error' : 'default'}
+                                variant={canvasFilter === 'long_seating' ? 'filled' : 'outlined'}
+                                onClick={() => setCanvasFilter('long_seating')}
+                                sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
+                            />
+                        )}
+                    </Box>
+                )}
 
             {/* ── 3D FLOOR CANVAS ── */}
             <Paper
@@ -1089,7 +1149,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                             {searchQuery ? `No tables matching "${searchQuery}"` : `No tables in ${formatSectionName(activeSection)}`}
                         </Typography>
                         {!searchQuery && onOpenAddTable && !isCustomerMode && (
-                            <Button variant="contained" startIcon={<AddIcon />} onClick={onOpenAddTable} sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 800 }}>
+                            <Button variant="contained" startIcon={<AddIcon />} onClick={() => onOpenAddTable && onOpenAddTable(activeSection)} sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 800 }}>
                                 Add First Table
                             </Button>
                         )}
@@ -1144,6 +1204,9 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
                             // Industry-standard: pulsing red border for overdue (>90min) tables
                             const isOverdue = !isCustomerMode && isOccupied && timerInfo?.isAlert === true;
+                            const guestCount = table.currentOrder?.guestCount || (table as any).currentBooking?.guests || (table as any).currentBooking?.guestCount || (table as any).guestCount || (isOccupied ? 1 : 0);
+                            const isCommunalRoom = ['bar', 'poolside', 'counter', 'communal'].includes(canonicalizeRoomKey(activeSection));
+                            const isCommunalTable = table.seatingMode === 'communal' || isCommunalRoom;
 
                             return (
                                 <Box
@@ -1160,7 +1223,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                         zIndex: isDragging || isSelectedByCustomer ? 100 : 2,
                                         willChange: 'transform',
                                         transition: isDragging ? 'none' : 'transform 0.15s ease',
-                                        opacity: isCustomerMode && (isOccupied || isCleaning || isDeleted) ? 0.45 : 1,
+                                        opacity: !isMatchingFilter(table) ? 0.25 : (isCustomerMode && (isOccupied || isCleaning || isDeleted) ? 0.45 : 1),
                                         cursor: isCustomerMode
                                             ? (isOccupied || isCleaning || isDeleted ? 'not-allowed' : 'pointer')
                                             : (isCustomizeMode ? (isDragging ? 'grabbing' : 'grab') : 'pointer'),
@@ -1181,46 +1244,74 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                     }}
                                 >
                                     {/* REALISTIC SEATING FORMULA CHAIRS */}
-                                    {renderDynamicChairs(table.capacity, table.shape, statusColor, is3DMode)}
+                                    {renderDynamicChairs(table.capacity, table.shape, statusColor, is3DMode, guestCount, isCommunalTable)}
 
                                     {/* 3D Table Surface */}
-                                    <Tooltip title={tooltipText} arrow placement="top">
-                                        <Card
-                                            elevation={0}
-                                            onClick={() => handleTableClick(table)}
-                                            sx={{
-                                                width: '100%',
-                                                height: '100%',
-                                                borderRadius: isRound ? '50%' : (is3DMode ? 2 : 2.5),
-                                                // Overdue: thicker dark-red border (industry standard visual cue)
-                                                border: isOverdue
-                                                    ? `2.5px solid #DC2626`
-                                                    : `2px solid ${statusColor}`,
+                                    <Paper
+                                        elevation={0}
+                                        onClick={() => {
+                                            if (isCustomizeMode) return;
+                                            if (isCustomerMode) {
+                                                if (!isOccupied && !isCleaning && !isDeleted && onSelectTableForCustomer) {
+                                                    onSelectTableForCustomer(table);
+                                                }
+                                            } else {
+                                                setSelectedTableDetails(table);
+                                            }
+                                        }}
+                                        sx={{
+                                            width: '100%',
+                                            height: '100%',
+                                            borderRadius: isRound ? '50%' : 2.5,
+                                            // Overdue: thicker dark-red border (industry standard visual cue)
+                                            border: isOverdue
+                                                ? `2.5px solid #DC2626`
+                                                : `2px solid ${statusColor}`,
+                                            background: is3DMode
+                                                ? `linear-gradient(145deg, #FFFFFF 30%, ${alpha(isOverdue ? '#DC2626' : statusColor, 0.06)} 100%)`
+                                                : (isOverdue ? '#FFF5F5' : '#FFFFFF'),
+                                            boxShadow: isDragging
+                                                ? `${depth3D + 4}px ${depth3D + 8}px 28px rgba(0,0,0,0.28)`
+                                                : (isOverdue ? `${depth3D}px ${depth3D + 2}px 0 rgba(220,38,38,0.3), ${depth3D + 4}px ${depth3D + 8}px 18px rgba(220,38,38,0.15)` : boxShadow3D),
+                                            position: 'relative',
+                                            zIndex: 3,
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            p: 0.6,
+                                            overflow: 'hidden',
+                                            transition: 'all 0.18s ease',
+                                            '&:hover': {
+                                                boxShadow: is3DMode
+                                                    ? `${depth3D + 2}px ${depth3D + 5}px 0 ${alpha(statusColor, 0.5)}, ${depth3D + 6}px ${depth3D + 10}px 22px rgba(0,0,0,0.22)`
+                                                    : '0 6px 18px rgba(0,0,0,0.12)',
                                                 background: is3DMode
-                                                    ? `linear-gradient(145deg, #FFFFFF 30%, ${alpha(isOverdue ? '#DC2626' : statusColor, 0.06)} 100%)`
-                                                    : (isOverdue ? '#FFF5F5' : '#FFFFFF'),
-                                                boxShadow: isDragging
-                                                    ? `${depth3D + 4}px ${depth3D + 8}px 28px rgba(0,0,0,0.28)`
-                                                    : (isOverdue ? `${depth3D}px ${depth3D + 2}px 0 rgba(220,38,38,0.3), ${depth3D + 4}px ${depth3D + 8}px 18px rgba(220,38,38,0.15)` : boxShadow3D),
-                                                position: 'relative',
-                                                zIndex: 3,
+                                                    ? `linear-gradient(145deg, #FFFFFF 20%, ${alpha(statusColor, 0.1)} 100%)`
+                                                    : statusBg,
+                                            },
+                                        }}
+                                    >
+                                        {/* Visual 6-dot drag handle in Move Mode */}
+                                        {isCustomizeMode && !isCustomerMode && (
+                                            <Box sx={{
+                                                position: 'absolute',
+                                                top: 3,
+                                                right: 3,
+                                                bgcolor: '#0F172A',
+                                                color: '#38BDF8',
+                                                borderRadius: '50%',
+                                                width: 16,
+                                                height: 16,
                                                 display: 'flex',
-                                                flexDirection: 'column',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                p: 0.6,
-                                                overflow: 'hidden',
-                                                transition: 'all 0.18s ease',
-                                                '&:hover': {
-                                                    boxShadow: is3DMode
-                                                        ? `${depth3D + 2}px ${depth3D + 5}px 0 ${alpha(statusColor, 0.5)}, ${depth3D + 6}px ${depth3D + 10}px 22px rgba(0,0,0,0.22)`
-                                                        : '0 6px 18px rgba(0,0,0,0.12)',
-                                                    background: is3DMode
-                                                        ? `linear-gradient(145deg, #FFFFFF 20%, ${alpha(statusColor, 0.1)} 100%)`
-                                                        : statusBg,
-                                                },
-                                            }}
-                                        >
+                                                zIndex: 10,
+                                                boxShadow: '0 2px 6px rgba(0,0,0,0.25)'
+                                            }}>
+                                                <DragHandleIcon sx={{ fontSize: 11 }} />
+                                            </Box>
+                                        )}
                                             {/* Status dot + Table number */}
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
                                                 <Box sx={{
@@ -1258,19 +1349,19 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                                 />
                                             )}
 
-                                            {/* Guest count badge — only when occupied and guestCount is set */}
-                                            {isOccupied && !isCustomerMode && table.currentOrder?.guestCount > 0 && (
+                                            {/* Guest count & seating ratio badge — e.g. 👥 1 / 2 Seats */}
+                                            {isOccupied && !isCustomerMode && (
                                                 <Chip
-                                                    label={`👥 ${table.currentOrder.guestCount}`}
+                                                    label={`👥 ${guestCount} / ${table.capacity} Seats`}
                                                     size="small"
                                                     sx={{
                                                         height: 15,
                                                         fontSize: '0.56rem',
                                                         fontWeight: 900,
                                                         mt: 0.25,
-                                                        bgcolor: alpha('#6366F1', 0.12),
-                                                        color: '#4338CA',
-                                                        border: '1px solid rgba(99,102,241,0.3)',
+                                                        bgcolor: alpha(statusColor, 0.12),
+                                                        color: statusColor,
+                                                        border: `1px solid ${alpha(statusColor, 0.3)}`,
                                                         letterSpacing: 0,
                                                     }}
                                                 />
@@ -1279,8 +1370,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                             {isSelectedByCustomer && (
                                                 <Chip label="Selected" size="small" color="secondary" sx={{ height: 16, fontSize: '0.6rem', fontWeight: 900, mt: 0.2 }} />
                                             )}
-                                        </Card>
-                                    </Tooltip>
+                                        </Paper>
                                 </Box>
                             );
                         })}
@@ -1586,13 +1676,16 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                                 </Typography>
                                             </Box>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                {order?.guestCount > 0 && (
-                                                    <Chip
-                                                        label={`👥 ${order.guestCount} Guests`}
-                                                        size="small"
-                                                        sx={{ fontWeight: 800, fontSize: '0.72rem', bgcolor: alpha('#6366F1', 0.1), color: '#4338CA', border: '1px solid rgba(99,102,241,0.25)' }}
-                                                    />
-                                                )}
+                                                {(() => {
+                                                    const guestCount = order?.guestCount || (t as any).currentBooking?.guests || (t as any).currentBooking?.guestCount || (t as any).guestCount || (t.status === 'occupied' ? 1 : 0);
+                                                    return guestCount > 0 ? (
+                                                        <Chip
+                                                            label={`👥 ${guestCount} ${guestCount === 1 ? 'Guest' : 'Guests'}`}
+                                                            size="small"
+                                                            sx={{ fontWeight: 800, fontSize: '0.72rem', bgcolor: alpha('#6366F1', 0.12), color: '#4338CA', border: '1px solid rgba(99,102,241,0.3)' }}
+                                                        />
+                                                    ) : null;
+                                                })()}
                                                 <Chip
                                                     icon={<TimeIcon sx={{ fontSize: 14 }} />}
                                                     label={formatSeatedDuration(seatedTimeMin)}
