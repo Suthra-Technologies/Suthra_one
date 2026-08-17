@@ -1060,9 +1060,9 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                 sx={{
                     position: 'relative',
                     width: '100%',
-                    minHeight: { xs: 540, sm: 660 },
-                    maxHeight: '80vh',
-                    overflow: 'auto',
+                    minHeight: dynamicCanvasHeight + 40,
+                    overflow: 'hidden',
+                    overflowX: 'auto',
                     borderRadius: 3.5,
                     border: '2px solid',
                     borderColor: isCustomizeMode ? 'primary.main' : (is3DMode ? '#7C3AED' : 'divider'),
