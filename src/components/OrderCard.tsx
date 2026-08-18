@@ -49,8 +49,8 @@ import {
     useTheme
 } from '@mui/material';
 import React, { useState, useEffect, useRef } from 'react';
-import { toast } from 'react-hot-toast';
 import { QRCodeSVG } from 'qrcode.react';
+import { toast } from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { feedbackAPI } from '../services/api';
@@ -70,6 +70,7 @@ import {
     isOrderActive,
 } from '../utils/orderWorkflows';
 import { formatSpiceLevelLabel } from '../utils/spiceLevel';
+import { formatPhoneDisplay } from '../utils/validation';
 import DeliveryTracker from './DeliveryTracker';
 import PaymentCollectionDialog from './PaymentCollectionDialog';
 
@@ -156,12 +157,6 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const { user, tenantSlug } = useAuth();
     const isDeliveryBoy = user?.role === 'delivery';
 
-    // A dispute can target only some of an order's items — the order-level DISPUTED
-    // badge should say so instead of implying every item is under dispute.
-    const isFullyDisputed = order.isDisputed && (order.items || []).length > 0 && (order.items || []).every(
-        (item: any) => Number(item?.disputedQuantity || 0) >= Number(item?.quantity || 0)
-    );
-
     const canAddMoreItems = canAddItems(order.status, order.orderType, order);
     // Global Dine In orders have already paid - don't show collect payment
     const canCollectPayment = order.orderType === 'dine_in' && order.status === 'served' && !isGlobalDineIn(order);
@@ -174,6 +169,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const handleNextStatus = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (isProcessing) return;
+        if (isFullyDisputed) {
+            toast.error('Order is fully under dispute — resolve the dispute to continue');
+            return;
+        }
 
         // Pre-order time lock guard
         if ((order as any).isPreOrder && (order as any).scheduledTime) {
@@ -210,6 +209,17 @@ const OrderCard: React.FC<OrderCardProps> = ({
         !!(order as any).isPreOrder &&
         !!(order as any).scheduledTime &&
         (new Date((order as any).scheduledTime).getTime() - Date.now()) > 60 * 60 * 1000;
+
+    // Whole order under dispute: either a whole-order dispute (isDisputed with no
+    // item-level marks) or every active item fully disputed. Blocks progression.
+    const isFullyDisputed = (() => {
+        if (!order.isDisputed) return false;
+        const activeItems = (order.items || []).filter((i: any) => i.preparationStatus !== 'cancelled');
+        const hasItemMarks = activeItems.some((i: any) => Number(i.disputedQuantity || 0) > 0);
+        return !hasItemMarks
+            || (activeItems.length > 0 && activeItems.every((i: any) => Number(i.disputedQuantity || 0) >= Number(i.quantity || 0)));
+    })();
+
     const handlePaymentSuccess = () => {
         setPaymentDialogOpen(false);
         if (onRefresh) onRefresh();
@@ -490,7 +500,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                         fontSize: '0.8rem',
                                         '@media print': { display: 'none' }
                                     }}>
-                                        Ph: {order.customer.phone}
+                                        Ph: {formatPhoneDisplay(order.customer.phone)}
                                     </Typography>
                                 )}
                             </Box>
@@ -559,13 +569,28 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 </Stack>
 
                 {/* Dasher Information Container */}
-                {['delivery', 'online'].includes(order.orderType) && (order.driverName || order.driverPhone || order.dasherPickupPhone || order.dasherDropoffPhone || order.trackingUrl) && (
+                {['delivery', 'online'].includes(order.orderType) && (order.driverName || order.driverPhone || order.dasherPickupPhone || order.dasherDropoffPhone || order.trackingUrl || order.uberPickupVerificationCode) && (
                     <Box sx={{ mb: 2, p: 1.5, borderRadius: 1.5, bgcolor: alpha(theme.palette.info.main, 0.08), border: `1px solid ${alpha(theme.palette.info.main, 0.2)}` }}>
                         <Typography variant="caption" color="info.main" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', mb: 1 }}>
                             <DeliveryIcon sx={{ fontSize: 16, mr: 0.5 }} />
                             Dasher Details
                         </Typography>
                         <Stack spacing={0.5}>
+                            {order.uberPickupVerificationCode && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1, mb: 0.5, borderRadius: 1, bgcolor: alpha(theme.palette.warning.main, 0.15), border: `1px solid ${alpha(theme.palette.warning.main, 0.4)}` }}>
+                                    <Box sx={{ bgcolor: '#fff', p: 0.5, borderRadius: 0.5, lineHeight: 0 }}>
+                                        <QRCodeSVG value={order.uberPickupVerificationCode} size={56} />
+                                    </Box>
+                                    <Box sx={{ minWidth: 0 }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'warning.dark', display: 'block' }}>
+                                            Pickup verification — rider scans at handoff
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.dark', wordBreak: 'break-all' }}>
+                                            {order.uberPickupVerificationCode}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            )}
                             {order.driverName && (
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <PersonIcon sx={{ fontSize: 14, mr: 1, color: 'text.secondary' }} />
@@ -676,6 +701,22 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
                                                         {item.quantity}x {item.name || item.menuItem?.name || 'Unknown Item'}
                                                     </Typography>
+                                                    {Number(item.disputedQuantity || 0) > 0 && (
+                                                        <Tooltip title={`${item.disputedQuantity} of ${item.quantity} under an active dispute`} arrow>
+                                                            <Chip
+                                                                label={Number(item.disputedQuantity) >= Number(item.quantity) ? 'DISPUTED' : `${item.disputedQuantity} DISPUTED`}
+                                                                size="small"
+                                                                sx={{
+                                                                    height: 18,
+                                                                    fontSize: '0.62rem',
+                                                                    fontWeight: 700,
+                                                                    bgcolor: alpha(theme.palette.error.main, 0.1),
+                                                                    color: theme.palette.error.main,
+                                                                    border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
+                                                                }}
+                                                            />
+                                                        </Tooltip>
+                                                    )}
                                                     {item.preparationStatus === 'ready' && (
                                                         <Tooltip title="Ready to Serve" arrow>
                                                             <CheckIcon
@@ -1334,6 +1375,31 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 (order.orderType === 'dine_in' && nextStatus === 'completed' && !isGlobalDineIn(order)) ? null : (
                                     // Disable "On the Way" and "Delivered" for third-party delivery (DoorDash/Uber Eats)
                                     (() => {
+                                        // A fully-disputed order can't progress until the dispute is resolved
+                                        if (isFullyDisputed) {
+                                            return (
+                                                <Tooltip title="Order is fully under dispute — resolve the dispute to continue">
+                                                    <span>
+                                                        <Button
+                                                            variant="contained"
+                                                            color="error"
+                                                            size="small"
+                                                            disabled
+                                                            sx={{
+                                                                fontSize: '0.65rem',
+                                                                padding: '4px 8px',
+                                                                textTransform: 'none',
+                                                                fontWeight: 'bold',
+                                                                minWidth: 'auto',
+                                                                height: '28px'
+                                                            }}
+                                                        >
+                                                            On Hold: Disputed
+                                                        </Button>
+                                                    </span>
+                                                </Tooltip>
+                                            );
+                                        }
                                         const isThirdPartyDelivery = !!(order.doordashDeliveryId || order.uberEatsDeliveryId);
                                         const isBlockedStatus = nextStatus === 'on_the_way' || nextStatus === 'delivered';
                                         if (isThirdPartyDelivery && isBlockedStatus) {

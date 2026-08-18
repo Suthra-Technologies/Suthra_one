@@ -707,7 +707,11 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
         PaperProps={{
           elevation: 0,
           sx: {
-            overflow: 'visible',
+            // Never taller than the window: scroll inside the menu instead of
+            // pushing Settings/Logout off-screen. (The old decorative arrow
+            // needed overflow:visible, which prevented scrolling — removed.)
+            maxHeight: 'calc(100vh - 90px)',
+            overflowY: 'auto',
             filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
             mt: 1.5,
             minWidth: 200,
@@ -716,18 +720,6 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
               height: 32,
               ml: -0.5,
               mr: 1,
-            },
-            '&:before': {
-              content: '""',
-              display: 'block',
-              position: 'absolute',
-              top: 0,
-              right: 14,
-              width: 10,
-              height: 10,
-              bgcolor: 'background.paper',
-              transform: 'translateY(-50%) rotate(45deg)',
-              zIndex: 0,
             },
           },
         }}
@@ -746,6 +738,9 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
                 Switch Restaurant
               </Typography>
             </Divider>
+            {/* Scroll long restaurant lists inside the menu so Settings/Logout
+                below never get pushed off-screen. */}
+            <Box sx={{ maxHeight: 'min(200px, 30vh)', overflowY: 'auto' }}>
             {availableTenants.map((tenant) => (
               <MenuItem
                 key={tenant.slug}
@@ -758,6 +753,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
                 </Typography>
               </MenuItem>
             ))}
+            </Box>
             {activeRole === 'admin' && (
               <MenuItem onClick={handleAddStore} sx={{ color: 'primary.main' }}>
                 <Add fontSize="small" sx={{ mr: 1 }} />

@@ -1441,7 +1441,7 @@ const CateringManagementPage = () => {
         // Trigger validation
         const isPhoneValid = newOrder.customerPhone.length === 10;
         const isNameValid = !!newOrder.customerName;
-        const isEmailValid = !newOrder.customerEmail || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newOrder.customerEmail);
+        const isEmailValid = !newOrder.customerEmail || /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(newOrder.customerEmail);
         const isDateValid = !!newOrder.requiredDate;
         const isOccasionValid = !!newOrder.occasion;
         const isOccasionDateValid = !!newOrder.occasionDate;
@@ -3019,7 +3019,7 @@ const CateringManagementPage = () => {
                                                         value={newOrder.customerEmail}
                                                         onBlur={() => setEmailTouched(true)}
                                                         helperText={
-                                                            emailTouched && newOrder.customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newOrder.customerEmail)
+                                                            emailTouched && newOrder.customerEmail && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(newOrder.customerEmail)
                                                                 ? "Please enter a valid email address"
                                                                 : ""
                                                         }
@@ -3037,7 +3037,7 @@ const CateringManagementPage = () => {
                                                         setEmailTouched(true);
                                                         const nameValid = !!newOrder.customerName;
                                                         const phoneValid = newOrder.customerPhone.length === 10;
-                                                        const emailValid = !newOrder.customerEmail || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newOrder.customerEmail);
+                                                        const emailValid = !newOrder.customerEmail || /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(newOrder.customerEmail);
                                                         if (nameValid && phoneValid && emailValid) {
                                                             setActiveStep(1);
                                                         }

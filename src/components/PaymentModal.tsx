@@ -27,6 +27,11 @@ import { toast } from 'react-hot-toast';
 
 interface PaymentFormProps {
     amount: number;
+    // Food subtotal and tax, used (for Connect-routed tenants) to compute the
+    // platform application fee so the tenant nets food + tax. Optional — when
+    // omitted the platform keeps only the Stripe cost.
+    subtotal?: number;
+    tax?: number;
     onSuccess: (paymentIntentId: string, tipAmount: number) => void;
     onClose: () => void;
     showTips?: boolean;
@@ -36,7 +41,7 @@ const SUCCESS_STATUSES = new Set(['succeeded']);
 const FAILURE_STATUSES = new Set(['canceled', 'requires_payment_method', 'failed']);
 const PROCESSING_STATUSES = new Set(['processing', 'requires_action', 'requires_confirmation', 'requires_capture']);
 
-const PaymentForm: React.FC<PaymentFormProps> = ({ amount, onSuccess, onClose, showTips = false }) => {
+const PaymentForm: React.FC<PaymentFormProps> = ({ amount, subtotal, tax, onSuccess, onClose, showTips = false }) => {
     const stripe = useStripe();
     const elements = useElements();
     const [loading, setLoading] = useState(false);
@@ -123,7 +128,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ amount, onSuccess, onClose, s
 
         try {
             if (mode === 'manual') {
-                const { data } = await paymentsAPI.createIntent({ amount: totalAmount, currency: 'usd' });
+                const { data } = await paymentsAPI.createIntent({ amount: totalAmount, currency: 'usd', subtotal, tax });
                 const { clientSecret } = data;
 
                 const result = await stripe!.confirmCardPayment(clientSecret, {
@@ -172,7 +177,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ amount, onSuccess, onClose, s
                 }
                 // Terminal path: create card_present intent and poll until paid (reader will confirm)
                 setTerminalStatus('Creating terminal intent...');
-                const { data } = await paymentsAPI.createTerminalIntent({ amount: totalAmount, currency: 'usd' });
+                const { data } = await paymentsAPI.createTerminalIntent({ amount: totalAmount, currency: 'usd', subtotal, tax });
                 const intentId = data.intentId;
                 setCurrentIntentId(intentId);
                 setTerminalStatus('Waiting for reader to collect (tap/swipe)...');
@@ -317,11 +322,13 @@ interface PaymentModalProps {
     open: boolean;
     onClose: () => void;
     amount: number;
+    subtotal?: number;
+    tax?: number;
     onSuccess: (paymentIntentId: string, tipAmount: number) => void;
     showTips?: boolean;
 }
 
-const PaymentModal: React.FC<PaymentModalProps> = ({ open, onClose, amount, onSuccess, showTips = false }) => {
+const PaymentModal: React.FC<PaymentModalProps> = ({ open, onClose, amount, subtotal, tax, onSuccess, showTips = false }) => {
     const [stripePromise, setStripePromise] = useState<Promise<any> | null>(null);
     const [loadingKey, setLoadingKey] = useState(false);
 
@@ -364,7 +371,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ open, onClose, amount, onSu
         if (stripePromise) {
             return (
                 <Elements stripe={stripePromise}>
-                    <PaymentForm amount={amount} onSuccess={onSuccess} onClose={onClose} showTips={showTips} />
+                    <PaymentForm amount={amount} subtotal={subtotal} tax={tax} onSuccess={onSuccess} onClose={onClose} showTips={showTips} />
                 </Elements>
             );
         }

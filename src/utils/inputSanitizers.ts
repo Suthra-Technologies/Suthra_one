@@ -1,6 +1,7 @@
 /**
  * Utility functions for sanitizing input strings based on input type.
  */
+import { validateEmail as validateEmailStrict } from './validation';
 
 export type InputType = 'name' | 'alphanumeric' | 'code' | 'phone' | 'email' | 'number' | 'textarea' | 'text' | 'password';
 
@@ -100,8 +101,8 @@ export const applySanitization = (
 
 /**
  * Validates if the email is in a valid format.
+ * Delegates to the shared validator (RFC length limits included).
  */
 export const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  return validateEmailStrict(email).isValid;
 };

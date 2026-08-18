@@ -69,10 +69,15 @@ interface OrderItem {
   notes?: string;
   spiceLevel?: string | null;
   preparationStatus?: 'pending' | 'preparing' | 'ready' | 'cancelled';
+  disputedQuantity?: number; // qty under an active dispute — not to be prepared
   cancelReason?: string;
   preparedAt?: Date;
   cancelledAt?: Date;
 }
+
+// Quantity the kitchen should actually prepare (ordered minus disputed)
+const getCookQty = (item: OrderItem): number =>
+  Math.max(0, Number(item.quantity || 0) - Number(item.disputedQuantity || 0));
 
 interface Order {
   _id: string;
@@ -148,11 +153,17 @@ const KitchenInterface: React.FC = () => {
           jobId: `kot_${order._id || Date.now()}_${Date.now()}`,
           order: {
             ...order,
-            items: (order.items || []).map((item: any) => ({
-              ...item,
-              name: stripSpiceFromName(item.name, item.spiceLevel) || item.name,
-              spiceLevel: item.spiceLevel || '',
-            })),
+            // Disputed quantities are not to be prepared — send only the cookable qty
+            items: (order.items || [])
+              .map((item: any) => ({
+                ...item,
+                name: stripSpiceFromName(item.name, item.spiceLevel) || item.name,
+                spiceLevel: item.spiceLevel || '',
+                quantity: item.preparationStatus === 'cancelled'
+                  ? item.quantity
+                  : Math.max(0, Number(item.quantity || 0) - Number(item.disputedQuantity || 0)),
+              }))
+              .filter((item: any) => item.preparationStatus === 'cancelled' || item.quantity > 0),
           },
           timestamp: Date.now(),
         }),
@@ -193,11 +204,11 @@ const KitchenInterface: React.FC = () => {
     }
 
     const itemsHtml = order.items
-      .filter(item => item.preparationStatus !== 'cancelled')
+      .filter(item => item.preparationStatus !== 'cancelled' && getCookQty(item) > 0)
       .map(item => `
         <div style="display: flex; font-size: 14px; margin-bottom: 4px; color: #444;">
           <div style="flex: 1; padding-right: 10px;">${stripSpiceFromName(item.name, item.spiceLevel) || item.name}</div>
-          <div style="width: 40px; text-align: center;">${item.quantity}</div>
+          <div style="width: 40px; text-align: center;">${getCookQty(item)}</div>
         </div>
         ${item.notes ? `<div style="font-size: 12px; color: #666; margin-left: 10px; font-style: italic; margin-bottom: 4px;">📝 ${item.notes}</div>` : ''}
         ${item.spiceLevel ? `<div style="font-size: 12px; color: #000; margin-left: 10px; margin-bottom: 4px;">Spice: ${formatSpiceLevelLabel(item.spiceLevel)}</div>` : ''}
@@ -282,7 +293,7 @@ const KitchenInterface: React.FC = () => {
 
   const getOrderProgress = (items: OrderItem[]) => {
     if (!items || items.length === 0) return 0;
-    const activeItems = items.filter(item => item.preparationStatus !== 'cancelled');
+    const activeItems = items.filter(item => item.preparationStatus !== 'cancelled' && getCookQty(item) > 0);
     if (activeItems.length === 0) return 100;
     const readyCount = activeItems.filter(item => item.preparationStatus === 'ready').length;
     return (readyCount / activeItems.length) * 100;
@@ -947,6 +958,9 @@ const KitchenInterface: React.FC = () => {
                       {order.items?.map((item, idx) => {
                         const isReady = item.preparationStatus === 'ready';
                         const isCancelled = item.preparationStatus === 'cancelled';
+                        const disputedQty = Number(item.disputedQuantity || 0);
+                        const cookQty = getCookQty(item);
+                        const isFullyDisputed = !isCancelled && item.quantity > 0 && cookQty <= 0;
                         const isUpdating = updatingItems.has(`${order._id}-${idx}`);
 
                         return (
@@ -959,15 +973,34 @@ const KitchenInterface: React.FC = () => {
                               px: { xs: 0.5, sm: 1 },
                               borderBottom: idx < (order?.items || []).length - 1 ? '1px dashed' : 'none',
                               borderColor: 'divider',
-                              bgcolor: isCancelled ? alpha(theme.palette.error.main, 0.03) : 'transparent',
-                              borderRadius: isCancelled ? 1 : 0,
+                              bgcolor: (isCancelled || isFullyDisputed) ? alpha(theme.palette.error.main, 0.03) : 'transparent',
+                              borderRadius: (isCancelled || isFullyDisputed) ? 1 : 0,
                               opacity: isReady ? 0.7 : 1,
                               textDecoration: isReady ? 'line-through' : 'none',
                               transition: 'all 0.2s ease',
-                              mb: isCancelled ? 0.25 : 0
+                              mb: (isCancelled || isFullyDisputed) ? 0.25 : 0
                             }}
                           >
-                            {!isCancelled ? (
+                            {isFullyDisputed ? (
+                              <Box sx={{ ml: 1, py: 0.5, flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    color: 'text.disabled',
+                                    textDecoration: 'line-through',
+                                    fontSize: bodyFontSize,
+                                  }}
+                                >
+                                  <strong>{item.quantity}x</strong> {item.name}
+                                </Typography>
+                                <Chip
+                                  label="DISPUTED — DO NOT PREPARE"
+                                  size="small"
+                                  color="error"
+                                  sx={{ height: 16, fontSize: bodyFontSize, fontWeight: 'bold', px: 0.5 }}
+                                />
+                              </Box>
+                            ) : !isCancelled ? (
                               <FormControlLabel
                                 control={
                                   <Checkbox
@@ -992,8 +1025,13 @@ const KitchenInterface: React.FC = () => {
                                         fontSize: bodyFontSize,
                                       }}
                                     >
-                                      <strong>{item.quantity}x</strong> {item.name}
+                                      <strong>{cookQty}x</strong> {item.name}
                                     </Typography>
+                                    {disputedQty > 0 && (
+                                      <Typography variant="caption" color="error.main" display="block" sx={{ fontSize: bodyFontSize, fontWeight: 700 }}>
+                                        ⚖️ {disputedQty} of {item.quantity} disputed — prepare {cookQty} only
+                                      </Typography>
+                                    )}
                                     {item.notes && (
                                       <Typography variant="caption" color="warning.main" display="block" sx={{ fontSize: bodyFontSize }}>
                                         📝 {item.notes}

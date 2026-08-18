@@ -60,6 +60,8 @@ export interface RestaurantSettings {
     currencySymbol: string;
     taxRate: number;
     processingFee?: number;
+    // Slab size ($ of order value per fee unit); 0/unset = processingFee is a percent
+    processingFeeOrderValue?: number;
     logo: string;
     stamp?: string;
     country: string;
@@ -118,6 +120,10 @@ export interface PaymentSettings {
     stripeSecretKey?: string;
     stripeWebhookSecret?: string;
     stripeMode?: 'test' | 'live';
+    phonePeClientId?: string;
+    phonePeClientSecret?: string;
+    phonePeClientVersion?: string;
+    phonePeEnv?: 'UAT' | 'PROD';
 }
 
 export interface NotificationSettings {
@@ -194,6 +200,8 @@ export interface DeliverySettings {
         customerId: string;
         storeId: string;
         isSandbox: boolean;
+        pickupBarcodeType?: string;
+        dropoffPinEnabled?: boolean;
     };
 }
 

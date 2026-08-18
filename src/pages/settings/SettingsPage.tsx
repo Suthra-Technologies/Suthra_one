@@ -23,6 +23,8 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import SmartphoneIcon from '@mui/icons-material/Smartphone';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import {
     Alert,
     Avatar,
@@ -66,6 +68,7 @@ import { useTheme } from '@mui/material/styles';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
+import KioskQRCard from '../../components/KioskQRCard';
 import PhoneInput from '../../components/PhoneInput';
 import { DashboardSkeleton } from '../../components/common/PageSkeleton';
 import { useAuth } from '../../context/AuthContext';
@@ -417,6 +420,10 @@ const createDefaultSettings = (): SettingsState => ({
         stripeSecretKey: '',
         stripeWebhookSecret: '',
         stripeMode: 'test',
+        phonePeClientId: '',
+        phonePeClientSecret: '',
+        phonePeClientVersion: '1',
+        phonePeEnv: 'UAT',
     },
     notification: {
         sms: {
@@ -489,6 +496,8 @@ const createDefaultSettings = (): SettingsState => ({
             customerId: '',
             storeId: '',
             isSandbox: true,
+            pickupBarcodeType: 'QR_CODE',
+            dropoffPinEnabled: true,
         }
     }
 });
@@ -678,6 +687,10 @@ const SettingsPage: React.FC = () => {
     const [stripeStatus, setStripeStatus] = useState<{ stripeMode?: string; hasPublishableKey?: boolean; hasSecretKey?: boolean; hasWebhookSecret?: boolean }>({});
     const [tenant, setTenant] = useState<{ contactEmail?: string; contactEmailVerified?: boolean } | null>(null);
     const [newPaymentMethod, setNewPaymentMethod] = useState<string>('');
+    // Stripe Connect payouts account (platform-managed Express account)
+    const [connectStatus, setConnectStatus] = useState<{ needsOnboarding?: boolean; accountId?: string | null; chargesEnabled?: boolean; payoutsEnabled?: boolean; detailsSubmitted?: boolean; status?: string } | null>(null);
+    const [connectDashboardLoading, setConnectDashboardLoading] = useState(false);
+    const [phonePeStatus, setPhonePeStatus] = useState<{ phonePeEnv?: string; phonePeClientId?: string; phonePeClientVersion?: string; hasClientId?: boolean; hasClientSecret?: boolean }>({});
     const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
     const [pairedAgents, setPairedAgents] = useState<any[]>([]);
     const [agentsLoading, setAgentsLoading] = useState(false);
@@ -892,11 +905,12 @@ const SettingsPage: React.FC = () => {
     const fetchSettings = async () => {
         try {
             setLoading(true);
-            const [response, webhookResp, stripeStatusResp, tenantResp] = await Promise.all([
+            const [response, webhookResp, stripeStatusResp, tenantResp, phonePeStatusResp] = await Promise.all([
                 settingsAPI.getAll(),
                 paymentsAPI.getWebhookUrl(),
                 tenantAPI.getStripeSettings(),
                 tenantAPI.getCurrent(),
+                tenantAPI.getPhonePeSettings().catch(() => ({ data: {} })),
             ]);
             setTenant(tenantResp.data);
             const defaults = createDefaultSettings();
@@ -920,6 +934,7 @@ const SettingsPage: React.FC = () => {
                 setSettings(merged);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
+                setPhonePeStatus(phonePeStatusResp.data || {});
             } else if (response.data && typeof response.data === 'object') {
                 const fetched = response.data;
                 const merged = mergeSettingsWithDefaults(defaults, fetched);
@@ -937,6 +952,7 @@ const SettingsPage: React.FC = () => {
                 setSettings(merged);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
+                setPhonePeStatus(phonePeStatusResp.data || {});
             } else {
                 const tenantObj = typeof user?.tenant === 'object' ? user.tenant : null;
                 defaults.restaurant.name = tenantObj?.name || '';
@@ -950,6 +966,7 @@ const SettingsPage: React.FC = () => {
                 setSettings(defaults);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
+                setPhonePeStatus(phonePeStatusResp.data || {});
             }
         } catch (error) {
             console.error('Error fetching settings:', error);
@@ -960,7 +977,26 @@ const SettingsPage: React.FC = () => {
 
     useEffect(() => {
         fetchSettings();
+        paymentsAPI.getConnectStatus()
+            .then((res) => setConnectStatus(res.data || null))
+            .catch(() => setConnectStatus(null));
     }, []);
+
+    const handleOpenStripeDashboard = async () => {
+        setConnectDashboardLoading(true);
+        try {
+            const res = await paymentsAPI.getConnectDashboardLink();
+            if (res.data?.url) {
+                window.open(res.data.url, '_blank', 'noopener');
+            } else {
+                toast.error('Could not get the Stripe dashboard link');
+            }
+        } catch (err: any) {
+            toast.error(err?.response?.data?.message || 'Failed to open Stripe dashboard');
+        } finally {
+            setConnectDashboardLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (tabValue === 5) {
@@ -4056,6 +4092,10 @@ const SettingsPage: React.FC = () => {
 
                             <Divider sx={{ my: 4 }} />
 
+                    {/* Tenant Stripe keys banner — hidden once Connect onboarding is
+                        complete: payments then run on the platform account and the
+                        Payouts Account panel below is the source of truth. */}
+                    {!(connectStatus?.chargesEnabled && connectStatus?.payoutsEnabled) && (
                             <Paper
                                 variant="outlined"
                                 sx={{
@@ -4084,6 +4124,82 @@ const SettingsPage: React.FC = () => {
                                 </Stack>
                                 {(stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? <CheckCircleIcon sx={{ color: '#16a34a' }} /> : null}
                             </Paper>
+                    )}
+
+                    {/* Payouts account (Stripe Connect) — shown once the tenant has a Connect account */}
+                    {connectStatus?.accountId && (
+                        <Paper
+                            variant="outlined"
+                            sx={{
+                                p: 2.5,
+                                mb: 3,
+                                borderRadius: 3,
+                                bgcolor: (connectStatus.chargesEnabled && connectStatus.payoutsEnabled) ? alpha('#635bff', 0.06) : alpha('#f59e0b', 0.08),
+                                borderColor: (connectStatus.chargesEnabled && connectStatus.payoutsEnabled) ? alpha('#635bff', 0.3) : alpha('#f59e0b', 0.3),
+                            }}
+                        >
+                            <Stack
+                                direction={{ xs: 'column', sm: 'row' }}
+                                spacing={2}
+                                alignItems={{ xs: 'flex-start', sm: 'center' }}
+                                justifyContent="space-between"
+                            >
+                                <Stack direction="row" spacing={2} alignItems="center">
+                                    <Avatar sx={{ bgcolor: '#635bff', color: '#fff' }}>
+                                        <AccountBalanceIcon />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="subtitle1" fontWeight={700}>
+                                            Payouts Account
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+                                            {connectStatus.accountId}
+                                        </Typography>
+                                        <Stack direction="row" spacing={1} sx={{ mt: 0.75 }} flexWrap="wrap" useFlexGap>
+                                            <Chip
+                                                size="small"
+                                                color={connectStatus.chargesEnabled ? 'success' : 'warning'}
+                                                label={connectStatus.chargesEnabled ? 'Charges enabled' : 'Charges pending'}
+                                            />
+                                            <Chip
+                                                size="small"
+                                                color={connectStatus.payoutsEnabled ? 'success' : 'warning'}
+                                                label={connectStatus.payoutsEnabled ? 'Payouts enabled' : 'Payouts pending'}
+                                            />
+                                        </Stack>
+                                    </Box>
+                                </Stack>
+                                {(connectStatus.chargesEnabled && connectStatus.payoutsEnabled) ? (
+                                    <Button
+                                        variant="contained"
+                                        startIcon={connectDashboardLoading ? <CircularProgress size={18} color="inherit" /> : <OpenInNewIcon />}
+                                        onClick={() => void handleOpenStripeDashboard()}
+                                        disabled={connectDashboardLoading}
+                                        sx={{
+                                            bgcolor: '#635bff',
+                                            '&:hover': { bgcolor: '#5148e0' },
+                                            fontWeight: 700,
+                                            borderRadius: 2.5,
+                                            whiteSpace: 'nowrap',
+                                            width: { xs: '100%', sm: 'auto' },
+                                        }}
+                                    >
+                                        Open Stripe Dashboard
+                                    </Button>
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 260 }}>
+                                        Stripe is verifying your details. The dashboard becomes available once payouts are enabled.
+                                    </Typography>
+                                )}
+                            </Stack>
+                        </Paper>
+                    )}
+
+                    {/* Key entry — only while Connect onboarding is incomplete. Once the
+                        tenant's Express account is fully enabled, all card payments run
+                        through the platform account and no tenant keys are needed. */}
+                    {!(connectStatus?.chargesEnabled && connectStatus?.payoutsEnabled) && (
+                    <>
                             <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                                 Stripe Payments
                             </Typography>
@@ -4271,6 +4387,168 @@ const SettingsPage: React.FC = () => {
                                     </Button>
                                 </Grid>
                             </Grid>
+                    </>
+                    )}
+
+                    {/* ── PhonePe (India) ─────────────────────────────────────── */}
+                    {settings.restaurant.country?.toLowerCase() === 'india' && (
+                        <>
+                            <Divider sx={{ my: 4 }} />
+                            <Paper
+                                variant="outlined"
+                                sx={{
+                                    p: 2.5,
+                                    mb: 3,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    borderRadius: 3,
+                                    bgcolor: (phonePeStatus?.hasClientId && phonePeStatus?.hasClientSecret) ? alpha('#22c55e', 0.08) : alpha('#f59e0b', 0.08),
+                                    borderColor: (phonePeStatus?.hasClientId && phonePeStatus?.hasClientSecret) ? alpha('#22c55e', 0.3) : alpha('#f59e0b', 0.3),
+                                }}
+                            >
+                                <Stack direction="row" spacing={2} alignItems="center">
+                                    <Avatar sx={{ bgcolor: '#5f259f', color: '#fff' }}>
+                                        <CreditCardIcon />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="subtitle1" fontWeight={700}>PhonePe / UPI</Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {(phonePeStatus?.hasClientId && phonePeStatus?.hasClientSecret) ? 'Configured and connected' : 'Not connected'}
+                                        </Typography>
+                                    </Box>
+                                </Stack>
+                                {(phonePeStatus?.hasClientId && phonePeStatus?.hasClientSecret) ? <CheckCircleIcon sx={{ color: '#16a34a' }} /> : null}
+                            </Paper>
+                            <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                                PhonePe Payments
+                            </Typography>
+                            <Typography color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                                Configure your restaurant’s PhonePe Standard Checkout v2 keys (Developer Settings → API Keys). Used to collect customer payments (UPI) in INR.
+                            </Typography>
+                            <Grid container spacing={3}>
+                                {(phonePeStatus?.hasClientId || phonePeStatus?.hasClientSecret) && (
+                                    <Grid size={{ xs: 12 }}>
+                                        <Alert severity="info" sx={{ mb: 2 }}>
+                                            PhonePe credentials are stored securely. The client secret is never shown back. Enter a new value only to replace it.
+                                        </Alert>
+                                    </Grid>
+                                )}
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Client ID"
+                                        value={settings.payment.phonePeClientId || ''}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
+                                            ...prev,
+                                            payment: { ...prev.payment, phonePeClientId: e.target.value.trim() }
+                                        }))}
+                                        placeholder="e.g. M22..._2606011154"
+                                        autoComplete="off"
+                                        helperText={phonePeStatus.hasClientId ? 'Already set. Leave blank to keep current value.' : ''}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Client Secret"
+                                        type="password"
+                                        value={settings.payment.phonePeClientSecret || ''}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
+                                            ...prev,
+                                            payment: { ...prev.payment, phonePeClientSecret: e.target.value.trim() }
+                                        }))}
+                                        placeholder="Client secret"
+                                        autoComplete="new-password"
+                                        helperText={phonePeStatus.hasClientSecret ? 'Already set. Leave blank to keep current value.' : ''}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Client Version"
+                                        value={settings.payment.phonePeClientVersion || ''}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
+                                            ...prev,
+                                            payment: { ...prev.payment, phonePeClientVersion: e.target.value.trim() }
+                                        }))}
+                                        placeholder="1"
+                                        autoComplete="off"
+                                        helperText="Shown next to your keys in the PhonePe dashboard (usually 1)."
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Environment"
+                                        value={settings.payment.phonePeEnv || 'UAT'}
+                                        onChange={(e) => setSettings(prev => ({
+                                            ...prev,
+                                            payment: { ...prev.payment, phonePeEnv: e.target.value as 'UAT' | 'PROD' }
+                                        }))}
+                                    >
+                                        <MenuItem value="UAT">UAT (Test)</MenuItem>
+                                        <MenuItem value="PROD">Production</MenuItem>
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <Alert severity="warning" sx={{ mb: 2 }}>
+                                        Keep your Client Secret safe. Only admins should update these.
+                                    </Alert>
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<SaveIcon />}
+                                        size="medium"
+                                        disabled={loading}
+                                        onClick={async () => {
+                                            if (loading) return;
+                                            try {
+                                                setLoading(true);
+                                                const payload: any = {};
+                                                const cid = settings.payment.phonePeClientId?.trim();
+                                                const secret = settings.payment.phonePeClientSecret?.trim();
+                                                const ver = settings.payment.phonePeClientVersion?.trim();
+                                                if (cid) payload.phonePeClientId = cid;
+                                                if (secret) payload.phonePeClientSecret = secret;
+                                                if (ver) payload.phonePeClientVersion = ver;
+                                                if (settings.payment.phonePeEnv && settings.payment.phonePeEnv !== phonePeStatus.phonePeEnv) {
+                                                    payload.phonePeEnv = settings.payment.phonePeEnv;
+                                                }
+                                                if (Object.keys(payload).length === 0) {
+                                                    toast.error('No changes to save');
+                                                    return;
+                                                }
+                                                await tenantAPI.updatePhonePeSettings(payload);
+                                                toast.success('PhonePe settings saved');
+                                                const statusResp = await tenantAPI.getPhonePeSettings();
+                                                setPhonePeStatus(statusResp.data || {});
+                                                setSettings(prev => ({
+                                                    ...prev,
+                                                    payment: { ...prev.payment, phonePeClientSecret: '' },
+                                                }));
+                                            } catch (error) {
+                                                console.error('Failed to save PhonePe settings', error);
+                                                toast.error((error as any)?.response?.data?.message || 'Failed to save PhonePe settings');
+                                            } finally {
+                                                setLoading(false);
+                                            }
+                                        }}
+                                        sx={{
+                                            borderRadius: 2.5,
+                                            px: { xs: 3, sm: 4 },
+                                            fontWeight: 800,
+                                            fontFamily: "'Outfit', sans-serif",
+                                            boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
+                                            mt: { xs: 2, md: 0 }
+                                        }}
+                                    >
+                                        Save PhonePe Settings
+                                    </Button>
+                                </Grid>
+                            </Grid>
+                        </>
+                    )}
                         </>
                     )}
                 </TabPanel>
@@ -5321,6 +5599,34 @@ const SettingsPage: React.FC = () => {
                                     <Typography variant="body2" color="text.secondary">
                                         Uber Direct credentials are configured by your platform administrator. Toggle to enable or disable Uber Direct delivery for your store.
                                     </Typography>
+                                    {settings.delivery?.ubereats?.enabled && (
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            size="small"
+                                            label="Pickup verification barcode type"
+                                            value={settings.delivery?.ubereats?.pickupBarcodeType || 'QR_CODE'}
+                                            onChange={(e) => handleDeliveryChange('ubereats', 'pickupBarcodeType', e.target.value)}
+                                            helperText="Symbology sent to Uber for the pickup scan. The order card renders a QR, so QR_CODE is recommended."
+                                            sx={{ mt: 2 }}
+                                        >
+                                            <MenuItem value="QR_CODE">QR Code (recommended)</MenuItem>
+                                            <MenuItem value="CODE128">Code 128</MenuItem>
+                                            <MenuItem value="CODE39">Code 39</MenuItem>
+                                        </TextField>
+                                    )}
+                                    {settings.delivery?.ubereats?.enabled && (
+                                        <FormControlLabel
+                                            sx={{ mt: 1 }}
+                                            control={
+                                                <Switch
+                                                    checked={settings.delivery?.ubereats?.dropoffPinEnabled !== false}
+                                                    onChange={(e) => handleDeliveryChange('ubereats', 'dropoffPinEnabled', e.target.checked)}
+                                                />
+                                            }
+                                            label="Require delivery PIN (customer gives a code to the courier at drop-off)"
+                                        />
+                                    )}
                                     <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-end' } }}>
                                         <Button
                                             variant="contained"

@@ -9,8 +9,18 @@ import EditIcon from '@mui/icons-material/Edit';
 import LinkIcon from '@mui/icons-material/Link';
 import toast from 'react-hot-toast';
 import { ubereatsAPI, superAPI } from '../../services/api';
+import GooglePlacesAutocomplete from '../../components/common/GooglePlacesAutocomplete';
+import { useSettings } from '../../context/SettingsContext';
+
+// E.164: leading "+", country code (1–9), then 9–14 more digits (e.g. +19763567844).
+const PHONE_RE = /^\+[1-9]\d{9,14}$/;
+// Keep only a leading "+" and digits — strips stray chars like "!" from a mistyped "+1".
+const sanitizePhone = (v: string) => v.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+const PHONE_HELP = 'Enter a valid E.164 number, e.g. +19763567844 (+ country code, 10–14 digits).';
 
 const UberDirectPage: React.FC = () => {
+    const { settings } = useSettings();
+    const googleMapsApiKey = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || settings?.system?.googleMapsApiKey;
     const [customerId, setCustomerId] = useState('');
     const [customerIdInput, setCustomerIdInput] = useState('');
     const [resolvedTenantId, setResolvedTenantId] = useState('');
@@ -32,6 +42,7 @@ const UberDirectPage: React.FC = () => {
         name: '', email: '', first_name: '', last_name: '', phone: '',
         street1: '', city: '', state: '', zipcode: '', country_iso2: 'US',
     });
+
 
 
     const handleSetCustomerId = () => {
@@ -95,7 +106,7 @@ const UberDirectPage: React.FC = () => {
                 external_business_location_id: editLocationDialog.external_business_location_id,
             });
             if (res.data?._addressUpdateSkipped) {
-                toast('Saved — but address was not updated because there are orders in progress. Try again once all deliveries are complete.');
+                toast('Saved — but address was not updated because there are orders in progress. Try again once all deliveries are complete.', { icon: '⚠️' });
             } else {
                 toast.success('Location updated');
             }
@@ -110,6 +121,10 @@ const UberDirectPage: React.FC = () => {
             }
         }
     };
+
+    const invitePhoneValid = PHONE_RE.test(inviteForm.phone.trim());
+    const orgPhoneValid = PHONE_RE.test(createOrgForm.phone.trim());
+    const editPhoneValid = PHONE_RE.test((editLocationDialog?.phone_number || '').trim());
 
     const handleInviteMember = async () => {
         if (!customerId) return;
@@ -151,11 +166,27 @@ const UberDirectPage: React.FC = () => {
                     address: { street1: createOrgForm.street1, city: createOrgForm.city, state: createOrgForm.state, zipcode: createOrgForm.zipcode, country_iso2: createOrgForm.country_iso2 },
                 },
                 hierarchy_info: { parent_organization_id: customerId },
+                // Nexzen-managed (centralized) onboarding: do NOT email the sub-org's
+                // point_of_contact. Nexzen (the parent org, set to CONTRACT_TYPE_PARENT)
+                // provisions and links the sub-org's business location centrally.
+                // ONBOARDING_INVITE_TYPE_INVALID is the "no invite sent" value.
                 options: { onboarding_invite_type: 'ONBOARDING_INVITE_TYPE_INVALID' },
             });
-            toast.success(`Organization created: ${res.data?.organization_id}`);
+            const newOrgId = res.data?.organization_id;
+            // Nexzen-managed: no email goes to the sub-org. Nexzen now provisions the
+            // sub-org's location centrally — switch the workspace to the new sub-org so
+            // its business locations can be loaded and linked from here.
+            toast.success(`Sub-org created under Nexzen: ${newOrgId}`);
             setCreateOrgDialog(false);
-            loadUberOrg();
+            if (newOrgId) {
+                setCustomerId(newOrgId);
+                setCustomerIdInput(newOrgId);
+                setUberOrg(null);
+                setUberLocations([]);
+                setResolvedTenantId('');
+            } else {
+                loadUberOrg();
+            }
         } catch {
             toast.error('Failed to create organization');
         } finally {
@@ -263,6 +294,7 @@ const UberDirectPage: React.FC = () => {
                                 <Typography variant="body2"><strong>ID:</strong> {uberOrg.organization_id}</Typography>
                                 <Typography variant="body2"><strong>Name:</strong> {uberOrg.info?.name}</Typography>
                                 <Typography variant="body2"><strong>Billing Type:</strong> {uberOrg.info?.billing_type}</Typography>
+                                <Typography variant="body2"><strong>Contract Type:</strong> {uberOrg.info?.contract_type || uberOrg.contract_type || '—'}</Typography>
                                 <Typography variant="body2"><strong>Billing Status:</strong> {uberOrg.billing_info?.billing_status || '—'}</Typography>
                                 <Typography variant="body2"><strong>Contact:</strong> {uberOrg.info?.point_of_contact?.email}</Typography>
                             </Stack>
@@ -375,7 +407,34 @@ const UberDirectPage: React.FC = () => {
                             <TextField fullWidth label="First Name" value={createOrgForm.first_name} onChange={(e) => setCreateOrgForm(f => ({ ...f, first_name: e.target.value }))} />
                             <TextField fullWidth label="Last Name" value={createOrgForm.last_name} onChange={(e) => setCreateOrgForm(f => ({ ...f, last_name: e.target.value }))} />
                         </Stack>
-                        <TextField fullWidth label="Phone" value={createOrgForm.phone} onChange={(e) => setCreateOrgForm(f => ({ ...f, phone: e.target.value }))} />
+                        <TextField
+                            fullWidth
+                            label="Phone (e.g. +19763567844)"
+                            value={createOrgForm.phone}
+                            onChange={(e) => setCreateOrgForm(f => ({ ...f, phone: sanitizePhone(e.target.value) }))}
+                            error={!!createOrgForm.phone && !orgPhoneValid}
+                            helperText={createOrgForm.phone && !orgPhoneValid ? PHONE_HELP : ' '}
+                            inputProps={{ inputMode: 'tel' }}
+                        />
+                        <GooglePlacesAutocomplete
+                            label="Search address (Google)"
+                            placeholder="Start typing the store address"
+                            types={['address']}
+                            includeCurrentLocation={false}
+                            apiKey={googleMapsApiKey}
+                            onPlaceSelect={(placeData: any) => {
+                                if (!placeData?.components) return;
+                                const c = placeData.components;
+                                setCreateOrgForm(f => ({
+                                    ...f,
+                                    street1: c.street || f.street1,
+                                    city: c.city || f.city,
+                                    state: c.state || f.state,
+                                    zipcode: c.zipCode || f.zipcode,
+                                    country_iso2: c.country ? 'US' : f.country_iso2,
+                                }));
+                            }}
+                        />
                         <TextField fullWidth label="Street Address" value={createOrgForm.street1} onChange={(e) => setCreateOrgForm(f => ({ ...f, street1: e.target.value }))} />
                         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                             <TextField fullWidth label="City" value={createOrgForm.city} onChange={(e) => setCreateOrgForm(f => ({ ...f, city: e.target.value }))} />
@@ -386,7 +445,7 @@ const UberDirectPage: React.FC = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setCreateOrgDialog(false)}>Cancel</Button>
-                    <Button variant="contained" disabled={createOrgLoading || !createOrgForm.name} onClick={handleCreateOrg}>
+                    <Button variant="contained" disabled={createOrgLoading || !createOrgForm.name || !orgPhoneValid} onClick={handleCreateOrg}>
                         {createOrgLoading ? <CircularProgress size={18} /> : 'Create'}
                     </Button>
                 </DialogActions>
@@ -402,12 +461,20 @@ const UberDirectPage: React.FC = () => {
                             <TextField fullWidth label="Last Name" value={inviteForm.last_name} onChange={(e) => setInviteForm(f => ({ ...f, last_name: e.target.value }))} />
                         </Stack>
                         <TextField fullWidth label="Email" value={inviteForm.email} onChange={(e) => setInviteForm(f => ({ ...f, email: e.target.value }))} />
-                        <TextField fullWidth label="Phone" value={inviteForm.phone} onChange={(e) => setInviteForm(f => ({ ...f, phone: e.target.value }))} />
+                        <TextField
+                            fullWidth
+                            label="Phone (e.g. +19763567844)"
+                            value={inviteForm.phone}
+                            onChange={(e) => setInviteForm(f => ({ ...f, phone: sanitizePhone(e.target.value) }))}
+                            error={!!inviteForm.phone && !invitePhoneValid}
+                            helperText={inviteForm.phone && !invitePhoneValid ? PHONE_HELP : ' '}
+                            inputProps={{ inputMode: 'tel' }}
+                        />
                     </Stack>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setInviteDialog(false)}>Cancel</Button>
-                    <Button variant="contained" disabled={inviteLoading || !inviteForm.email} onClick={handleInviteMember}>
+                    <Button variant="contained" disabled={inviteLoading || !inviteForm.email || !invitePhoneValid} onClick={handleInviteMember}>
                         {inviteLoading ? <CircularProgress size={18} /> : 'Send Invite'}
                     </Button>
                 </DialogActions>
@@ -420,7 +487,15 @@ const UberDirectPage: React.FC = () => {
                     {editLocationDialog && (
                         <Stack spacing={2.5} sx={{ mt: 1 }}>
                             <TextField fullWidth label="Name" value={editLocationDialog.name || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, name: e.target.value }))} />
-                            <TextField fullWidth label="Phone" value={editLocationDialog.phone_number || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, phone_number: e.target.value }))} />
+                            <TextField
+                                fullWidth
+                                label="Phone (e.g. +19763567844)"
+                                value={editLocationDialog.phone_number || ''}
+                                onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, phone_number: sanitizePhone(e.target.value) }))}
+                                error={!!editLocationDialog.phone_number && !editPhoneValid}
+                                helperText={editLocationDialog.phone_number && !editPhoneValid ? PHONE_HELP : ' '}
+                                inputProps={{ inputMode: 'tel' }}
+                            />
                             <TextField fullWidth label="External Store ID" value={editLocationDialog.external_business_location_id || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, external_business_location_id: e.target.value }))} />
                             <TextField fullWidth label="Street" value={editLocationDialog.detailed_address?.street_address_1 || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, detailed_address: { ...l.detailed_address, street_address_1: e.target.value } }))} />
                             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
@@ -433,7 +508,7 @@ const UberDirectPage: React.FC = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setEditLocationDialog(null)}>Cancel</Button>
-                    <Button variant="contained" onClick={handleUpdateLocation}>Save</Button>
+                    <Button variant="contained" disabled={!editPhoneValid} onClick={handleUpdateLocation}>Save</Button>
                 </DialogActions>
             </Dialog>
         </Box>

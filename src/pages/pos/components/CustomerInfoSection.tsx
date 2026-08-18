@@ -1,5 +1,6 @@
 import {
     TableRestaurant as GroupIcon,
+    History as HistoryIcon,
     Link as LinkIcon,
     LinkOff as LinkOffIcon
 } from '@mui/icons-material';
@@ -26,7 +27,7 @@ import {
 import React, { useEffect } from 'react';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import PhoneInput from '../../../components/PhoneInput';
-import { validateEmail, validatePhone } from '../../../utils/validation';
+import { formatPhoneDisplay, validateEmail, validatePhone } from '../../../utils/validation';
 import { getActivePaymentMethods } from '../../../utils/orderWorkflows';
 import { getMaxGuests, getMergedGroup } from '../utils/tableCapacity';
 
@@ -306,26 +307,34 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                             }
                         }}
                         error={customerPhoneTouched && !!customerPhoneError}
-                        helperText={suggestedPhone ? (
-                            <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                <Typography variant="caption" color="primary">Previously used: {suggestedPhone}</Typography>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    sx={{ height: 20, px: 1, minWidth: 0, textTransform: 'none', fontSize: '0.65rem' }}
-                                    onClick={() => {
-                                        const clean = suggestedPhone.replace(/\D/g, '').slice(-10);
-                                        setCustomerPhone(clean);
-                                    }}
-                                >
-                                    Use this
-                                </Button>
-                            </Box>
-                        ) : (customerPhoneTouched && customerPhoneError)}
+                        helperText={customerPhoneTouched && customerPhoneError}
                         disabled={readOnly || user?.role === 'customer'}
                         dialCode={customerDialCode}
                         onDialCodeChange={setCustomerDialCode}
                     />
+                    {suggestedPhone && (
+                        <Tooltip title="Fill in this customer's previous phone number" arrow>
+                            <Chip
+                                icon={<HistoryIcon sx={{ fontSize: 14 }} />}
+                                label={`Use previous: ${formatPhoneDisplay(suggestedPhone)}`}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                                clickable
+                                onClick={() => {
+                                    const clean = suggestedPhone.replace(/\D/g, '').slice(-10);
+                                    setCustomerPhone(clean);
+                                }}
+                                sx={{
+                                    mt: 0.75,
+                                    height: 24,
+                                    fontSize: '0.72rem',
+                                    fontWeight: 600,
+                                    maxWidth: '100%',
+                                }}
+                            />
+                        </Tooltip>
+                    )}
                 </Grid>
                 <Grid item xs={12} sm={4}>
                     <TextField

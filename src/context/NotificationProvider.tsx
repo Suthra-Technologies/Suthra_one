@@ -576,7 +576,73 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     }, [user, playNotificationSound, showNotification, getOrderNotificationDetails]);
 
-    // Staff-only: orders whose status hasn't changed in over an hour.
+    // Staff-only: per-order reminder for an order whose status hasn't changed.
+    const handleStaleOrder = useCallback((data: any) => {
+        console.log('🔔 [NotificationProvider] RAW staleOrder event:', data);
+        if (!user) return;
+
+        // Only staff who act on orders should be reminded.
+        const userRole = user.role?.toLowerCase() || '';
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        if (!staffRoles.includes(userRole)) {
+            console.log('🔕 [NotificationProvider] User not eligible for stale-order reminder.');
+            return;
+        }
+
+        playNotificationSound();
+
+        const { displayTokenNo, displayOrderType, displayStatus } = getOrderNotificationDetails(data);
+        const staleForMinutes = Number(data?.staleForMinutes) || 60;
+        const hours = Math.floor(staleForMinutes / 60);
+        const minutes = staleForMinutes % 60;
+        const durationLabel = hours > 0
+            ? `${hours}h${minutes ? ` ${minutes}m` : ''}`
+            : `${minutes}m`;
+
+        const title = 'Order Needs Attention';
+        const message = `Token No #${displayTokenNo}\nType: ${displayOrderType}\nStill "${displayStatus}" for ${durationLabel}`;
+
+        showNotification(title, message);
+
+        toast.custom((t) => (
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    bgcolor: 'warning.main',
+                    color: 'white',
+                    p: 2,
+                    borderRadius: 2,
+                    boxShadow: 3,
+                    minWidth: 300,
+                    cursor: 'pointer',
+                }}
+                onClick={() => toast.dismiss(t.id)}
+            >
+                <RestaurantIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2">{message}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            </Box>
+        ), { duration: 6000, position: 'top-right' });
+
+        const newNotif: Notification = {
+            id: 'stale-' + (data?.orderId || Date.now()) + '-' + Date.now(),
+            timestamp: new Date(),
+            read: false,
+            type: 'stale_order',
+            title,
+            message,
+            priority: 'high',
+            data,
+        };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+    }, [user, playNotificationSound, showNotification, getOrderNotificationDetails]);
+
+    // Staff-only: aggregate alert for orders whose status hasn't changed in over an hour.
     const handleStaleOrdersAlert = useCallback((data: any) => {
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
@@ -1035,6 +1101,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         socketService.on('newOrder', handleNewOrder);
         socketService.on('pre_order_promoted', handlePreOrderPromoted);
         socketService.on('orderStatusUpdate', handleOrderStatusUpdate);
+        socketService.on('staleOrder', handleStaleOrder);
         socketService.on('locationUpdate', handleLocationUpdate);
 
         // Order close / stale events
@@ -1064,6 +1131,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             socketService.off('newOrder', handleNewOrder);
             socketService.off('pre_order_promoted', handlePreOrderPromoted);
             socketService.off('orderStatusUpdate', handleOrderStatusUpdate);
+            socketService.off('staleOrder', handleStaleOrder);
             socketService.off('locationUpdate', handleLocationUpdate);
 
             socketService.off('staleOrdersAlert', handleStaleOrdersAlert);
@@ -1087,92 +1155,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             // tearing the socket down each time raced the reconnect, leaving a
             // connected-but-deaf socket. Disconnect happens on logout instead.
         };
-    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate, handleNewBooking, handleBookingStatusUpdate, handleBookingCheckedIn, handleNewSupportTicket, handleSupportTicketUpdate, handleInventoryStockAlert]); // Re-connect only if identity changes
-
-    // ── Subscription expiry / expired warning ─────────────────────────────
-    // Derives a synthetic notification from the tenant's subscription state
-    // (baked into the JWT at login) and keeps it in sync as days tick down.
-    // Shows an "expiring in N days" warning when 3/2/1/0 days remain, and an
-    // "expired" error once the subscription has lapsed. Staff only.
-    useEffect(() => {
-        const tenant: any = user && typeof (user as any).tenant === 'object' ? (user as any).tenant : null;
-        const role = user?.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
-
-        // Only surface billing warnings to staff who can act on them.
-        if (!tenant || !staffRoles.includes(role)) {
-            setNotifications(prev => prev.filter(n => n.type !== 'subscription'));
-            return;
-        }
-
-        const status = tenant.subscriptionStatus as string | undefined;
-        const endDate = status === 'trial' ? tenant.trialEndsAt : tenant.subscriptionEndsAt;
-
-        const build = (): Notification | null => {
-            const daysRemaining = endDate
-                ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-                : null;
-
-            const isExpired = status === 'expired' || status === 'cancelled' ||
-                (['trial', 'active'].includes(status || '') && daysRemaining !== null && daysRemaining <= 0);
-
-            if (isExpired) {
-                const isTrial = status === 'trial';
-                return {
-                    id: 'subscription-warning',
-                    timestamp: new Date(),
-                    read: false,
-                    type: 'subscription',
-                    title: isTrial ? 'Free trial ended' : 'Subscription expired',
-                    message: isTrial
-                        ? 'Your free trial has ended. Please upgrade to keep using the system.'
-                        : 'Your subscription has expired. Please renew to continue using the system.',
-                    priority: 'high',
-                    data: { subscriptionStatus: status, expired: true },
-                };
-            }
-
-            // Expiring soon: warn only within the final 3 days.
-            if (daysRemaining !== null && daysRemaining >= 1 && daysRemaining <= 3) {
-                const dayLabel = daysRemaining === 1 ? '1 day' : `${daysRemaining} days`;
-                const isTrial = status === 'trial';
-                return {
-                    id: 'subscription-warning',
-                    timestamp: new Date(),
-                    read: false,
-                    type: 'subscription',
-                    title: isTrial ? 'Free trial ending soon' : 'Subscription expiring soon',
-                    message: isTrial
-                        ? `Your free trial expires in ${dayLabel}. Upgrade now to avoid interruption.`
-                        : `Your subscription expires in ${dayLabel}. Renew now to avoid interruption.`,
-                    priority: 'high',
-                    data: { subscriptionStatus: status, daysRemaining },
-                };
-            }
-
-            return null;
-        };
-
-        const sync = () => {
-            const notif = build();
-            setNotifications(prev => {
-                const existing = prev.find(n => n.type === 'subscription');
-                const rest = prev.filter(n => n.type !== 'subscription');
-                if (!notif) return rest;
-                // Preserve read state / timestamp if the message hasn't changed,
-                // so re-syncs don't keep re-alerting the user.
-                if (existing && existing.message === notif.message) {
-                    return [existing, ...rest];
-                }
-                return [notif, ...rest];
-            });
-        };
-
-        sync();
-        // Re-evaluate hourly so the day counter rolls over without a reload.
-        const interval = setInterval(sync, 60 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, [user]);
+    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleStaleOrder, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate, handleNewBooking, handleBookingStatusUpdate, handleBookingCheckedIn, handleNewSupportTicket, handleSupportTicketUpdate, handleInventoryStockAlert]); // Re-connect only if identity changes
 
     const dismissAutoCloseRequest = useCallback(() => setAutoCloseRequest(null), []);
 

@@ -45,7 +45,7 @@ export const apiBaseUrl = (() => {
 
 const api: AxiosInstance = axios.create({
   baseURL: apiBaseUrl,
-  timeout: 30000, // Increased from 10000 to 30000 (30 seconds)
+  timeout: 60000, // Login can take >30s: the backend scans every tenant DB on the remote Mongo host when no tenantSlug is given
   headers: {
     'Content-Type': 'application/json',
   },
@@ -326,8 +326,7 @@ export const ubereatsAPI = {
   getOrganization: (organizationId: string) => api.get(`/ubereats/organizations/${organizationId}`),
   inviteMember: (organizationId: string, payload: any) => api.post(`/ubereats/organizations/${organizationId}/memberships/invite`, payload),
 
-  // Business Locations
-  createBusinessLocation: (organizationId: string, payload: any) => api.post(`/ubereats/organizations/${organizationId}/business-locations`, payload),
+  // Business Locations (Uber supports list/get/update only — no create endpoint)
   getBusinessLocations: (organizationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations`),
   getBusinessLocation: (organizationId: string, businessLocationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`),
   updateBusinessLocation: (organizationId: string, businessLocationId: string, payload: any) => api.patch(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`, payload),
@@ -747,11 +746,11 @@ export const bookingsAPI = {
 
 // -------------------- Payments API --------------------
 export const paymentsAPI = {
-  createIntent: (data: { amount: number; currency?: string }) =>
+  createIntent: (data: { amount: number; currency?: string; subtotal?: number; tax?: number }) =>
     api.post('/payments/create-intent', data),
   getConfig: () => api.post('/payments/config'),
   getWebhookUrl: () => api.get('/payments/webhook-url'),
-  createTerminalIntent: (data: { amount: number; currency?: string }) =>
+  createTerminalIntent: (data: { amount: number; currency?: string; subtotal?: number; tax?: number }) =>
     api.post('/payments/terminal/create-intent', data),
   createTerminalConnectionToken: () => api.post('/payments/terminal/connection-token'),
   verifyIntent: (intentId: string) => api.get(`/payments/verify-intent/${intentId}`),
@@ -761,6 +760,36 @@ export const paymentsAPI = {
   syncTransactions: () => api.post('/payments/transactions/sync'),
   verifyTransactionsInDb: (paymentIntentIds: string[]) =>
     api.post('/payments/transactions/verify-db', { paymentIntentIds }),
+  // Tenant self-service Stripe Connect onboarding (dashboard "pending actions")
+  getConnectStatus: () => api.get('/payments/connect/status'),
+  startConnectOnboarding: (returnUrl: string, refreshUrl?: string) =>
+    api.post('/payments/connect/onboard', { returnUrl, refreshUrl }),
+  getConnectDashboardLink: () => api.get('/payments/connect/dashboard-link'),
+};
+
+// -------------------- PhonePe API (India tenants) --------------------
+export const phonePeAPI = {
+  getConfig: () => api.get('/payments/phonepe/config'),
+  // Online ordering — PG redirect
+  initiate: (data: { amount: number; redirectUrl?: string; mobileNumber?: string; metadata?: Record<string, any> }) =>
+    api.post('/payments/phonepe/initiate', data),
+  // POS / kiosk — dynamic UPI QR
+  posInitiate: (data: { amount: number; metadata?: Record<string, any> }) =>
+    api.post('/payments/phonepe/pos-initiate', data),
+  // Subscription / top-up — platform account
+  platformInitiate: (data: { planId: string; purpose: 'subscription' | 'topup'; redirectUrl: string }) =>
+    api.post('/payments/phonepe/platform-initiate', data),
+  status: (merchantTransactionId: string) =>
+    api.get(`/payments/phonepe/status/${merchantTransactionId}`),
+  refundStatus: (merchantRefundId: string) =>
+    api.get(`/payments/phonepe/refund-status/${merchantRefundId}`),
+  getSettings: () => api.get('/tenants/phonepe-settings'),
+  updateSettings: (data: any) => api.patch('/tenants/phonepe-settings', data),
+  // Public (guest/kiosk, no-auth) — tenant resolved by slug
+  publicInitiate: (tenantSlug: string, data: { amount: number; instrument?: 'PAY_PAGE' | 'UPI_QR'; redirectUrl?: string; mobileNumber?: string; metadata?: Record<string, any> }) =>
+    api.post('/public/orders/phonepe/initiate', data, { params: { tenantSlug } }),
+  publicStatus: (merchantTransactionId: string) =>
+    api.get(`/public/orders/phonepe/status/${merchantTransactionId}`),
 };
 
 // -------------------- Invoices API --------------------
@@ -826,8 +855,8 @@ export const superAPI = {
   // Tenant platform processing fee (managed by superadmin only)
   getTenantProcessingFee: (tenantId: string) =>
     api.get(`/superadmin/tenants/${tenantId}/processing-fee`),
-  updateTenantProcessingFee: (tenantId: string, processingFee: number) =>
-    api.patch(`/superadmin/tenants/${tenantId}/processing-fee`, { processingFee }),
+  updateTenantProcessingFee: (tenantId: string, processingFee: number, processingFeeOrderValue?: number) =>
+    api.patch(`/superadmin/tenants/${tenantId}/processing-fee`, { processingFee, processingFeeOrderValue }),
 
   // Admin activity logs
   getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),
@@ -887,6 +916,8 @@ export const tenantAPI = {
   updateStripeSettings: (data: any) => api.patch('/tenants/stripe-settings', data),
   verifyEmailWithGoogle: (idToken: string) => api.post('/tenants/verify-email', { idToken }),
   verifyEmailWithGmailSend: (code: string, redirectUri: string) => api.post('/tenants/verify-email/gmail-send', { code, redirectUri }),
+  getPhonePeSettings: () => api.get('/tenants/phonepe-settings'),
+  updatePhonePeSettings: (data: any) => api.patch('/tenants/phonepe-settings', data),
   // Restaurant open/close status
   updateRestaurantStatus: (data: { isOpen: boolean; reopenAt?: string; closeReason?: string; customerMessage?: string }) => api.patch('/tenants/restaurant-status', data),
   getRestaurantStatus: (slug: string) => api.get(`/tenants/${slug}/status`),

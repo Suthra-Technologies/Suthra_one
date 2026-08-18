@@ -52,7 +52,17 @@ const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> = ({
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const [mapError, setMapError] = useState('');
 
+  // Hold the latest callbacks in refs so the place_changed listener (attached once)
+  // always invokes the current onChange/onPlaceSelect without needing to re-attach.
+  const onChangeRef = useRef(onChange);
+  const onPlaceSelectRef = useRef(onPlaceSelect);
   useEffect(() => {
+    onChangeRef.current = onChange;
+    onPlaceSelectRef.current = onPlaceSelect;
+  });
+
+  useEffect(() => {
+    let cancelled = false;
     const initializeAutocomplete = async () => {
       try {
         if (apiKey) {
@@ -60,6 +70,7 @@ const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> = ({
           await loadGoogleMapsScript(apiKey);
         }
         const maps = await initializeGoogleMaps();
+        if (cancelled) return;
         if (inputRef.current && !autocompleteRef.current) {
           const autocomplete = new maps.places.Autocomplete(inputRef.current, {
             types,
@@ -92,23 +103,30 @@ const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> = ({
               types: place.types
             };
             setSelectedPlace(placeData);
-            onChange && onChange(place.formatted_address || '');
-            onPlaceSelect && onPlaceSelect(placeData);
+            onChangeRef.current && onChangeRef.current(place.formatted_address || '');
+            onPlaceSelectRef.current && onPlaceSelectRef.current(placeData);
             setMapError('');
           });
           autocompleteRef.current = autocomplete;
         }
       } catch (error: any) {
-        setMapError('Failed to load Google Maps. Please try again.');
+        if (!cancelled) setMapError('Failed to load Google Maps. Please try again.');
       }
     };
     initializeAutocomplete();
     return () => {
-      if (autocompleteRef.current) {
-        window.google?.maps?.event?.clearInstanceListeners(autocompleteRef.current);
-      }
+      cancelled = true;
     };
-  }, [types, countryRestriction, onChange, onPlaceSelect]);
+    // Only re-run when the API key changes (e.g. arrives async from settings).
+    // Listeners are attached once and read the latest callbacks via refs above.
+  }, [apiKey]);
+
+  // Detach Google listeners only when the component truly unmounts.
+  useEffect(() => () => {
+    if (autocompleteRef.current) {
+      window.google?.maps?.event?.clearInstanceListeners(autocompleteRef.current);
+    }
+  }, []);
 
   const handleCurrentLocation = async () => {
     setCurrentLocationLoading(true);

@@ -196,10 +196,15 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                 </Stack>
                 {isApplyingCoupon && <CircularProgress size={14} sx={{ mt: 1, ml: 1 }} />}
 
-                {/* Quick-pick available coupons */}
-                {availableCoupons.length > 0 && couponDiscount === 0 && (
+                {/* Quick-pick coupons — only suggest ones the cart already qualifies for */}
+                {couponDiscount === 0 && cartTotal > 0 && (() => {
+                    const eligibleCoupons = availableCoupons.filter(
+                        (c: any) => !c.minBillAmount || cartTotal >= Number(c.minBillAmount),
+                    );
+                    if (eligibleCoupons.length === 0) return null;
+                    return (
                     <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {availableCoupons.slice(0, 5).map((c: any) => (
+                        {eligibleCoupons.slice(0, 5).map((c: any) => (
                             <Tooltip key={c._id} title={`${c.discountType === 'percentage' ? c.discountValue + '% off' : '$' + Number(c.discountValue || 0).toFixed(2) + ' off'}${c.minBillAmount ? ` (min $${Number(c.minBillAmount || 0).toFixed(2)})` : ''}`}>
                                 <Chip
                                     label={c.code}
@@ -215,7 +220,8 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                             </Tooltip>
                         ))}
                     </Box>
-                )}
+                    );
+                })()}
             </Box>
             )}
 
