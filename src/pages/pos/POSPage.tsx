@@ -184,6 +184,7 @@ const POSPage: React.FC = () => {
 
     // Coupon handling
     const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
+    const [customerCoupons, setCustomerCoupons] = useState<any[]>([]);
     const [couponCode, setCouponCode] = useState('');
     const [couponDiscount, setCouponDiscount] = useState(0);
     const [rewardPointsInfo, setRewardPointsInfo] = useState<any>(null);
@@ -509,7 +510,7 @@ const POSPage: React.FC = () => {
             const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
             console.log(`[Coupon] Validating "${codeToUse}" | Cart Total: $${cartTotal} | Silent: ${silent}`);
 
-            const res = await ordersAPI.validateCoupon(codeToUse);
+            const res = await ordersAPI.validateCoupon(codeToUse, cartTotal, customerEmail);
             const coupon = res.data;
 
             console.log(`[Coupon] Min Required: $${coupon.minBillAmount || 0} | Discount: ${coupon.discountValue}${coupon.discountType === 'percentage' ? '%' : '$'}`);
@@ -607,17 +608,27 @@ const POSPage: React.FC = () => {
         } finally {
             setIsApplyingCoupon(false);
         }
-    }, [couponCode, cart]);
+    }, [couponCode, cart, customerEmail, isApplyingCoupon]);
 
-    // Fetch Reward Points Info
+    // Fetch Reward Points Info and Customer Coupons
     useEffect(() => {
         // Reset points redemption whenever customer identity changes to prevent cross-customer point leak
         setPointsToRedeem(0);
         setRewardDiscount(0);
+        setCustomerCoupons([]);
 
-        const fetchRewards = async () => {
+        const fetchRewardsAndCoupons = async () => {
             const email = customerEmail?.includes('@') ? customerEmail : '';
             const phone = customerPhone?.length === 10 ? `+${customerDialCode}${customerPhone}` : '';
+
+            if (email) {
+                try {
+                    const res = await ordersAPI.getCustomerCoupons(email);
+                    setCustomerCoupons(res.data || []);
+                } catch (err) {
+                    console.error("Failed to fetch customer coupons", err);
+                }
+            }
 
             if (email || phone) {
                 try {
@@ -671,7 +682,7 @@ const POSPage: React.FC = () => {
             }
         };
 
-        const timer = setTimeout(fetchRewards, 800);
+        const timer = setTimeout(fetchRewardsAndCoupons, 800);
         return () => clearTimeout(timer);
     }, [customerPhone, customerEmail, customerDialCode]);
 
@@ -1000,7 +1011,7 @@ const POSPage: React.FC = () => {
         if (couponCode) {
             handleValidateCoupon(true); // Silent re-validation
         }
-    }, [orderType, cart]);
+    }, [orderType, cart, customerEmail]);
 
     // Filtering menu items
     const filteredItems = useMemo(() => {
@@ -1948,6 +1959,11 @@ const POSPage: React.FC = () => {
                     setScheduledTime={setScheduledTime}
                     maxUsablePoints={maxUsablePoints}
                     isApplyingCoupon={isApplyingCoupon}
+                    customerCoupons={customerCoupons}
+                    onApplyCouponCode={(code) => {
+                        setCouponCode(code);
+                        handleValidateCoupon(false, code);
+                    }}
                     readOnly={isEditMode}
                 />
                 {/* Table Group Actions (Clear Pending Merge) */}
@@ -3252,6 +3268,7 @@ const POSPage: React.FC = () => {
                     setCouponCode={setCouponCode}
                     handleValidateCoupon={handleValidateCoupon}
                     availableCoupons={availableCoupons}
+                    customerCoupons={customerCoupons}
                     serviceChargeAmount={serviceChargeAmount}
                     tip={tip}
                     setTip={setTip}

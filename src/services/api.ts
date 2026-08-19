@@ -214,8 +214,10 @@ export const ordersAPI = {
   getPublicCoupons: (tenantSlug: string) =>
     api.get('/public/orders/coupons', { params: { tenantSlug } }),
 
-  validatePublicCoupon: (code: string, tenantSlug: string, orderType?: string) =>
-    api.post('/public/orders/validate-coupon', { code, orderType }, { params: { tenantSlug } }),
+  validatePublicCoupon: (code: string, tenantSlug: string, orderType?: string, purchaseAmount?: number, email?: string) =>
+    api.post('/public/orders/validate-coupon', { code, orderType, purchaseAmount, email }, { params: { tenantSlug } }),
+  getCustomerPublicCoupons: (email: string, tenantSlug: string) =>
+    api.post('/public/orders/customer-coupons', { email }, { params: { tenantSlug } }),
 
   getPublicSettings: (tenantSlug: string) =>
     api.get('/public/orders/settings', { params: { tenantSlug } }),
@@ -286,7 +288,8 @@ export const ordersAPI = {
   downloadPDF: (id: string) => api.get(`/orders/${id}/pdf`, { responseType: 'blob' }),
 
   // Coupon management
-  validateCoupon: (code: string) => api.post('/orders/validate-coupon', { code }),
+  validateCoupon: (code: string, purchaseAmount?: number, email?: string) => api.post('/orders/validate-coupon', { code, purchaseAmount, email }),
+  getCustomerCoupons: (email: string) => api.post('/orders/customer-coupons', { email }),
   getCoupons: () => api.get('/orders/coupons'),
   getMyOrders: () => api.get('/orders/my-orders'),
   createStripeCheckout: (orderId: string) => api.post(`/orders/${orderId}/checkout`),
