@@ -27,8 +27,12 @@ export const RequireRole: React.FC<Props> = ({ allowedRoles }) => {
     // Superadmin doesn't need a tenant
     const isSuperAdmin = user.role === 'superadmin' || user.roles?.includes('superadmin');
 
-    // For non-superadmin users, require tenant
-    if (!isSuperAdmin && !tenantSlug) {
+    // Material providers are platform-level accounts too — they belong to no
+    // restaurant, so requiring a tenant slug would bounce them back to /login.
+    const isMaterialProvider = user.role === 'material_provider' || user.roles?.includes('material_provider');
+
+    // For tenant-scoped users, require tenant
+    if (!isSuperAdmin && !isMaterialProvider && !tenantSlug) {
         console.log('RequireRole: No tenantSlug found for non-superadmin, redirecting to login. User:', user.email);
         return <Navigate to="/login" state={{ from: location }} replace />;
     }

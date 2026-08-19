@@ -30,6 +30,12 @@ import { Unauthorized } from './pages/Unauthorized';
 // import SettingsAdminPage from './pages/admin/SettingsAdminPage';
 import { Toaster } from 'react-hot-toast';
 import SuperAdminLayout from './components/SuperAdminLayout';
+import MaterialProviderLayout from './components/MaterialProviderLayout';
+import ProviderChangePasswordPage from './pages/provider/ProviderChangePasswordPage';
+import ProviderDashboardPage from './pages/provider/ProviderDashboardPage';
+import ProviderOrdersPage from './pages/provider/ProviderOrdersPage';
+import ProviderMaterialsPage from './pages/provider/ProviderMaterialsPage';
+import ProviderProfilePage from './pages/provider/ProviderProfilePage';
 import AdminLogsPage from './pages/superadmin/AdminLogsPage';
 import DeliveryReportsPage from './pages/superadmin/DeliveryReportsPage';
 import DemoRequestsLogPage from './pages/superadmin/DemoRequestsLogPage';
@@ -202,6 +208,9 @@ const AppRoutes: React.FC = () => {
   // Use user context if available, fallback to localStorage for initial render/handover
   const role = activeRole || (typeof window !== 'undefined' ? localStorage.getItem('activeRole') : null);
   const isSuperAdmin = role === 'superadmin';
+  // Material providers are platform-level like superadmins: no tenant, and their
+  // own portal at /provider.
+  const isMaterialProvider = role === 'material_provider';
 
   // Land on the first page this role can open under the tenant's plan —
   // Dashboard is not available to every role, and gating it by plan is fine,
@@ -210,14 +219,16 @@ const AppRoutes: React.FC = () => {
 
   const defaultAuthedPath = isSuperAdmin
     ? '/superadmin'
-    : (hostnameSlug ? landingPath : (storedTenantSlug ? `/${storedTenantSlug}${landingPath}` : landingPath));
+    : isMaterialProvider
+      ? '/provider'
+      : (hostnameSlug ? landingPath : (storedTenantSlug ? `/${storedTenantSlug}${landingPath}` : landingPath));
 
   // Must agree with what RequireRole actually enforces. RequireRole sends any
   // non-superadmin without a tenant slug to /login; if this only checked for a
   // token, /login would send them straight back, and neither side clears state —
   // an endless login/dashboard flicker. Treating "token but no resolvable
   // tenant" as no session stops it at /login, which is visible and recoverable.
-  const hasTenantContext = isSuperAdmin || !!storedTenantSlug || !!hostnameSlug;
+  const hasTenantContext = isSuperAdmin || isMaterialProvider || !!storedTenantSlug || !!hostnameSlug;
   const hasStoredSession = (isAuthenticated || !!storedToken) && hasTenantContext;
   console.log('AppRoutes: Rendering. Token present:', hasStoredSession, 'Role:', role, 'Tenant:', storedTenantSlug, 'AuthedPath:', defaultAuthedPath);
 
@@ -264,6 +275,19 @@ const AppRoutes: React.FC = () => {
           <Route path="/superadmin/settings" element={<SuperAdminSettingsPage />} />
           <Route path="/superadmin/team" element={<SuperAdminTeamPage />} />
           <Route path="/superadmin/material-providers" element={<MaterialProvidersPage />} />
+        </Route>
+      </Route>
+
+      {/* Material Provider Portal — platform-level, no tenant slug.
+          The change-password route sits OUTSIDE the layout because the layout
+          redirects to it while `mustChangePassword` is set; nesting would loop. */}
+      <Route element={<RequireRole allowedRoles={["material_provider"]} />}>
+        <Route path="/provider/change-password" element={<ProviderChangePasswordPage />} />
+        <Route element={<MaterialProviderLayout />}>
+          <Route path="/provider" element={<ProviderDashboardPage />} />
+          <Route path="/provider/orders" element={<ProviderOrdersPage />} />
+          <Route path="/provider/materials" element={<ProviderMaterialsPage />} />
+          <Route path="/provider/profile" element={<ProviderProfilePage />} />
         </Route>
       </Route>
 
