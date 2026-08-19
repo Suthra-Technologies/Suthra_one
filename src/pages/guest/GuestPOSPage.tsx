@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+    alpha,
     Box,
     Typography,
     Grid,
@@ -19,6 +20,7 @@ import {
     useTheme,
     useMediaQuery,
     Paper,
+    Slider,
     Divider,
     ToggleButton,
     ToggleButtonGroup,
@@ -43,12 +45,14 @@ import {
     ShoppingBag as OnlineTakeawayIcon,
     Search as SearchIcon,
 } from '@mui/icons-material';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import { useSettings } from '../../context/SettingsContext';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
 import { menuAPI, ordersAPI } from '../../services/api';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
+import { formatSpiceLevelLabel } from '../../utils/spiceLevel';
 
 interface MenuItem {
     _id: string;
@@ -59,11 +63,18 @@ interface MenuItem {
     image?: string;
     isAvailable: boolean;
     taxRate?: number | null;
+    isSpiceLevelAvailable?: boolean;
+    // Resolved server-side from the item's spice level set.
+    spiceLevels?: string[];
+    spiceLevelData?: Record<string, string>;
 }
 
 interface CartItem extends MenuItem {
     quantity: number;
-    cartId: string; // unique id for cart item (in case of variants later)
+    // Unique per item + spice level, so the same dish ordered mild and spicy
+    // stays as two separate lines.
+    cartId: string;
+    spiceLevel?: string;
 }
 
 // Mirrors the backend rule in orders.service.ts: a coupon matches if it lists the
@@ -99,6 +110,8 @@ const GuestPOSPage: React.FC = () => {
     const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [totalMenuCount, setTotalMenuCount] = useState(0);
     const [cart, setCart] = useState<CartItem[]>([]);
+    const [spiceSelectionItem, setSpiceSelectionItem] = useState<MenuItem | null>(null);
+    const [tempSpiceLevel, setTempSpiceLevel] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const [cartOpen, setCartOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -116,6 +129,23 @@ const GuestPOSPage: React.FC = () => {
     const [tableNumber, setTableNumber] = useState<string>('');
     const [tables, setTables] = useState<any[]>([]);
     const [taxRate, setTaxRate] = useState<number>(5); // Default 5%, will be updated from settings
+
+    const [searchParams] = useSearchParams();
+    const tableNoParam = searchParams.get('tableNo');
+    const tableIdParam = searchParams.get('tableId');
+    const isQrScanned = Boolean(tableNoParam || sessionStorage.getItem('qr_table_no'));
+
+    useEffect(() => {
+        const qTableNo = tableNoParam || sessionStorage.getItem('qr_table_no');
+        const qTableId = tableIdParam || sessionStorage.getItem('qr_table_id');
+        if (tableNoParam) sessionStorage.setItem('qr_table_no', tableNoParam);
+        if (tableIdParam) sessionStorage.setItem('qr_table_id', tableIdParam);
+
+        if (qTableNo) {
+            setTableNumber(qTableNo);
+            setOrderType('global_dine_in');
+        }
+    }, [tableNoParam, tableIdParam]);
 
     // Stripe card payment
     const [stripePromise, setStripePromise] = useState<Promise<any> | null>(null);
@@ -353,16 +383,34 @@ const GuestPOSPage: React.FC = () => {
         return () => clearTimeout(timer);
     }, [cart, appliedCoupon, restaurantSettings, slug]);
 
-    const addToCart = (item: MenuItem) => {
-        const cartId = item._id;
+    /** Adds to the cart, keying each spice level as its own line. */
+    const addItemToCart = (item: MenuItem, spiceLevel?: string) => {
+        const cartId = spiceLevel ? `${item._id}::${spiceLevel}` : item._id;
         setCart(prev => {
             const existing = prev.find(c => c.cartId === cartId);
             if (existing) {
                 return prev.map(c => c.cartId === cartId ? { ...c, quantity: c.quantity + 1 } : c);
             }
-            return [...prev, { ...item, quantity: 1, cartId }];
+            return [...prev, { ...item, quantity: 1, cartId, spiceLevel }];
         });
-        // toast.success(`${item.name} added`);
+    };
+
+    const addToCart = (item: MenuItem) => {
+        // Items offering a spice scale ask first; the levels come from the
+        // item's spice level set, resolved by the API.
+        if (item.isSpiceLevelAvailable && (item.spiceLevels?.length ?? 0) > 0) {
+            // Start on the mildest level, matching the POS dialog.
+            setTempSpiceLevel(item.spiceLevels![0]);
+            setSpiceSelectionItem(item);
+            return;
+        }
+        addItemToCart(item);
+    };
+
+    const handleConfirmSpice = (spiceLevel: string) => {
+        if (!spiceSelectionItem) return;
+        addItemToCart(spiceSelectionItem, spiceLevel);
+        setSpiceSelectionItem(null);
     };
 
     const removeFromCart = (cartId: string) => {
@@ -472,7 +520,8 @@ const GuestPOSPage: React.FC = () => {
                     quantity: item.quantity,
                     price: item.price,
                     total: item.price * item.quantity,
-                    taxRate: (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate : undefined
+                    taxRate: (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate : undefined,
+                    spiceLevel: item.spiceLevel,
                 })),
                 orderType,
                 customer: { name: 'Guest Customer', phone: '' },
@@ -532,6 +581,7 @@ const GuestPOSPage: React.FC = () => {
                     price: item.price,
                     total: item.price * item.quantity,
                     taxRate: (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate : undefined,
+                    spiceLevel: item.spiceLevel,
                 })),
                 orderType,
                 customer: { name: 'Guest Customer', phone: '' },
@@ -690,6 +740,19 @@ const GuestPOSPage: React.FC = () => {
 
     const SuccessData = () => (
         <Dialog open={!!successOrderNumber} fullWidth maxWidth="xs">
+            <IconButton
+                aria-label="close"
+                onClick={() => { setSuccessOrderNumber(null); setSuccessTokenNumber(null); }}
+                sx={{
+                    position: 'absolute',
+                    right: 12,
+                    top: 12,
+                    color: (theme) => theme.palette.grey[500],
+                    zIndex: 10,
+                }}
+            >
+                <CloseIcon />
+            </IconButton>
             <DialogContent sx={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -817,6 +880,27 @@ const GuestPOSPage: React.FC = () => {
 
             {/* Content */}
             <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
+                {/* Seated Table Contactless Banner */}
+                {tableNumber && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2.5 }}>
+                        <Chip
+                            icon={<DineInIcon sx={{ color: '#fff !important' }} />}
+                            label={`📍 Seated at Table ${tableNumber} • Contactless Ordering`}
+                            sx={{
+                                bgcolor: 'primary.main',
+                                color: '#fff',
+                                fontWeight: 900,
+                                fontSize: { xs: '0.85rem', sm: '1rem' },
+                                py: 2.2,
+                                px: 2,
+                                borderRadius: 4,
+                                boxShadow: '0 6px 18px rgba(79, 70, 229, 0.35)',
+                                '& .MuiChip-label': { px: 1 }
+                            }}
+                        />
+                    </Box>
+                )}
+
                 {/* Filters */}
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3, alignItems: 'center' }}>
                     {/* Search */}
@@ -942,7 +1026,7 @@ const GuestPOSPage: React.FC = () => {
                 </Box>
 
                 {loading ? (
-                    <Typography align="center" sx={{ mt: 4 }}>Loading menu...</Typography>
+                    <CardGridSkeleton count={8} cardHeight={220} />
                 ) : filteredItems.length === 0 ? (
                     <Box sx={{ textAlign: 'center', mt: 6, mb: 4 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
@@ -1115,7 +1199,14 @@ const GuestPOSPage: React.FC = () => {
                                                 {formatCurrency(item.price)}
                                             </Typography>
                                             {(() => {
-                                                const cartItem = cart.find(c => c.cartId === item._id);
+                                                // A spicy dish can sit in the cart as several lines
+                                                // (one per level), so match on the item id and show
+                                                // the combined quantity.
+                                                const lines = cart.filter(c => c._id === item._id);
+                                                const totalQty = lines.reduce((sum, c) => sum + c.quantity, 0);
+                                                const cartItem = lines.length > 0 ? { quantity: totalQty } : null;
+                                                // Decrementing targets the most recently added line.
+                                                const lastLine = lines[lines.length - 1];
                                                 return cartItem ? (
                                                     <Box
                                                         sx={{
@@ -1131,9 +1222,9 @@ const GuestPOSPage: React.FC = () => {
                                                     >
                                                         <IconButton
                                                             size="small"
-                                                            onClick={() => removeFromCart(item._id)}
-                                                            sx={{ 
-                                                                color: 'white', 
+                                                            onClick={() => removeFromCart(lastLine.cartId)}
+                                                            sx={{
+                                                                color: 'white',
                                                                 p: { xs: 0.5, sm: 0.75 },
                                                                 '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' }
                                                             }}
@@ -1251,6 +1342,14 @@ const GuestPOSPage: React.FC = () => {
                                 <Box key={item.cartId} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, p: 1, border: '1px solid #eee', borderRadius: 2 }}>
                                     <Box>
                                         <Typography variant="subtitle1" fontWeight="medium">{item.name}</Typography>
+                                        {/* Same dish at two heats forms two lines — label them. */}
+                                        {item.spiceLevel && (
+                                            <Chip
+                                                size="small"
+                                                label={item.spiceLevelData?.[item.spiceLevel] || formatSpiceLevelLabel(item.spiceLevel)}
+                                                sx={{ height: 18, fontSize: '0.65rem', mr: 0.5 }}
+                                            />
+                                        )}
                                         <Typography variant="caption" color="text.secondary">
                                             {formatCurrency(item.price)} x {item.quantity}
                                         </Typography>
@@ -1290,7 +1389,12 @@ const GuestPOSPage: React.FC = () => {
 
                             {/* Order Type Selection */}
                             <Box sx={{ mb: 3 }}>
-                                <Typography variant="subtitle2" gutterBottom>Order Type</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                                    <Typography variant="subtitle2">Order Type</Typography>
+                                    {isQrScanned && (
+                                        <Chip label="🔒 Locked for QR Table Order" size="small" color="primary" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800 }} />
+                                    )}
+                                </Box>
                                 <ToggleButtonGroup
                                     value={orderType}
                                     exclusive
@@ -1300,6 +1404,7 @@ const GuestPOSPage: React.FC = () => {
                                     fullWidth
                                     color="primary"
                                     size="small"
+                                    disabled={isQrScanned}
                                 >
                                     <ToggleButton value="global_dine_in">
                                         <DineInIcon sx={{ mr: 1, fontSize: 20 }} /> Global Dine In
@@ -1307,28 +1412,27 @@ const GuestPOSPage: React.FC = () => {
                                     <ToggleButton value="global_takeaway">
                                         <TakeawayIcon sx={{ mr: 1, fontSize: 20 }} /> Global Takeaway
                                     </ToggleButton>
-                                    {/* <ToggleButton value="delivery">
-                                        <DeliveryIcon sx={{ mr: 1, fontSize: 20 }} /> Delivery
-                                    </ToggleButton> */}
-                                    {/* <ToggleButton value="online_takeaway">
-                                        <OnlineTakeawayIcon sx={{ mr: 1, fontSize: 20 }} /> Online Takeaway
-                                    </ToggleButton> */}
                                 </ToggleButtonGroup>
                             </Box>
 
                             {/* Table Number — shown only for Dine In */}
                             {orderType === 'global_dine_in' && (
                                 <Box sx={{ mb: 3 }}>
-                                    <Typography variant="subtitle2" gutterBottom>
-                                        Table Number <Typography component="span" color="text.secondary" variant="caption">(recommended)</Typography>
-                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                                        <Typography variant="subtitle2">
+                                            Table Number <Typography component="span" color="text.secondary" variant="caption">(recommended)</Typography>
+                                        </Typography>
+                                        {isQrScanned && (
+                                            <Chip label={`🔒 Table ${tableNumber} Locked`} size="small" color="success" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800 }} />
+                                        )}
+                                    </Box>
                                     <TextField
                                         select
                                         fullWidth
                                         size="small"
                                         value={tableNumber}
                                         onChange={e => setTableNumber(e.target.value)}
-                                        disabled={tables.length === 0}
+                                        disabled={isQrScanned || tables.length === 0}
                                         SelectProps={{
                                             displayEmpty: true,
                                             renderValue: (selected: any) => {
@@ -1360,9 +1464,11 @@ const GuestPOSPage: React.FC = () => {
                                         ))}
                                     </TextField>
                                     <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                                        {tables.length === 0
-                                            ? 'Table list unavailable — please tell your server your table number.'
-                                            : 'So the server knows which table to bring your order to'}
+                                        {isQrScanned
+                                            ? `🔒 Table ${tableNumber} verified from table QR code scan.`
+                                            : tables.length === 0
+                                                ? 'Table list unavailable — please tell your server your table number.'
+                                                : 'So the server knows which table to bring your order to'}
                                     </Typography>
                                 </Box>
                             )}
@@ -1457,6 +1563,155 @@ const GuestPOSPage: React.FC = () => {
                         onClick={() => { setRedirectError(null); setRedirectPaymentId(null); }}
                     >
                         Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Spice level picker — mirrors the slider used in the POS item dialog.
+                Levels come from the item's spice level set. */}
+            <Dialog
+                open={!!spiceSelectionItem}
+                onClose={() => setSpiceSelectionItem(null)}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: { xs: 3, sm: 5 } } }}
+            >
+                <DialogTitle sx={{ pb: 1 }}>
+                    <Typography variant="h6" fontWeight={900}>{spiceSelectionItem?.name}</Typography>
+                </DialogTitle>
+                <DialogContent>
+                    {(() => {
+                        const levels = spiceSelectionItem?.spiceLevels || [];
+                        if (levels.length === 0) return null;
+                        const current = tempSpiceLevel || levels[0];
+                        const index = Math.max(0, levels.indexOf(current));
+
+                        return (
+                            <Paper variant="outlined" sx={{
+                                borderRadius: { xs: '16px', sm: '24px' },
+                                p: { xs: 2, sm: 3 },
+                                pb: { xs: 1, sm: 3 },
+                                borderColor: 'divider',
+                                bgcolor: 'background.paper',
+                            }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 0.5, sm: 1 } }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <span style={{ fontSize: '16px' }}>🌶️</span>
+                                        <Typography sx={{ color: 'primary.main', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.5px' }}>
+                                            SPICE SELECTION
+                                        </Typography>
+                                    </Box>
+                                    <Chip
+                                        label={spiceSelectionItem?.spiceLevelData?.[current] || formatSpiceLevelLabel(current)}
+                                        size="small"
+                                        sx={{
+                                            bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                            color: 'primary.main',
+                                            fontWeight: 900,
+                                            fontSize: '0.65rem',
+                                            height: 24,
+                                            textTransform: 'capitalize',
+                                        }}
+                                    />
+                                </Box>
+                                <Typography variant="body2" sx={{ color: 'text.secondary', mb: { xs: 1, sm: 4 }, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                                    Slide to the spice level you want, and we'll send that choice to the kitchen.
+                                </Typography>
+
+                                {/* Short scales get a narrower track, centred — stretching two
+                                    points across the full width leaves a long empty run. */}
+                                <Box sx={{
+                                    px: { xs: 1, sm: 2 },
+                                    mb: { xs: 0, sm: 2 },
+                                    width: levels.length <= 2 ? { xs: '70%', sm: '55%' } : levels.length === 3 ? { xs: '85%', sm: '75%' } : '100%',
+                                    mx: 'auto',
+                                }}>
+                                    <Slider
+                                        value={index}
+                                        min={0}
+                                        max={levels.length - 1}
+                                        step={1}
+                                        marks
+                                        onChange={(_, val) => setTempSpiceLevel(levels[val as number])}
+                                        sx={{
+                                            color: 'primary.main',
+                                            height: 8,
+                                            '& .MuiSlider-track': { border: 'none', transition: 'none' },
+                                            '& .MuiSlider-rail': { opacity: 1, bgcolor: alpha(theme.palette.primary.main, 0.1) },
+                                            '& .MuiSlider-thumb': {
+                                                height: 28,
+                                                width: 28,
+                                                bgcolor: 'primary.main',
+                                                border: '4px solid',
+                                                borderColor: 'background.paper',
+                                                boxShadow: theme.palette.mode === 'dark' ? 'none' : '0 4px 12px rgba(79, 70, 229, 0.25)',
+                                                transition: 'none',
+                                                '&:hover, &.Mui-active': {
+                                                    boxShadow: `0 0 0 8px ${alpha(theme.palette.primary.main, 0.16)}`,
+                                                },
+                                                '&::after': { content: '"🌶️"', fontSize: '14px', position: 'absolute' },
+                                            },
+                                            '& .MuiSlider-mark': { bgcolor: 'text.disabled', height: 6, width: 6, borderRadius: '50%' },
+                                            '& .MuiSlider-markActive': { bgcolor: 'primary.main' },
+                                        }}
+                                    />
+                                    {/* Labels are pinned to the same percentages as the slider
+                                        marks. Equal-width flex cells only line up by coincidence
+                                        at four levels and drift badly at two or three. */}
+                                    <Box sx={{ position: 'relative', height: { xs: 20, sm: 34 }, mt: { xs: 1, sm: 3 } }}>
+                                        {levels.map((level, i) => {
+                                            const isSel = current === level;
+                                            const pct = levels.length > 1 ? (i / (levels.length - 1)) * 100 : 50;
+                                            return (
+                                                <Box
+                                                    key={i}
+                                                    onClick={() => setTempSpiceLevel(level)}
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        left: `${pct}%`,
+                                                        transform: 'translateX(-50%)',
+                                                        textAlign: 'center',
+                                                        cursor: 'pointer',
+                                                        userSelect: 'none',
+                                                        whiteSpace: 'nowrap',
+                                                    }}
+                                                >
+                                                    <Typography sx={{
+                                                        fontSize: '0.7rem',
+                                                        fontWeight: isSel ? 900 : 700,
+                                                        color: isSel ? 'primary.main' : 'text.disabled',
+                                                        textTransform: 'uppercase',
+                                                        mb: 0.5,
+                                                        transition: 'color 0.2s',
+                                                    }}>
+                                                        {formatSpiceLevelLabel(level)}
+                                                    </Typography>
+                                                    {/* Description comes from the set, not a guess at the level name. */}
+                                                    <Typography variant="caption" sx={{
+                                                        fontSize: '0.6rem',
+                                                        color: isSel ? 'primary.main' : 'text.disabled',
+                                                        opacity: isSel ? 1 : 0.6,
+                                                        display: { xs: 'none', sm: 'block' },
+                                                    }}>
+                                                        {spiceSelectionItem?.spiceLevelData?.[level] || ''}
+                                                    </Typography>
+                                                </Box>
+                                            );
+                                        })}
+                                    </Box>
+                                </Box>
+                            </Paper>
+                        );
+                    })()}
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+                    <Button onClick={() => setSpiceSelectionItem(null)}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        onClick={() => handleConfirmSpice(tempSpiceLevel || spiceSelectionItem?.spiceLevels?.[0] || '')}
+                        sx={{ borderRadius: 2, fontWeight: 700 }}
+                    >
+                        Add to Cart
                     </Button>
                 </DialogActions>
             </Dialog>

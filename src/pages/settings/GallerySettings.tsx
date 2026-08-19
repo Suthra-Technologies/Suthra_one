@@ -31,6 +31,7 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { galleryAPI, uploadAPI } from '../../services/api';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 interface GalleryItem {
     _id: string;
@@ -89,7 +90,7 @@ const GallerySettings: React.FC = () => {
 
         try {
             setUploading(true);
-            const res = await uploadAPI.uploadImage(file);
+            const res = await uploadAPI.uploadImage(file, 'gallery');
             setEditingItem(prev => ({ ...prev, imageUrl: res.data.url }));
             toast.success('Image uploaded successfully', { position: 'top-center', style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, background: '#333', color: '#fff' } });
         } catch (error) {
@@ -156,11 +157,7 @@ const GallerySettings: React.FC = () => {
     };
 
     if (loading && items.length === 0) {
-        return (
-            <Box display="flex" justifyContent="center" p={5}>
-                <CircularProgress />
-            </Box>
-        );
+        return <CardGridSkeleton count={6} cardHeight={280} />;
     }
 
     return (

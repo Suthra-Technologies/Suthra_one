@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
-    TableHead, TableRow, CircularProgress, alpha, useTheme, Stack, Chip,
+    TableHead, TableRow, alpha, useTheme, Stack, Chip,
     Card, CardContent, Grid, TablePagination, TextField, InputAdornment,
     FormControl, Select, MenuItem, InputLabel,
 } from '@mui/material';
 import HistoryIcon from '@mui/icons-material/History';
 import SearchIcon from '@mui/icons-material/Search';
 import { superAPI } from '../../services/api';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 import { toast } from 'react-hot-toast';
 
 const moduleColor = (mod: string) => {
@@ -168,9 +169,7 @@ const AdminLogsPage: React.FC = () => {
             {/* Table */}
             <Paper sx={{ borderRadius: 2, overflow: 'hidden', border: `1px solid ${alpha(theme.palette.divider, 0.5)}` }}>
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                        <CircularProgress />
-                    </Box>
+                    <TableSkeleton rows={8} columns={6} />
                 ) : (
                     <TableContainer>
                         <Table size="small">

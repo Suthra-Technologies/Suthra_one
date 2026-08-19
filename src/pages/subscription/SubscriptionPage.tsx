@@ -18,6 +18,7 @@ import {
     ListItem,
     ListItemIcon,
     ListItemText,
+    Stack,
     ToggleButton,
     ToggleButtonGroup,
     Typography,
@@ -30,6 +31,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { subscriptionAPI, tenantAPI } from '../../services/api';
 import { getTenantSlugFromHostname, isSubdomainAccess } from '../../utils/tenant.utils';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
+import { splitPlanFeatures, planFeatureLabel } from '../../utils/planFeatures';
 
 interface Plan {
     _id: string;
@@ -44,6 +47,7 @@ interface Plan {
     maxSms?: number;
     maxEmail?: number;
     maxEmails?: number;
+    baseplanId?: string | null;
 }
 
 interface TopupPlan {
@@ -189,11 +193,7 @@ const SubscriptionPage: React.FC = () => {
     // formatPrice function replaced by formatCurrency from context
 
     if (loading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                <CircularProgress />
-            </Box>
-        );
+        return <CardGridSkeleton count={3} cardHeight={420} />;
     }
 
 
@@ -341,7 +341,7 @@ const SubscriptionPage: React.FC = () => {
                                         pt: isCurrentPlan || isYearly ? 3.5 : 1.5,
                                     }}
                                 />
-                                <CardContent sx={{ flexGrow: 1, textAlign: 'center', py: 1.5 }}>
+                                <CardContent sx={{ flexGrow: 1, textAlign: 'left', py: 1.5 }}>
                                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', mb: 1, flexWrap: 'wrap', gap: 0.5 }}>
                                         <Typography component="h2" variant="h4" color={isCurrentPlan ? 'primary.main' : 'text.primary'}
                                             sx={{ fontSize: { xs: '1.5rem', sm: '2.1rem' } }}>
@@ -352,51 +352,42 @@ const SubscriptionPage: React.FC = () => {
                                         </Typography>
                                     </Box>
                                     <Divider sx={{ my: 1 }} />
-                                    <List dense disablePadding>
-                                        <ListItem disableGutters sx={{ py: 0.25 }}>
-                                            <ListItemIcon sx={{ minWidth: 28 }}>
-                                                <Check color="success" fontSize="small" />
-                                            </ListItemIcon>
-                                            <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={typeof plan.maxUsers === 'number' && plan.maxUsers > 0 ? `Max Users: ${plan.maxUsers}` : 'Unlimited Users'} />
-                                        </ListItem>
-                                        <ListItem disableGutters sx={{ py: 0.25 }}>
-                                            <ListItemIcon sx={{ minWidth: 28 }}>
-                                                <Check color="success" fontSize="small" />
-                                            </ListItemIcon>
-                                            <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={typeof plan.maxTables === 'number' && plan.maxTables > 0 ? `Max Tables: ${plan.maxTables}` : 'Unlimited Tables'} />
-                                        </ListItem>
-                                        <ListItem disableGutters sx={{ py: 0.25 }}>
-                                            <ListItemIcon sx={{ minWidth: 28 }}>
-                                                <Check color="success" fontSize="small" />
-                                            </ListItemIcon>
-                                            <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={typeof plan.maxOrders === 'number' && plan.maxOrders > 0 ? `Max Orders/mo: ${plan.maxOrders}` : 'Unlimited Orders'} />
-                                        </ListItem>
-                                        <ListItem disableGutters sx={{ py: 0.25 }}>
-                                            <ListItemIcon sx={{ minWidth: 28 }}>
-                                                <Check color="success" fontSize="small" />
-                                            </ListItemIcon>
-                                            <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={typeof plan.maxSms === 'number' && plan.maxSms > 0 ? `Max SMS/mo: ${plan.maxSms}` : 'Unlimited SMS'} />
-                                        </ListItem>
-                                        <ListItem disableGutters sx={{ py: 0.25 }}>
-                                            <ListItemIcon sx={{ minWidth: 28 }}>
-                                                <Check color="success" fontSize="small" />
-                                            </ListItemIcon>
-                                            <ListItemText
-                                                primaryTypographyProps={{ variant: 'body2' }}
-                                                primary={typeof (plan.maxEmail ?? plan.maxEmails) === 'number' && (plan.maxEmail ?? plan.maxEmails)! > 0
-                                                    ? `Max Emails/mo: ${plan.maxEmail ?? plan.maxEmails}`
-                                                    : 'Unlimited Emails'}
-                                            />
-                                        </ListItem>
-                                        {(plan.features || []).map((feature, index) => (
-                                            <ListItem key={index} disableGutters sx={{ py: 0.25 }}>
-                                                <ListItemIcon sx={{ minWidth: 28 }}>
-                                                    <Check color="success" fontSize="small" />
-                                                </ListItemIcon>
-                                                <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={feature} />
-                                            </ListItem>
-                                        ))}
-                                    </List>
+                                    {(() => {
+                                        const { basePlan, extra } = splitPlanFeatures(plan, plans);
+                                        const limitItems = [
+                                            typeof plan.maxUsers === 'number' && plan.maxUsers > 0 ? `Max Users: ${plan.maxUsers}` : 'Unlimited Users',
+                                            typeof plan.maxTables === 'number' && plan.maxTables > 0 ? `Max Tables: ${plan.maxTables}` : 'Unlimited Tables',
+                                            typeof plan.maxOrders === 'number' && plan.maxOrders > 0 ? `Max Orders/mo: ${plan.maxOrders}` : 'Unlimited Orders',
+                                            typeof plan.maxSms === 'number' && plan.maxSms > 0 ? `Max SMS/mo: ${plan.maxSms}` : 'Unlimited SMS',
+                                            typeof (plan.maxEmail ?? plan.maxEmails) === 'number' && (plan.maxEmail ?? plan.maxEmails)! > 0
+                                                ? `Max Emails/mo: ${plan.maxEmail ?? plan.maxEmails}`
+                                                : 'Unlimited Emails',
+                                        ];
+                                        return (
+                                            <>
+                                                <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>
+                                                    Limits:
+                                                </Typography>
+                                                {limitItems.map((item, j) => (
+                                                    <Typography key={j} variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
+                                                        • {item}
+                                                    </Typography>
+                                                ))}
+
+                                                <Typography variant="body2" fontWeight={700} sx={{ mt: 1.5, mb: 0.5 }}>
+                                                    {basePlan ? `Everything in ${basePlan.name}, plus:` : 'Features:'}
+                                                </Typography>
+                                                <Stack spacing={0.4}>
+                                                    {extra.map((feature, index) => (
+                                                        <Stack key={index} direction="row" spacing={1} alignItems="center">
+                                                            <Check color="success" fontSize="small" />
+                                                            <Typography variant="body2">{planFeatureLabel(feature)}</Typography>
+                                                        </Stack>
+                                                    ))}
+                                                </Stack>
+                                            </>
+                                        );
+                                    })()}
                                 </CardContent>
                                 <Box sx={{ p: 1.5, textAlign: 'center' }}>
                                     {isCurrentPlan && isActive ? (

@@ -46,6 +46,7 @@ import {
   Store as VendorIcon,
   Assignment,
   MonetizationOn,
+  Payments as PayrollIcon,
   ConfirmationNumber,
   AccountBox,
   ExpandLess,
@@ -56,12 +57,14 @@ import {
   DashboardCustomize,
   Gavel,
   PlaylistAdd,
+  DeliveryDining,
 } from '@mui/icons-material';
 import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { useActiveTenant } from '../hooks/useActiveTenant';
 import { BRAND_CONFIG } from '../config/brandConfig';
+import { hasPlanFeature, planFeaturesOf, resolveLandingPath } from '../utils/landingPath';
 import { Capacitor } from '@capacitor/core';
 
 /**
@@ -142,27 +145,27 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
     }));
   };
 
-  // Accountant has no dashboard access, so it lands on Reports instead.
-  const homePathForRole = (role?: string | null) =>
-    role === 'accountant' ? '/reports' : '/dashboard';
-
   const handleRoleSwitch = (role: string) => {
     switchRole(role);
     setRoleAnchorEl(null);
-    handleNavigation(homePathForRole(role));
+    // The new role may not have Dashboard, so go to its first accessible page.
+    handleNavigation(resolveLandingPath(role, planFeaturesOf(user)));
   };
 
   const navigationGroups = [
     {
       title: 'MAIN',
       items: [
-        { path: '/dashboard', label: 'Dashboard', icon: <Dashboard />, roles: ['admin', 'manager', 'waiter', 'cashier', 'food_runner'], feature: 'dashboard' },
+        { path: '/dashboard', label: 'Dashboard', icon: <Dashboard />, roles: ['admin', 'manager', 'cashier'], feature: 'dashboard' },
       ]
     },
     {
       title: 'OPERATIONS',
       items: [
         { path: '/orders', label: 'Orders', icon: <ShoppingCart />, roles: ['admin', 'manager', 'waiter', 'cashier', 'delivery', 'food_runner'], feature: 'orders' },
+        // Sidebar link is for drivers only, but the route intentionally stays
+        // open to admin/manager for oversight (see TenantRoutes.tsx).
+        { path: '/delivery-history', label: 'Pickup History', icon: <DeliveryDining />, roles: ['delivery'] },
         { path: '/pos', label: 'Point of Sale', icon: <PointOfSale />, roles: ['admin', 'manager', 'waiter', 'cashier'], feature: 'pos' },
         { path: '/tables', label: 'Tables', icon: <TableRestaurant />, roles: ['admin', 'manager', 'cashier'], feature: 'tables' },
         { path: '/bookings', label: 'Bookings', icon: <EventIcon />, roles: ['admin', 'manager', 'waiter'], feature: 'bookings' },
@@ -199,6 +202,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/users', label: 'Users', icon: <People />, roles: ['admin', 'manager'], feature: 'users' },
         { path: '/customers', label: 'Customers', icon: <AccountBox />, roles: ['admin', 'manager'], feature: 'customers' },
         { path: '/attendance', label: 'Attendance', icon: <AccessTimeIcon />, roles: ['admin', 'manager', 'accountant'], feature: 'attendance' },
+        { path: '/payroll', label: 'Employees & Payroll', icon: <PayrollIcon />, roles: ['admin', 'manager', 'accountant'], feature: 'payroll' },
         { path: '/assets', label: 'Asset & Document Management', icon: <Assignment />, roles: ['admin', 'manager', 'accountant', 'superadmin'], feature: 'assets' },
         { path: '/expenses', label: 'Expenses', icon: <MonetizationOn />, roles: ['admin', 'manager', 'accountant'], feature: 'expenses' },
         { path: '/disputes', label: 'Disputes', icon: <Gavel />, roles: ['admin', 'manager', 'accountant'], feature: 'disputes' },
@@ -228,7 +232,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/customer-support', label: 'Customer Tickets', icon: <Forum />, roles: ['admin', 'manager'], feature: 'customersupport' },
         { path: '/settings', label: 'Settings', icon: <Settings />, roles: ['admin', 'manager'], feature: 'settings' },
         { path: '/manage-notifications', label: 'Manage Notifications', icon: <NotificationsActive />, roles: ['admin', 'manager'], feature: 'managenotifications' },
-        { path: '', label: 'Help & Guide', icon: <AutoStories />, roles: ['admin', 'manager', 'accountant', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank') },
+        { path: '', label: 'Help & Guide', icon: <AutoStories />, roles: ['admin', 'manager', 'accountant', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank'), feature: 'helpguide' },
       ]
     },
   ];
@@ -264,24 +268,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
   const currentFeatures = tenantConfig?.currentPlan?.features || [];
   const hasSuperAdmin = activeRole === 'superadmin' || user?.roles?.includes('superadmin');
 
-  // Legacy plans stored a single bundled "core" feature. Before the module-level split,
-  // every one of these pages was ungated (open to any admin/manager), so a legacy "core"
-  // plan must keep unlocking all of them to avoid regressing access.
-  const CORE_FEATURES = [
-    'dashboard', 'orders', 'pos', 'tables', 'bookings', 'kitchen', 'menu', 'globaladdons',
-    'promocoupons', 'disputes', 'purchaseorders', 'vendors', 'materialproviders', 'recipes',
-    'users', 'customers', 'assets', 'expenses', 'customisescreens', 'reports', 'serviceusage',
-    'customeractivities', 'invoices', 'auditlogs', 'subscription', 'support', 'customersupport',
-    'settings', 'managenotifications',
-  ];
-
-  const hasFeatureAccess = (feat?: string) => {
-    if (!feat) return true;
-    if (hasSuperAdmin) return true;
-    if (activeRole === 'customer') return true; // Let routing logic or backend handle customer if needed, but since we are modifying UI, maybe hide it. Customer does not have tenant context easily. Wait, user.tenant might be there. If not there, maybe we just hide? Actually customer bypasses RequireFeature. Let's return true for customer.
-    if (currentFeatures.includes(feat)) return true;
-    return currentFeatures.includes('core') && CORE_FEATURES.includes(feat);
-  };
+  // Same gate RequireFeature uses, so a visible link always opens.
+  const hasFeatureAccess = (feat?: string) =>
+    hasPlanFeature(feat, currentFeatures, {
+      isSuperAdmin: hasSuperAdmin,
+      isCustomer: activeRole === 'customer',
+    });
 
   return (
     <Box sx={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -309,7 +301,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           boxSizing: 'border-box',
           cursor: 'pointer',
         }}
-          onClick={() => handleNavigation(homePathForRole(activeRole))}
+          onClick={() => handleNavigation(resolveLandingPath(activeRole, planFeaturesOf(user)))}
         >
           {(restaurantSettings.logo || (user?.tenant as any)?.logo) ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, width: '100%' }}>

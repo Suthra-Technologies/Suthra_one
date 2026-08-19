@@ -18,7 +18,6 @@ import {
   Card,
   CardContent,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -48,6 +47,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { publicDemoAPI, superAPI } from '../../services/api';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 // Ordered pipeline: once a request has moved to a later step, earlier steps
 // become unavailable — status can only move forward, never backward.
@@ -402,6 +402,9 @@ const DemoRequestsPage: React.FC = () => {
 
       {/* Desktop Table View */}
       <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+        {loading ? (
+          <TableSkeleton rows={8} columns={10} />
+        ) : (
         <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
           <Table>
             <TableHead>
@@ -419,13 +422,7 @@ const DemoRequestsPage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                    <CircularProgress />
-                  </TableCell>
-                </TableRow>
-              ) : requests.length === 0 ? (
+              {requests.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
                     <Typography color="text.secondary">No demo requests found</Typography>
@@ -527,14 +524,13 @@ const DemoRequestsPage: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+        )}
       </Box>
 
       {/* Mobile Card View */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
         {loading ? (
-          <Box display="flex" justifyContent="center" p={4}>
-            <CircularProgress />
-          </Box>
+          <TableSkeleton rows={5} columns={1} />
         ) : requests.length === 0 ? (
           <Box textAlign="center" p={4}>
             <Typography color="textSecondary">No demo requests found</Typography>

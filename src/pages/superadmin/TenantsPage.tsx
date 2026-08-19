@@ -30,6 +30,7 @@ import Grid from '@mui/material/Grid2';
 import { Edit as EditIcon, Search as SearchIcon, Close as CloseIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 const TenantsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -227,9 +228,7 @@ const TenantsPage: React.FC = () => {
       </Box>
 
       {loading ? (
-        <Box display="flex" justifyContent="center" p={4}>
-          <CircularProgress />
-        </Box>
+        <CardGridSkeleton count={8} cardHeight={280} />
       ) : (
         <>
           <Grid container spacing={3}>
@@ -327,6 +326,25 @@ const TenantsPage: React.FC = () => {
                         <Typography variant="body2" color="textSecondary" fontStyle="italic">No Owner</Typography>
                       )}
                     </Box>
+
+                    {tenant.contactEmail && (
+                      <Box mb={1.5}>
+                        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.65rem', letterSpacing: 0.5, mb: 0.25 }}>
+                          Contact Email
+                        </Typography>
+                        <Stack direction="row" spacing={0.75} alignItems="center">
+                          <Typography variant="body2" noWrap title={tenant.contactEmail} sx={{ lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {tenant.contactEmail}
+                          </Typography>
+                          <Chip
+                            label={tenant.contactEmailVerified ? 'Verified' : 'Unverified'}
+                            color={tenant.contactEmailVerified ? 'success' : 'default'}
+                            size="small"
+                            sx={{ height: 18, fontSize: '0.6rem', fontWeight: 700, flexShrink: 0 }}
+                          />
+                        </Stack>
+                      </Box>
+                    )}
 
                     <Grid container spacing={1.5}>
                       <Grid size={{ xs: 6 }}>
@@ -509,7 +527,7 @@ const TenantsPage: React.FC = () => {
                 <MenuItem value="">No Plan</MenuItem>
                 {plans.map((plan) => (
                   <MenuItem key={plan._id} value={plan._id}>
-                    {plan.name} ($${Number(plan.price || 0).toFixed(2)}/{plan.interval})
+                    {plan.name} (${Number(plan.price || 0).toFixed(2)}/{plan.interval})
                   </MenuItem>
                 ))}
               </Select>

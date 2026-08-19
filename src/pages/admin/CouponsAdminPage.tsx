@@ -56,6 +56,7 @@ import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 import { couponsAPI } from '../../services/api';
 import CustomInput from '../../components/common/CustomInput';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 interface Coupon {
     _id: string;
@@ -912,9 +913,7 @@ const CouponsAdminPage: React.FC = () => {
             </Box>
 
             {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                    <CircularProgress />
-                </Box>
+                <TableSkeleton rows={8} columns={7} />
             ) : isMobile ? (
                 // Mobile Card View
                 <Grid container spacing={1.5}>

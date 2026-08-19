@@ -7,6 +7,7 @@ import {
 import CardMembershipIcon from '@mui/icons-material/CardMembership';
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const PlansLogPage: React.FC = () => {
     const theme = useTheme();
@@ -28,6 +29,10 @@ const PlansLogPage: React.FC = () => {
     };
 
     useEffect(() => { fetchPlans(); }, []);
+
+    if (loading && plans.length === 0) {
+        return <TableSkeleton rows={8} columns={9} />;
+    }
 
     const paginated = plans.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 

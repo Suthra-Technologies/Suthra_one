@@ -31,6 +31,7 @@ import { apiBaseUrl } from '../../services/api';
 import { getTenantSlugFromHostname } from '../../utils/tenant.utils';
 import { getActivePaymentMethods } from '../../utils/orderWorkflows';
 import { Assignment, Chat, Event, History, Receipt, Star, CheckCircle } from '@mui/icons-material';
+import { ListSkeleton } from '../../components/common/PageSkeleton';
 
 const SUCCESS_STATUSES = new Set(['succeeded']);
 const FAILURE_STATUSES = new Set(['canceled', 'requires_payment_method', 'failed']);
@@ -383,11 +384,7 @@ const CateringTrackPage = () => {
     };
 
     if (loading) {
-        return (
-            <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
-                <CircularProgress />
-            </Box>
-        );
+        return <ListSkeleton count={5} />;
     }
 
     if (!order) {

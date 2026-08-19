@@ -8,11 +8,11 @@ import {
     Star as StarIcon,
 } from '@mui/icons-material';
 import {
-    Autocomplete,
     Box,
     Button,
     Card,
     CardContent,
+    Checkbox,
     Chip,
     CircularProgress,
     Dialog,
@@ -29,11 +29,14 @@ import {
     TextField,
     Tooltip,
     Typography,
+    useMediaQuery,
+    useTheme,
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { menuAPI, spiceLevelSetsAPI } from '../../services/api';
 import type { SpiceLevel, SpiceLevelSet } from './types';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 interface SpiceLevelSetsPageProps {
     hideHeader?: boolean;
@@ -50,7 +53,70 @@ const emptyForm = {
 /** "Very Hot" -> "very_hot"; the stable key stored on orders. */
 const toValue = (label: string) => label.trim().toLowerCase().replace(/[\s-]+/g, '_');
 
+/**
+ * Scrollable multi-column checkbox list of menu items. Used by both the "add
+ * items" and "set details" dialogs so they select and lay out identically.
+ */
+const ItemPickList: React.FC<{
+    items: any[];
+    selectedIds: Set<string>;
+    onToggle: (id: string) => void;
+    emptyText?: string;
+}> = ({ items, selectedIds, onToggle, emptyText = 'No items match your search.' }) => {
+    if (items.length === 0) {
+        return (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                {emptyText}
+            </Typography>
+        );
+    }
+
+    return (
+        <Box
+            sx={{
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 2,
+                maxHeight: { xs: '45vh', sm: '42vh' },
+                overflowY: 'auto',
+                display: 'grid',
+                // Hundreds of items in one column means endless scrolling.
+                gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, minmax(0, 1fr))',
+                    md: 'repeat(3, minmax(0, 1fr))',
+                },
+            }}
+        >
+            {items.map(item => (
+                <Box
+                    key={item._id}
+                    onClick={() => onToggle(item._id)}
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        px: 1,
+                        py: 0.5,
+                        minWidth: 0,
+                        cursor: 'pointer',
+                        borderRadius: 1,
+                        '&:hover': { bgcolor: 'action.hover' },
+                    }}
+                >
+                    <Checkbox size="small" checked={selectedIds.has(item._id)} sx={{ flexShrink: 0 }} />
+                    <Typography variant="body2" noWrap title={item.name}>
+                        {item.name}
+                    </Typography>
+                </Box>
+            ))}
+        </Box>
+    );
+};
+
 const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = false }) => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [sets, setSets] = useState<SpiceLevelSet[]>([]);
     const [loading, setLoading] = useState(true);
     const [openDialog, setOpenDialog] = useState(false);
@@ -60,16 +126,19 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
     const [isDeleting, setIsDeleting] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
 
-    // Bulk assignment
+    // Bulk assignment. Selection is a set of ids so it survives search changes.
     const [menuItems, setMenuItems] = useState<any[]>([]);
     const [assignTarget, setAssignTarget] = useState<SpiceLevelSet | null>(null);
-    const [assignSelection, setAssignSelection] = useState<any[]>([]);
+    const [assignSelectedIds, setAssignSelectedIds] = useState<Set<string>>(new Set());
+    const [assignSearch, setAssignSearch] = useState('');
     const [assigning, setAssigning] = useState(false);
 
     // Details view: the items currently using a set
     const [detailsTarget, setDetailsTarget] = useState<SpiceLevelSet | null>(null);
     const [detailsItems, setDetailsItems] = useState<any[]>([]);
     const [detailsLoading, setDetailsLoading] = useState(false);
+    const [detailsSelectedIds, setDetailsSelectedIds] = useState<Set<string>>(new Set());
+    const [detailsSearch, setDetailsSearch] = useState('');
     const [removingId, setRemovingId] = useState<string | null>(null);
     /** Set to reopen in the details dialog once the add dialog closes. */
     const [returnToDetails, setReturnToDetails] = useState<SpiceLevelSet | null>(null);
@@ -240,17 +309,36 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
      */
     const assignableItems = menuItems.filter(item => !itemSetId(item));
 
+    const matchesSearch = (item: any, term: string) =>
+        !term.trim() || (item.name || '').toLowerCase().includes(term.trim().toLowerCase());
+
+    const filteredAssignableItems = assignableItems.filter(item => matchesSearch(item, assignSearch));
+    const filteredDetailsItems = detailsItems.filter(item => matchesSearch(item, detailsSearch));
+
+    const toggleId = (setter: React.Dispatch<React.SetStateAction<Set<string>>>) => (id: string) => {
+        setter(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleAssignItem = toggleId(setAssignSelectedIds);
+    const toggleDetailsItem = toggleId(setDetailsSelectedIds);
+
     // Add-only: the dialog starts empty and offers just the items not already
     // in this set. Removal lives in the details dialog.
     const handleOpenAssign = (set: SpiceLevelSet) => {
         setAssignTarget(set);
-        setAssignSelection([]);
+        setAssignSelectedIds(new Set());
+        setAssignSearch('');
     };
 
     /** Closes the add dialog, returning to the details view if it came from there. */
     const handleCloseAssign = () => {
         setAssignTarget(null);
-        setAssignSelection([]);
+        setAssignSelectedIds(new Set());
+        setAssignSearch('');
         if (returnToDetails) {
             setDetailsTarget(returnToDetails);
             setReturnToDetails(null);
@@ -272,18 +360,23 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
 
     const handleOpenDetails = (set: SpiceLevelSet) => {
         setDetailsTarget(set);
+        setDetailsSelectedIds(new Set());
+        setDetailsSearch('');
         loadDetailsItems(set);
     };
 
-    const handleRemoveItem = async (itemId: string) => {
-        if (!detailsTarget || removingId) return;
+    const handleRemoveSelected = async () => {
+        if (!detailsTarget || removingId || detailsSelectedIds.size === 0) return;
+        const ids = [...detailsSelectedIds];
         try {
-            setRemovingId(itemId);
-            await spiceLevelSetsAPI.unassign(detailsTarget._id, [itemId]);
-            setDetailsItems(prev => prev.filter(item => item._id !== itemId));
+            setRemovingId('bulk');
+            const res = await spiceLevelSetsAPI.unassign(detailsTarget._id, ids);
+            toast.success(`Removed ${res.data.updated} item(s) from this set`);
+            setDetailsItems(prev => prev.filter(item => !detailsSelectedIds.has(item._id)));
+            setDetailsSelectedIds(new Set());
             await Promise.all([fetchSets(), fetchMenuItems()]);
         } catch (error: any) {
-            toast.error(error?.response?.data?.message || 'Failed to remove item');
+            toast.error(error?.response?.data?.message || 'Failed to remove items');
         } finally {
             setRemovingId(null);
         }
@@ -293,12 +386,13 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
         if (!assignTarget || assigning) return;
         try {
             setAssigning(true);
-            const res = await spiceLevelSetsAPI.assign(assignTarget._id, assignSelection.map(item => item._id));
+            const res = await spiceLevelSetsAPI.assign(assignTarget._id, [...assignSelectedIds]);
             toast.success(`Applied to ${res.data.updated} menu item(s)`);
             setAssignTarget(null);
             // Leave nothing selected — the applied items now belong to the set and
             // are listed in its details dialog, not here.
-            setAssignSelection([]);
+            setAssignSelectedIds(new Set());
+            setAssignSearch('');
             await Promise.all([fetchSets(), fetchMenuItems()]);
             // Came from the details dialog — go back to it, now showing the additions.
             if (returnToDetails) {
@@ -314,11 +408,18 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
     };
 
     return (
-        <Box sx={{ p: hideHeader ? 0 : 3 }}>
-            <Box display="flex" justifyContent={hideHeader ? 'flex-end' : 'space-between'} alignItems="center" mb={3}>
+        <Box sx={{ p: hideHeader ? 0 : { xs: 1.5, sm: 3 } }}>
+            <Box
+                display="flex"
+                flexDirection={{ xs: 'column', sm: 'row' }}
+                justifyContent={hideHeader ? 'flex-end' : 'space-between'}
+                alignItems={{ xs: 'stretch', sm: 'center' }}
+                gap={1.5}
+                mb={3}
+            >
                 {!hideHeader && (
                     <Box>
-                        <Typography variant="h4" fontWeight="bold">Spice Level Sets</Typography>
+                        <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">Spice Level Sets</Typography>
                         <Typography variant="body2" color="text.secondary">
                             Create reusable spice scales and apply them to the menu items that share them.
                         </Typography>
@@ -330,7 +431,7 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
             </Box>
 
             {loading ? (
-                <Box display="flex" justifyContent="center" p={5}><CircularProgress /></Box>
+                <CardGridSkeleton count={6} cardHeight={260} />
             ) : sets.length === 0 ? (
                 <Paper sx={{ p: 5, textAlign: 'center', borderRadius: 3, bgcolor: 'grey.50', border: '1px dashed', borderColor: 'divider' }}>
                     <FireIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
@@ -411,7 +512,7 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
             )}
 
             {/* Create / edit dialog */}
-            <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+            <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth fullScreen={isMobile}>
                 <form onSubmit={handleSubmit}>
                     <DialogTitle>{editingSet ? 'Edit Spice Level Set' : 'Create Spice Level Set'}</DialogTitle>
                     <DialogContent dividers>
@@ -457,21 +558,29 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
                                                             <ArrowDownIcon fontSize="inherit" />
                                                         </IconButton>
                                                     </Stack>
-                                                    <TextField
-                                                        label="Label"
-                                                        size="small"
-                                                        required
-                                                        value={level.label}
-                                                        onChange={e => handleLevelChange(index, 'label', e.target.value)}
-                                                        sx={{ flex: 1 }}
-                                                    />
-                                                    <TextField
-                                                        label="Description"
-                                                        size="small"
-                                                        value={level.description || ''}
-                                                        onChange={e => handleLevelChange(index, 'description', e.target.value)}
-                                                        sx={{ flex: 1.4 }}
-                                                    />
+                                                    {/* Side by side on desktop; stacked on mobile so neither
+                                                        field is squeezed to a few characters wide. */}
+                                                    <Stack
+                                                        direction={{ xs: 'column', sm: 'row' }}
+                                                        spacing={1}
+                                                        sx={{ flex: 1, minWidth: 0 }}
+                                                    >
+                                                        <TextField
+                                                            label="Label"
+                                                            size="small"
+                                                            required
+                                                            value={level.label}
+                                                            onChange={e => handleLevelChange(index, 'label', e.target.value)}
+                                                            sx={{ flex: 1, minWidth: 0 }}
+                                                        />
+                                                        <TextField
+                                                            label="Description"
+                                                            size="small"
+                                                            value={level.description || ''}
+                                                            onChange={e => handleLevelChange(index, 'description', e.target.value)}
+                                                            sx={{ flex: 1.4, minWidth: 0 }}
+                                                        />
+                                                    </Stack>
                                                     <IconButton size="small" color="error" onClick={() => handleRemoveLevel(index)}>
                                                         <DeleteIcon fontSize="small" />
                                                     </IconButton>
@@ -515,48 +624,70 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
             </Dialog>
 
             {/* Bulk assign dialog */}
-            <Dialog open={!!assignTarget} onClose={handleCloseAssign} maxWidth="sm" fullWidth>
+            <Dialog open={!!assignTarget} onClose={handleCloseAssign} maxWidth="md" fullWidth fullScreen={isMobile}>
                 <DialogTitle>Add menu items to “{assignTarget?.name}”</DialogTitle>
                 <DialogContent dividers>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                         Only items without a spice level set are listed. To move an item from another
                         set, remove it there first.
                     </Typography>
-                    {assignableItems.length === 0 && (
+                    {assignableItems.length === 0 ? (
                         <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
                             Every menu item already belongs to a spice level set.
                         </Typography>
+                    ) : (
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                            <Typography variant="caption" color="text.secondary">
+                                {assignSelectedIds.size} of {assignableItems.length} selected
+                            </Typography>
+                            <Box>
+                                {/* Acts on what is currently visible, so searching then
+                                    selecting all is a fast way to pick a whole group. */}
+                                <Button
+                                    size="small"
+                                    onClick={() => setAssignSelectedIds(prev =>
+                                        new Set([...prev, ...filteredAssignableItems.map(i => i._id)]))}
+                                >
+                                    {assignSearch.trim() ? 'Select all shown' : 'Select all'}
+                                </Button>
+                                <Button
+                                    size="small"
+                                    color="inherit"
+                                    disabled={assignSelectedIds.size === 0}
+                                    onClick={() => setAssignSelectedIds(new Set())}
+                                >
+                                    Clear
+                                </Button>
+                            </Box>
+                        </Box>
                     )}
-                    <Autocomplete
-                        multiple
-                        // A set can cover dozens of items; show a couple of chips
-                        // and collapse the rest into "+N" so the field stays compact.
-                        limitTags={2}
-                        options={assignableItems}
-                        value={assignSelection}
-                        onChange={(_, value) => setAssignSelection(value)}
-                        getOptionLabel={option => option.name || ''}
-                        isOptionEqualToValue={(option, value) => option._id === value._id}
-                        getLimitTagsText={more => `+${more}`}
-                        renderInput={params => (
-                            <TextField
-                                {...params}
-                                label="Menu items"
-                                placeholder={assignSelection.length > 0 ? '' : 'Search items'}
-                            />
-                        )}
+                    {/* A plain search + checkbox list rather than an Autocomplete:
+                        Autocomplete ties the selection to its input, so clearing the
+                        search text also cleared what had been ticked. */}
+                    <TextField
+                        fullWidth
+                        size="small"
+                        label="Search items"
+                        value={assignSearch}
+                        onChange={e => setAssignSearch(e.target.value)}
+                        sx={{ mb: 1.5 }}
+                    />
+                    <ItemPickList
+                        items={filteredAssignableItems}
+                        selectedIds={assignSelectedIds}
+                        onToggle={toggleAssignItem}
                     />
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseAssign}>Cancel</Button>
-                    <Button variant="contained" onClick={handleAssign} disabled={assigning || assignSelection.length === 0}>
-                        {assigning ? 'Applying…' : 'Apply'}
+                    <Button variant="contained" onClick={handleAssign} disabled={assigning || assignSelectedIds.size === 0}>
+                        {assigning ? 'Applying…' : `Apply${assignSelectedIds.size > 0 ? ` (${assignSelectedIds.size})` : ''}`}
                     </Button>
                 </DialogActions>
             </Dialog>
 
             {/* Set details: the levels, and the items currently using them */}
-            <Dialog open={!!detailsTarget} onClose={() => setDetailsTarget(null)} maxWidth="sm" fullWidth>
+            <Dialog open={!!detailsTarget} onClose={() => setDetailsTarget(null)} maxWidth="md" fullWidth fullScreen={isMobile}>
                 <DialogTitle sx={{ pr: 6 }}>
                     {detailsTarget?.name}
                     {detailsTarget?.description && (
@@ -603,34 +734,44 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
                         </Typography>
                     ) : (
                         <>
-                        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                            Removing an item turns off spice selection for it until it is added to another set.
-                        </Typography>
-                        <Stack spacing={1}>
-                            {detailsItems.map(item => (
-                                <Paper key={item._id} variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
-                                    <Stack direction="row" spacing={1} alignItems="center">
-                                        <Typography variant="body2" sx={{ flex: 1, minWidth: 0 }} noWrap>
-                                            {item.name}
-                                        </Typography>
-                                        <Tooltip title="Remove from this set">
-                                            <span>
-                                                <IconButton
-                                                    size="small"
-                                                    color="error"
-                                                    disabled={removingId === item._id}
-                                                    onClick={() => handleRemoveItem(item._id)}
-                                                >
-                                                    {removingId === item._id
-                                                        ? <CircularProgress size={16} />
-                                                        : <DeleteIcon fontSize="small" />}
-                                                </IconButton>
-                                            </span>
-                                        </Tooltip>
-                                    </Stack>
-                                </Paper>
-                            ))}
-                        </Stack>
+                            <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
+                                Removing an item turns off spice selection for it until it is added to another set.
+                            </Typography>
+                            <TextField
+                                fullWidth
+                                size="small"
+                                label="Search items"
+                                value={detailsSearch}
+                                onChange={e => setDetailsSearch(e.target.value)}
+                                sx={{ mb: 1.5 }}
+                            />
+                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                <Typography variant="caption" color="text.secondary">
+                                    {detailsSelectedIds.size} selected
+                                </Typography>
+                                <Box>
+                                    <Button
+                                        size="small"
+                                        onClick={() => setDetailsSelectedIds(prev =>
+                                            new Set([...prev, ...filteredDetailsItems.map(i => i._id)]))}
+                                    >
+                                        {detailsSearch.trim() ? 'Select all shown' : 'Select all'}
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        color="inherit"
+                                        disabled={detailsSelectedIds.size === 0}
+                                        onClick={() => setDetailsSelectedIds(new Set())}
+                                    >
+                                        Clear
+                                    </Button>
+                                </Box>
+                            </Box>
+                            <ItemPickList
+                                items={filteredDetailsItems}
+                                selectedIds={detailsSelectedIds}
+                                onToggle={toggleDetailsItem}
+                            />
                         </>
                     )}
                 </DialogContent>
@@ -645,6 +786,17 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
                     >
                         Edit set
                     </Button>
+                    <Box sx={{ flex: 1 }} />
+                    {detailsSelectedIds.size > 0 && (
+                        <Button
+                            color="error"
+                            startIcon={removingId ? <CircularProgress size={16} /> : <DeleteIcon />}
+                            disabled={!!removingId}
+                            onClick={handleRemoveSelected}
+                        >
+                            Remove ({detailsSelectedIds.size})
+                        </Button>
+                    )}
                     <Button variant="contained" onClick={() => setDetailsTarget(null)}>Close</Button>
                 </DialogActions>
             </Dialog>

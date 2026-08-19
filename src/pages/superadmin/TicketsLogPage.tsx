@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
-    TableHead, TableRow, CircularProgress, alpha, useTheme, Stack, Chip,
+    TableHead, TableRow, alpha, useTheme, Stack, Chip,
     Card, CardContent, Grid, TablePagination, TextField, InputAdornment,
     FormControl, Select, MenuItem, InputLabel, IconButton,
 } from '@mui/material';
@@ -11,6 +11,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const statusColor = (status: string) => {
     switch (status) {
@@ -142,6 +143,11 @@ const TicketsLogPage: React.FC = () => {
                 </Stack>
 
                 {/* Desktop table */}
+                {loading ? (
+                    <Box sx={{ p: 2 }}>
+                        <TableSkeleton rows={8} columns={isSingleStore ? 7 : 8} />
+                    </Box>
+                ) : (
                 <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
                     <Table>
                         <TableHead sx={{ bgcolor: alpha(theme.palette.action.hover, 0.5) }}>
@@ -157,9 +163,7 @@ const TicketsLogPage: React.FC = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {loading ? (
-                                <TableRow><TableCell colSpan={isSingleStore ? 7 : 8} align="center" sx={{ py: 8 }}><CircularProgress /></TableCell></TableRow>
-                            ) : paginated.length === 0 ? (
+                            {paginated.length === 0 ? (
                                 <TableRow><TableCell colSpan={isSingleStore ? 7 : 8} align="center" sx={{ py: 8 }}><Typography color="text.secondary">No tickets found</Typography></TableCell></TableRow>
                             ) : paginated.map((ticket) => {
                                 const updater = ticket.updatedBy;
@@ -203,12 +207,12 @@ const TicketsLogPage: React.FC = () => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+                )}
 
                 {/* Mobile cards */}
+                {!loading && (
                 <Box sx={{ display: { xs: 'block', md: 'none' }, p: 1 }}>
-                    {loading ? (
-                        <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>
-                    ) : paginated.length === 0 ? (
+                    {paginated.length === 0 ? (
                         <Box sx={{ py: 6, textAlign: 'center' }}><Typography color="text.secondary">No tickets found</Typography></Box>
                     ) : paginated.map((ticket) => {
                         const updater = ticket.updatedBy;
@@ -240,6 +244,7 @@ const TicketsLogPage: React.FC = () => {
                         );
                     })}
                 </Box>
+                )}
 
                 <TablePagination
                     component="div"

@@ -51,6 +51,7 @@ import { purchaseOrdersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const PurchaseOrdersPage: React.FC = () => {
     const navigate = useNavigate();
@@ -281,7 +282,7 @@ const PurchaseOrdersPage: React.FC = () => {
 
             {/* Transaction List */}
             {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress size={60} thickness={2} /></Box>
+                <TableSkeleton rows={8} columns={7} />
             ) : pos.length === 0 ? (
                 <Paper sx={{ p: 10, textAlign: 'center', borderRadius: 4, border: '2px dashed', borderColor: 'divider', bgcolor: 'transparent' }}>
                     <BillIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />

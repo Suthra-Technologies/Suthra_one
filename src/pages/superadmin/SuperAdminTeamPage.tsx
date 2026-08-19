@@ -42,6 +42,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { superAPI } from '../../services/api';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 // These must match the @RequirePermissions keys in superadmin.controller.ts
 const AVAILABLE_MODULES = [
@@ -296,9 +297,7 @@ const SuperAdminTeamPage: React.FC = () => {
 
       {/* Table */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress color="error" />
-        </Box>
+        <TableSkeleton rows={8} columns={6} />
       ) : (
         <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
           <Table>

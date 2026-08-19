@@ -12,6 +12,7 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5006';
 
@@ -98,6 +99,9 @@ const EmailOverviewPage: React.FC = () => {
 
             {/* Per-tenant table */}
             <Paper elevation={0} sx={{ borderRadius: 4, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+                {loading ? (
+                    <TableSkeleton rows={8} columns={8} />
+                ) : (
                 <TableContainer>
                     <Table>
                         <TableHead sx={{ bgcolor: alpha(theme.palette.action.hover, 0.5) }}>
@@ -113,13 +117,7 @@ const EmailOverviewPage: React.FC = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
-                                        <CircularProgress />
-                                    </TableCell>
-                                </TableRow>
-                            ) : usageData.length === 0 ? (
+                            {usageData.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
                                         <Typography color="text.secondary">No store email data found</Typography>
@@ -206,6 +204,7 @@ const EmailOverviewPage: React.FC = () => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+                )}
             </Paper>
         </Box>
     );

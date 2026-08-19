@@ -268,12 +268,14 @@ const MenuPage: React.FC = () => {
     };
 
     useEffect(() => {
+        if (tabValue === 6) {
+            // Deleted tab has its own dedicated fetch — no need to also refetch menu items/categories.
+            fetchDeletedData();
+            return;
+        }
         // Only refresh data when switching tabs, not on every render
         if (loading === false) { // Only refresh after initial load is complete
             debouncedFetchData();
-        }
-        if (tabValue === 6) {
-            fetchDeletedData();
         }
     }, [tabValue]);
 
@@ -756,6 +758,7 @@ const MenuPage: React.FC = () => {
                     setIsProcessing(true);
                     await menuAPI.delete(item._id);
                     toast.success(`Menu item "${item.name}" deleted successfully`);
+                    window.dispatchEvent(new Event('menu_updated'));
                     fetchData();
                 } catch (error: any) {
                     console.error('Error deleting menu item:', error);
@@ -773,6 +776,7 @@ const MenuPage: React.FC = () => {
             setIsProcessing(true);
             await menuAPI.restore(item._id);
             toast.success(`Menu item "${item.name}" restored successfully`);
+            window.dispatchEvent(new Event('menu_updated'));
             fetchData();
             fetchDeletedData();
         } catch (error: any) {
@@ -877,7 +881,7 @@ const MenuPage: React.FC = () => {
 
         const loadingToast = toast.loading('Uploading replacement image...');
         try {
-            const response = await uploadAPI.uploadImage(file);
+            const response = await uploadAPI.uploadImage(file, 'menu');
             const newItems = [...bulkPreviewItems];
             newItems[previewTargetIdx].image = response.data.url;
             setBulkPreviewItems(newItems);
@@ -1019,6 +1023,7 @@ const MenuPage: React.FC = () => {
             toast.dismiss(progressToast);
             if (createdCount > 0) {
                 toast.success(`Uploaded ${createdCount} items.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicates.` : ''}`);
+                window.dispatchEvent(new Event('menu_updated'));
             } else {
                 toast.error(`No new items added. ${skippedCount} items were duplicates.`);
             }
@@ -1575,7 +1580,7 @@ const MenuPage: React.FC = () => {
                                                 mt: 'auto',
                                                 gap: 0.5
                                             }}>
-                                                <IconButton size="small" onClick={() => navigate(getRelativePath(`/recipes/create?menuItem=${item._id}`))}
+                                                <IconButton size="small" onClick={() => navigate(getRelativePath(`/recipes/create?menuItem=${item._id}&returnTo=/menu`))}
                                                     sx={{ color: theme.palette.secondary.main, p: 0.5 }}>
                                                     <MenuBookIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />
                                                 </IconButton>

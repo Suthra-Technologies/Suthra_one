@@ -93,6 +93,7 @@ import {
   AboutWhyChooseEditor,
 } from './components/AboutSectionEditors';
 import MenuSettingsEditor from './components/MenuSettingsEditor';
+import { DashboardSkeleton } from '../../../components/common/PageSkeleton';
 
 const DEFAULT_HOMEPAGE_SECTIONS: SectionData[] = [
   {
@@ -410,7 +411,7 @@ const CustomiseScreensPage: React.FC = () => {
   };
 
   const handleUploadImage = async (file: File): Promise<string> => {
-    const response = await uploadAPI.uploadImage(file);
+    const response = await uploadAPI.uploadImage(file, 'homepage');
     return response.data.url;
   };
 
@@ -437,11 +438,7 @@ const CustomiseScreensPage: React.FC = () => {
   }, [isPreviewOpen]);
 
   if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (

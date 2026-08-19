@@ -9,7 +9,6 @@ import {
     CardContent,
     Button,
     IconButton,
-    CircularProgress,
     Paper,
     Chip,
     useTheme,
@@ -41,6 +40,7 @@ import { useActiveTenant } from '../../hooks/useActiveTenant';
 import { useSettings } from '../../context/SettingsContext';
 import { useGuestCart } from '../../context/GuestCartContext';
 import dompurify from 'dompurify';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 // ─── Fade-in animation styles ────────────────────────────────────────────────
 const fadeInUpStyle = (delay: number = 0): React.CSSProperties => ({
@@ -1147,11 +1147,7 @@ const CustomerHomePage: React.FC = () => {
     };
 
     if (loading) {
-        return (
-            <Box sx={{ minHeight: '60vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <CircularProgress sx={{ color: 'primary.main' }} />
-            </Box>
-        );
+        return <CardGridSkeleton count={6} cardHeight={200} />;
     }
 
     return (

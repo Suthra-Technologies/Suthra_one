@@ -126,7 +126,7 @@ const CustomerSupportPage: React.FC = () => {
 
         try {
             setUploading(true);
-            const response = await uploadAPI.uploadImage(file);
+            const response = await uploadAPI.uploadImage(file, 'support');
             setReplyAttachments([...replyAttachments, {
                 url: response.data.url,
                 name: file.name,

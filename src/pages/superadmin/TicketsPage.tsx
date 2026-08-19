@@ -17,7 +17,6 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  CircularProgress,
   Pagination,
   Card,
   CardContent,
@@ -36,6 +35,7 @@ import {
 import { Image as ImageIcon, Close as CloseIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 // fixImageUrl removed to use centralized utility
 
@@ -192,6 +192,9 @@ const TicketsPage: React.FC = () => {
 
       {/* Desktop View */}
       <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+        {loading ? (
+          <TableSkeleton rows={8} columns={8} />
+        ) : (
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -207,13 +210,7 @@ const TicketsPage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={8} align="center">
-                    <CircularProgress />
-                  </TableCell>
-                </TableRow>
-              ) : tickets.length === 0 ? (
+              {tickets.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} align="center">
                     <Typography color="text.secondary">No tickets found</Typography>
@@ -313,15 +310,13 @@ const TicketsPage: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+        )}
       </Box>
 
       {/* Mobile View */}
+      {!loading && (
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-        {loading ? (
-          <Box display="flex" justifyContent="center" p={4}>
-            <CircularProgress />
-          </Box>
-        ) : tickets.length === 0 ? (
+        {tickets.length === 0 ? (
           <Box textAlign="center" p={4}>
             <Typography color="textSecondary">No tickets found</Typography>
           </Box>
@@ -442,6 +437,7 @@ const TicketsPage: React.FC = () => {
           </Stack>
         )}
       </Box>
+      )}
 
       <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
         <Pagination count={totalPages} page={page} onChange={(_, p) => setPage(p)} color="primary" />

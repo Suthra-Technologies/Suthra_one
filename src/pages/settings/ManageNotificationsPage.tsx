@@ -44,6 +44,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { notificationsAPI } from '../../services/api';
 import NotificationConfigDialog from './components/NotificationConfigDialog';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 interface LinkedEvent {
     eventId: string;
@@ -454,9 +455,7 @@ const ManageNotificationsPage: React.FC = () => {
             </Stack>
 
             {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-                    <CircularProgress />
-                </Box>
+                <TableSkeleton rows={8} columns={7} />
             ) : configs.length === 0 ? (
                 <Box sx={{ textAlign: 'center', py: 8 }}>
                     <NotificationsActive sx={{ fontSize: 44, color: 'text.disabled', mb: 1 }} />

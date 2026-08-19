@@ -30,6 +30,7 @@ interface EditTableDialogProps {
     table: any;
     customLocations: string[];
     onOpenAddLocation: () => void;
+    existingTables?: any[];
 }
 
 const CAPACITY_OPTIONS = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
@@ -40,7 +41,8 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
     onSuccess,
     table,
     customLocations,
-    onOpenAddLocation
+    onOpenAddLocation,
+    existingTables = []
 }) => {
     const [editTable, setEditTable] = useState<any>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -76,6 +78,16 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
                     error = 'Table number must be a whole number';
                 } else if (num < 1) {
                     error = 'Table number must be at least 1';
+                } else if (existingTables && Array.isArray(existingTables) && editTable) {
+                    const isDup = existingTables.some((t: any) =>
+                        t._id !== editTable._id &&
+                        !t.isDeleted &&
+                        t.isActive !== false &&
+                        String(t.tableNumber || '').trim() === String(raw).trim()
+                    );
+                    if (isDup) {
+                        error = `Table number #${raw} is already used by another active table`;
+                    }
                 }
             }
         }
@@ -139,6 +151,8 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
                 capacity: editTable.capacity,
                 location: editTable.location,
                 status: editTable.status,
+                featureTag: editTable.featureTag || '',
+                vibeText: editTable.vibeText || '',
             };
             await tablesAPI.update(editTable._id, updateData);
             toast.success('Table updated successfully');
@@ -219,7 +233,7 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
                                 label="Location"
                                 onChange={e => {
                                     const v = e.target.value as string;
-                                    setEditTable({ ...editTable, location: v });
+                                    setEditTable({ ...editTable, location: v, section: v });
                                     setTouched(prev => ({ ...prev, location: true }));
                                     validateField('location', v);
                                 }}
@@ -231,20 +245,19 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
                                     }
                                 }}
                             >
-                                <MenuItem value="indoor">Indoor</MenuItem>
-                                <MenuItem value="outdoor">Outdoor</MenuItem>
-                                <MenuItem value="private_room">Private Room</MenuItem>
-                                <MenuItem value="bar">Bar</MenuItem>
-                                <MenuItem value="patio">Patio</MenuItem>
-                                <MenuItem value="main_dining">Main Dining</MenuItem>
-                                <MenuItem value="vip_section">VIP Section</MenuItem>
-                                <MenuItem value="party_hall">Party Hall</MenuItem>
-                                <MenuItem value="terrace">Terrace</MenuItem>
-                                {customLocations.map(loc => (
-                                    <MenuItem key={loc} value={loc} sx={{ textTransform: 'capitalize' }}>
-                                        {loc.replace(/_/g, ' ')}
-                                    </MenuItem>
-                                ))}
+                                {(() => {
+                                    const locSet = new Set<string>(['indoor', 'outdoor', 'private_room', 'bar']);
+                                    if (editTable?.location) locSet.add(editTable.location.toLowerCase());
+                                    customLocations.forEach(loc => {
+                                        const norm = loc.trim().toLowerCase();
+                                        if (norm && norm !== 'inside') locSet.add(norm);
+                                    });
+                                    return Array.from(locSet).map(loc => (
+                                        <MenuItem key={loc} value={loc} sx={{ textTransform: 'capitalize' }}>
+                                            {loc.replace(/_/g, ' ')}
+                                        </MenuItem>
+                                    ));
+                                })()}
                             </Select>
                         </FormControl>
                         <Button
@@ -278,6 +291,22 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
                             <MenuItem value="reserved">Reserved</MenuItem>
                         </Select>
                     </FormControl>
+
+                    <TextField
+                        label="Ambiance / Location Tag (e.g. Scenic Window Spot 🪟)"
+                        value={editTable.featureTag || ''}
+                        onChange={e => setEditTable({ ...editTable, featureTag: e.target.value })}
+                        placeholder="e.g. Scenic Window Spot 🪟, Heated Patio Spot 🌿, VIP Corner"
+                        fullWidth
+                    />
+
+                    <TextField
+                        label="Vibe Description"
+                        value={editTable.vibeText || ''}
+                        onChange={e => setEditTable({ ...editTable, vibeText: e.target.value })}
+                        placeholder="e.g. Romantic corner with sunset view"
+                        fullWidth
+                    />
                 </Box>
             </DialogContent>
             <DialogActions>

@@ -15,6 +15,7 @@ import CustomiseScreensPage from '../pages/admin/customise-screens/CustomiseScre
 import ServiceUsagePage from '../pages/admin/ServiceUsagePage';
 import CustomerActivitiesPage from '../pages/admin/CustomerActivitiesPage';
 import AttendancePage from '../pages/AttendancePage';
+import PayrollPage from '../pages/PayrollPage';
 import CateringPage from '../pages/catering/CateringPage';
 import CateringTrackPage from '../pages/customer/CateringTrackPage';
 import CustomersPage from '../pages/customers/CustomersPage';
@@ -25,6 +26,7 @@ import AddOnGroupsPage from '../pages/menu/AddOnGroupsPage';
 import SpiceLevelSetsPage from '../pages/menu/SpiceLevelSetsPage';
 import TraysPage from '../pages/menu/TraysPage';
 import OrdersPage from '../pages/orders/OrdersPage';
+import DeliveryHistoryPage from '../pages/orders/DeliveryHistoryPage';
 import POSPage from '../pages/pos/POSPage';
 import ProfilePage from '../pages/profile/ProfilePage';
 import DashboardPage from '../pages/DashboardPage';
@@ -95,29 +97,39 @@ export const TenantRoutes = () => (
 
     {/* ─── Admin/Staff Routes (With Sidebar Layout) ─── */}
     <Route element={<Layout />}>
-      <Route element={<RequireFeature feature="dashboard" />}>
-        <Route path="dashboard" element={<DashboardPage />} />
+      {/* Role lists mirror the sidebar entries in Sidebar.tsx. Without the role
+          guard these were reachable by typing the URL even for roles that never
+          see the link — e.g. an accountant opening /dashboard directly. */}
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'cashier']} />}>
+        <Route element={<RequireFeature feature="dashboard" />}>
+          <Route path="dashboard" element={<DashboardPage />} />
+        </Route>
       </Route>
-      <Route element={<RequireFeature feature="orders" />}>
-        <Route path="orders" element={<OrdersPage />} />
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter', 'cashier', 'delivery', 'food_runner']} />}>
+        <Route element={<RequireFeature feature="orders" />}>
+          <Route path="orders" element={<OrdersPage />} />
+        </Route>
       </Route>
-      <Route element={<RequireFeature feature="pos" />}>
-        <Route path="pos" element={<POSPage />} />
+      {/* Deliberately wider than the sidebar: the link shows only for drivers,
+          but admin/manager keep URL access for oversight. */}
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'delivery']} />}>
+        <Route path="delivery-history" element={<DeliveryHistoryPage />} />
       </Route>
-      <Route element={<RequireFeature feature="purchaseorders" />}>
-        <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
-        <Route path="purchase-orders/create" element={<CreatePOPage />} />
-        <Route path="purchase-orders/edit/:id" element={<CreatePOPage />} />
-        <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter', 'cashier']} />}>
+        <Route element={<RequireFeature feature="pos" />}>
+          <Route path="pos" element={<POSPage />} />
+        </Route>
+      </Route>
+      <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
+        <Route element={<RequireFeature feature="purchaseorders" />}>
+          <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+          <Route path="purchase-orders/create" element={<CreatePOPage />} />
+          <Route path="purchase-orders/edit/:id" element={<CreatePOPage />} />
+          <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+        </Route>
       </Route>
 
       <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
-        <Route element={<RequireFeature feature="expenses" />}>
-          <Route path="expenses" element={<ExpensesPage />} />
-          <Route path="expenses/:id" element={<ExpenseDetailPage />} />
-          <Route path="expenses/create" element={<CreateExpensePage />} />
-          <Route path="expenses/edit/:id" element={<CreateExpensePage />} />
-        </Route>
         <Route element={<RequireFeature feature="menu" />}>
           <Route path="menu" element={<MenuPage />} />
         </Route>
@@ -141,9 +153,6 @@ export const TenantRoutes = () => (
           <Route path="recipes/create" element={<CreateRecipePage />} />
           <Route path="recipes/:id/edit" element={<CreateRecipePage />} />
         </Route>
-        <Route element={<RequireFeature feature="reports" />}>
-          <Route path="reports" element={<ReportsPage />} />
-        </Route>
         <Route element={<RequireFeature feature="users" />}>
           <Route path="users" element={<UsersPage />} />
         </Route>
@@ -166,9 +175,6 @@ export const TenantRoutes = () => (
           <Route path="promocode" element={<PromoCodePage />} />
           <Route path="coupons" element={< CouponsAdminPage />} />
         </Route>
-        <Route element={<RequireFeature feature="attendance" />}>
-          <Route path="attendance" element={<AttendancePage />} />
-        </Route>
         <Route element={<RequireFeature feature="customisescreens" />}>
           <Route path="customise-screens" element={<CustomiseScreensPage />} />
         </Route>
@@ -180,6 +186,27 @@ export const TenantRoutes = () => (
         </Route>
         <Route element={<RequireFeature feature="auditlogs" />}>
           <Route path="audit-logs" element={<AuditLogsPage />} />
+        </Route>
+      </Route>
+
+      {/* Finance modules. Accountants get these alongside admin/manager — the
+          roles here must match the sidebar entries in Sidebar.tsx, or a visible
+          link lands on /unauthorized. */}
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'accountant']} />}>
+        <Route element={<RequireFeature feature="reports" />}>
+          <Route path="reports" element={<ReportsPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="expenses" />}>
+          <Route path="expenses" element={<ExpensesPage />} />
+          <Route path="expenses/:id" element={<ExpenseDetailPage />} />
+          <Route path="expenses/create" element={<CreateExpensePage />} />
+          <Route path="expenses/edit/:id" element={<CreateExpensePage />} />
+        </Route>
+        <Route element={<RequireFeature feature="payroll" />}>
+          <Route path="payroll" element={<PayrollPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="attendance" />}>
+          <Route path="attendance" element={<AttendancePage />} />
         </Route>
         <Route element={<RequireFeature feature="assets" />}>
           <Route path="assets" element={<AssetList />} />
@@ -230,10 +257,12 @@ export const TenantRoutes = () => (
         </Route>
       </Route>
 
-      {/* Protected admin catering routes */}
-      <Route element={<RequireFeature feature="catering" />}>
-        <Route path="catering-admin" element={<CateringManagementPage />} />
-        <Route path="catering-commissions" element={<CateringCommissionsPage />} />
+      {/* Protected admin catering routes — matches the Catering sidebar group. */}
+      <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
+        <Route element={<RequireFeature feature="catering" />}>
+          <Route path="catering-admin" element={<CateringManagementPage />} />
+          <Route path="catering-commissions" element={<CateringCommissionsPage />} />
+        </Route>
       </Route>
     </Route>
   </>

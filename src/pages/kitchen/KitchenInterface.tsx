@@ -14,8 +14,10 @@ import {
   Print as PrintIcon,
   CurrencyExchange as RefundIcon,
   Add as AddIcon,
-  Remove as RemoveIcon
+  Remove as RemoveIcon,
+  Event as EventIcon
 } from '@mui/icons-material';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 import {
   alpha,
   Badge,
@@ -133,10 +135,9 @@ const KitchenInterface: React.FC = () => {
     }
 
     // Try direct printing via local print agent first (QZ Tray style fast path)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s fast timeout
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s fast timeout
-
       const response = await fetch('http://127.0.0.1:19001/print', {
         method: 'POST',
         headers: {
@@ -158,8 +159,6 @@ const KitchenInterface: React.FC = () => {
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
-
       if (response.ok) {
         const resData = await response.json();
         if (resData.success) {
@@ -178,6 +177,8 @@ const KitchenInterface: React.FC = () => {
           toast.error('Check your printer connection');
           return;
       }
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     if (Capacitor.isNativePlatform()) {
@@ -301,8 +302,19 @@ const KitchenInterface: React.FC = () => {
       const response = await ordersAPI.getKitchen();
       const ordersData = Array.isArray(response.data) ? response.data : [];
 
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const filteredByDate = ordersData.filter((order: any) => {
+        const orderDate = new Date(order.createdAt);
+        return orderDate >= todayStart && orderDate <= todayEnd && !order.isDisputed;
+      });
+
       // Sort by most recent first
-      const sortedOrders = ordersData.sort((a: any, b: any) =>
+      const sortedOrders = filteredByDate.sort((a: any, b: any) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
@@ -555,6 +567,17 @@ const KitchenInterface: React.FC = () => {
       await ordersAPI.updateStatus(orderId, newStatus);
       toast.success(`Order marked as ${newStatus.replace(/_/g, ' ')}`);
       fetchOrders(true);
+    } catch (error: any) {
+      const backendMsg: string = error?.response?.data?.message || '';
+      const isPreOrderLockError =
+        error?.response?.status === 400 &&
+        backendMsg.toLowerCase().includes('pre-order');
+
+      if (isPreOrderLockError) {
+        toast.error('⏰ This pre-order is locked until 1 hour before its scheduled time');
+      } else {
+        toast.error(backendMsg || 'Failed to update order status');
+      }
     } finally {
       setProcessingOrders(prev => {
         const updated = new Set(prev);
@@ -709,9 +732,7 @@ const KitchenInterface: React.FC = () => {
 
       {/* Orders Grid */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-          <CircularProgress size={60} />
-        </Box>
+        <CardGridSkeleton count={6} cardHeight={280} />
       ) : filteredOrders.length === 0 ? (
         <Paper sx={{ textAlign: 'center', p: 4, bgcolor: alpha(theme.palette.success.main, 0.1), borderRadius: 3 }}>
           <Typography variant="h5" color="success.main" gutterBottom sx={{ fontSize: headingFontSize }}>
@@ -728,6 +749,19 @@ const KitchenInterface: React.FC = () => {
             const urgency = getUrgencyLevel(order.createdAt);
             const isAllReady = progress === 100;
             const isOrderProcessing = processingOrders.has(order._id);
+
+            // ── PRE-ORDER TIME LOCK ─────────────────────────────────────────────
+            // Disable accept/start/prepare for pre-orders scheduled >60 mins away.
+            // The scheduler will unlock them automatically at the right time.
+            const isPreOrderLocked =
+              !!(order as any).isPreOrder &&
+              !!(order as any).scheduledTime &&
+              (new Date((order as any).scheduledTime).getTime() - Date.now()) > 60 * 60 * 1000;
+
+            const preOrderLockedLabel = isPreOrderLocked
+              ? `Scheduled for ${new Date((order as any).scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — actions unlock 1 hour before`
+              : '';
+            // ────────────────────────────────────────────────────────────────────
 
             return (
               <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={order._id}>
@@ -799,6 +833,21 @@ const KitchenInterface: React.FC = () => {
                                 : getElapsedTime(order.createdAt)}
                             </Typography>
                           </Stack>
+                          {!order.isPreOrder && order.scheduledTime && (
+                            <Chip
+                              icon={<EventIcon sx={{ fontSize: '0.85rem !important' }} />}
+                              label={`Was Sch: ${new Date(order.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: '0.65rem',
+                                fontWeight: 'bold',
+                                bgcolor: alpha('#7c3aed', 0.1),
+                                color: '#7c3aed',
+                                border: '1px solid rgba(124,58,237,0.25)',
+                              }}
+                            />
+                          )}
                           {order.tableNumber && (
                             <Chip
                               label={`TABLE ${order.tableNumber}`}
@@ -826,6 +875,35 @@ const KitchenInterface: React.FC = () => {
                         sx={{ fontSize: '0.65rem', height: 22, fontWeight: 'bold' }}
                       />
                     </Stack>
+
+                    {/* Pre-Order Lock Banner */}
+                    {isPreOrderLocked && order.status === 'pending' && (
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          px: 1.5,
+                          py: 0.75,
+                          mb: { xs: 1, sm: 1.5 },
+                          borderRadius: 2,
+                          bgcolor: theme.palette.mode === 'dark'
+                            ? alpha(theme.palette.warning.main, 0.15)
+                            : alpha(theme.palette.warning.main, 0.12),
+                          border: `1px solid ${alpha(theme.palette.warning.main, 0.5)}`,
+                        }}
+                      >
+                        <ClockIcon sx={{ fontSize: 16, color: 'warning.main', flexShrink: 0 }} />
+                        <Box>
+                          <Typography variant="caption" fontWeight="bold" color="warning.main" sx={{ display: 'block', fontSize: '0.7rem', lineHeight: 1.3 }}>
+                            ⏰ Locked · Scheduled for {new Date((order as any).scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', lineHeight: 1.2 }}>
+                            Actions unlock 1 hour before
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )}
 
                     {/* Progress Bar */}
                     <Box sx={{ mb: { xs: 1, sm: 2 } }}>
@@ -1028,18 +1106,22 @@ const KitchenInterface: React.FC = () => {
                       Print KOT
                     </Button>
                     {!isAllReady && order.status !== 'pending' && (
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        color="success"
-                        size="small"
-                        onClick={() => handleMarkAllReady(order._id)}
-                        disabled={isOrderProcessing}
-                        startIcon={isOrderProcessing ? <CircularProgress size={14} color="inherit" /> : <DoneAllIcon />}
-                        sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
-                      >
-                        Mark All Ready
-                      </Button>
+                      <Tooltip title={isPreOrderLocked ? preOrderLockedLabel : ''} arrow>
+                        <span>
+                          <Button
+                            fullWidth
+                            variant="outlined"
+                            color="success"
+                            size="small"
+                            onClick={() => handleMarkAllReady(order._id)}
+                            disabled={isOrderProcessing || isPreOrderLocked}
+                            startIcon={isOrderProcessing ? <CircularProgress size={14} color="inherit" /> : <DoneAllIcon />}
+                            sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
+                          >
+                            Mark All Ready
+                          </Button>
+                        </span>
+                      </Tooltip>
                     )}
 
                     <Button
@@ -1060,19 +1142,23 @@ const KitchenInterface: React.FC = () => {
                     </Button>
 
                     {!(order.status === 'ready' || order.status === 'ready_to_takeaway' || order.status === 'ready_to_pickup') && (
-                      <Button
-                        fullWidth
-                        variant="contained"
-                        color={isAllReady ? "success" : (getStatusColor(order.status) as any)}
-                        onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType, !!((order as any).doordashDeliveryId || (order as any).uberEatsDeliveryId))}
-                        startIcon={isOrderProcessing ? <CircularProgress size={14} color="inherit" /> : (isAllReady ? <CheckCircleIcon /> : <PlayArrowIcon />)}
-                        disabled={isOrderProcessing || (!isAllReady && order.status === 'preparing')}
-                        sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
-                      >
-                        {order.status === 'pending' ? 'Confirm' :
-                          order.status === 'confirmed' ? 'Start' :
-                            (isAllReady ? 'Mark Ready' : 'Continue Preparing')}
-                      </Button>
+                      <Tooltip title={isPreOrderLocked ? preOrderLockedLabel : ''} arrow>
+                        <span>
+                          <Button
+                            fullWidth
+                            variant="contained"
+                            color={isAllReady ? "success" : (getStatusColor(order.status) as any)}
+                            onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType, !!((order as any).doordashDeliveryId || (order as any).uberEatsDeliveryId))}
+                            startIcon={isOrderProcessing ? <CircularProgress size={14} color="inherit" /> : (isAllReady ? <CheckCircleIcon /> : <PlayArrowIcon />)}
+                            disabled={isOrderProcessing || isPreOrderLocked || (!isAllReady && order.status === 'preparing')}
+                            sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
+                          >
+                            {order.status === 'pending' ? 'Confirm' :
+                              order.status === 'confirmed' ? 'Start' :
+                                (isAllReady ? 'Mark Ready' : 'Continue Preparing')}
+                          </Button>
+                        </span>
+                      </Tooltip>
                     )}
                   </CardActions>
                 </Card>

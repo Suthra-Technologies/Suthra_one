@@ -64,6 +64,7 @@ import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 import { promosAPI, customersAPI, reportsAPI, menuAPI } from '../../services/api';
 import CustomInput from '../../components/common/CustomInput';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 interface Customer {
     name: string;
@@ -766,9 +767,7 @@ const PromoCodePage: React.FC = () => {
 
             {/* Content Section */}
             {loading && promos.length === 0 ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 10 }}>
-                    <CircularProgress />
-                </Box>
+                <CardGridSkeleton count={6} cardHeight={280} />
             ) : viewMode === 'grid' ? (
                 <Grid container spacing={3}>
                     {filteredPromos.map((promo, index) => {

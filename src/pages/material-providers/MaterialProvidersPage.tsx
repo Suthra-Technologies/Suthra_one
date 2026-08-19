@@ -40,6 +40,7 @@ import {
 import { materialProvidersAPI, supportAPI, purchaseOrdersAPI } from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
 import { toast } from 'react-hot-toast';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 interface MaterialProvider {
     _id: string;
@@ -347,11 +348,7 @@ const MaterialProvidersPage: React.FC = () => {
                 }}
             />
 
-            {loading && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                    <CircularProgress />
-                </Box>
-            )}
+            {loading && <CardGridSkeleton count={6} cardHeight={280} />}
 
             {error && <Alert severity="error">{error}</Alert>}
 

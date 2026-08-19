@@ -21,7 +21,6 @@ import {
     MenuItem,
     FormControl,
     InputLabel,
-    CircularProgress,
     Chip,
     Stack,
     TextField,
@@ -39,6 +38,7 @@ import {
     ListItemText,
 } from '@mui/material';
 import { ordersAPI, tablesAPI, bookingsAPI, feedbackAPI, reportsAPI, cateringAPI } from '../../services/api';
+import { DashboardSkeleton } from '../../components/common/PageSkeleton';
 import {
     BarChart,
     Bar,
@@ -65,6 +65,7 @@ import MoneyIcon from '@mui/icons-material/AttachMoney';
 import StarIcon from '@mui/icons-material/Star';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import TwoWheelerIcon from '@mui/icons-material/TwoWheeler';
+import DeliveryDiningIcon from '@mui/icons-material/DeliveryDining';
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 import SavingsIcon from '@mui/icons-material/Savings';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
@@ -213,18 +214,13 @@ const ReportsPage: React.FC = () => {
         setPaymentDetailsPage(0);
     }, [activeTab]);
 
-    // Fetch data based on active tab
+    // Fetch data based on active tab (and feedback sub-view, so item-wise vs
+    // summary both get their own initial fetch and 30s auto-refresh).
     useEffect(() => {
         fetchReportData();
         const interval = setInterval(fetchReportData, 30000); // Auto-refresh every 30s
         return () => clearInterval(interval);
-    }, [activeTab, period, startDate, endDate, paymentMethodFilter]);
-
-    useEffect(() => {
-        if (activeTab === 15 && feedbackView === 'item-wise') {
-            feedbackAPI.getItemWiseReport().then(res => setItemWiseReport(res.data || [])).catch(err => console.error(err));
-        }
-    }, [activeTab, feedbackView]);
+    }, [activeTab, period, startDate, endDate, paymentMethodFilter, feedbackView]);
 
     // Real-time updates
     useEffect(() => {
@@ -333,7 +329,11 @@ const ReportsPage: React.FC = () => {
                     await fetchTableStats(params);
                     break;
                 case 15: // Feedback
-                    await fetchFeedback(params);
+                    if (feedbackView === 'item-wise') {
+                        await feedbackAPI.getItemWiseReport().then(res => setItemWiseReport(res.data || []));
+                    } else {
+                        await fetchFeedback(params);
+                    }
                     break;
                 case 16: // Tips Report
                     await Promise.all([
@@ -5453,12 +5453,14 @@ const ReportsPage: React.FC = () => {
         const providerColor = (p: string) => {
             if (p === 'doordash') return '#ef4444';
             if (p === 'ubereats') return '#22c55e';
+            if (p === 'in_house') return '#8b5cf6';
             return '#6b7280';
         };
 
         const providerLabel = (p: string) => {
             if (p === 'doordash') return 'DoorDash';
             if (p === 'ubereats') return 'Uber Eats';
+            if (p === 'in_house') return 'In-House';
             return p;
         };
 
@@ -5480,6 +5482,7 @@ const ReportsPage: React.FC = () => {
                                 <MenuItem value="all">All Providers</MenuItem>
                                 <MenuItem value="doordash">DoorDash</MenuItem>
                                 <MenuItem value="ubereats">Uber Eats</MenuItem>
+                                <MenuItem value="in_house">In-House</MenuItem>
                             </Select>
                         </FormControl>
                         <Button
@@ -5500,6 +5503,7 @@ const ReportsPage: React.FC = () => {
                         { label: 'Total Orders', value: summary?.totalOrders ?? 0, isCurrency: false, icon: <ShoppingCartIcon />, color: '#6366f1' },
                         { label: 'DoorDash Orders', value: summary?.doordashOrders ?? 0, isCurrency: false, icon: <LocalShippingIcon />, color: '#ef4444' },
                         { label: 'Uber Eats Orders', value: summary?.uberEatsOrders ?? 0, isCurrency: false, icon: <TwoWheelerIcon />, color: '#22c55e' },
+                        { label: 'In-House Orders', value: summary?.inHouseOrders ?? 0, isCurrency: false, icon: <DeliveryDiningIcon />, color: '#8b5cf6' },
                         { label: 'Total Revenue', value: summary?.totalRevenue ?? 0, isCurrency: true, icon: <TrendingUpIcon />, color: '#3b82f6' },
                         { label: 'Delivery Charges', value: summary?.totalDeliveryCharges ?? 0, isCurrency: true, icon: <RequestQuoteIcon />, color: '#f59e0b' },
                         { label: 'Total Tips', value: summary?.totalTips ?? 0, isCurrency: true, icon: <SavingsIcon />, color: '#06b6d4' },
@@ -5627,10 +5631,12 @@ const ReportsPage: React.FC = () => {
                                         />
                                     </TableCell>
                                     <TableCell>
-                                        {(order.trackingUrl) ? (
+                                        {order.trackingUrl ? (
                                             <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12 }}>
                                                 Track
                                             </a>
+                                        ) : order.deliveryRider ? (
+                                            <Typography variant="caption">{order.deliveryRider}</Typography>
                                         ) : '-'}
                                     </TableCell>
                                 </TableRow>
@@ -5908,9 +5914,7 @@ const ReportsPage: React.FC = () => {
             {/* Content — minHeight prevents layout shift when switching tabs */}
             <Box sx={{ minHeight: 600 }}>
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-                        <CircularProgress />
-                    </Box>
+                    <DashboardSkeleton />
                 ) : (
                     <>
                         {activeTab === 0 && renderDashboard()}

@@ -97,6 +97,18 @@ export const getTenantUrl = (slug: string, path: string = '', token?: string): s
 
   // Handle production domains
   const parts = hostname.split('.');
+
+  // An apex domain (example.com) has no room for a tenant subdomain, and the
+  // subdomain would usually have neither DNS nor a TLS certificate. Route by
+  // path instead — App.tsx already serves tenants from /:slug whenever
+  // getTenantSlugFromHostname() returns null, which is exactly this case.
+  // Without this, login redirects to a dead <slug>.example.com origin, the
+  // per-origin localStorage (and with it tenantSlug) is lost, and RequireRole
+  // and the /login route redirect to each other forever.
+  if (parts.length < 3) {
+    return `${origin}/${slug}${cleanPath}`;
+  }
+
   const ignoredSubdomains = ['www', 'app', 'dev', 'staging', 'admin', 'test', 'restaurant'];
   
   let baseParts = parts;

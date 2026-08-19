@@ -453,7 +453,7 @@ const ProfilePage: React.FC = () => {
     const handleSaveCard = async () => {
         const { cardNumber, cardExpiry, cardCvc } = cardForm;
         const cleanCardNum = cardNumber.replace(/\s/g, '');
-        
+
         if (cleanCardNum.length < 15) {
             toast.error('Invalid card number');
             return;
@@ -470,9 +470,9 @@ const ProfilePage: React.FC = () => {
         try {
             setLoading(true);
             const cardData = {
-                brand: cleanCardNum.startsWith('4') ? 'Visa' : 
-                       cleanCardNum.startsWith('5') ? 'Mastercard' : 
-                       cleanCardNum.startsWith('3') ? 'Amex' : 'Card',
+                brand: cleanCardNum.startsWith('4') ? 'Visa' :
+                    cleanCardNum.startsWith('5') ? 'Mastercard' :
+                        cleanCardNum.startsWith('3') ? 'Amex' : 'Card',
                 last4: cleanCardNum.slice(-4),
                 expMonth: cardExpiry.split('/')[0],
                 expYear: cardExpiry.split('/')[1],
@@ -535,10 +535,10 @@ const ProfilePage: React.FC = () => {
     return (
         <Box sx={{ p: { xs: 1, sm: 0 } }}>
             <Box sx={{ mb: { xs: 1, sm: 3 } }}>
-                <Typography 
-                    variant="h4" 
-                    sx={{ 
-                        mb: { xs: 0.5, sm: 2 }, 
+                <Typography
+                    variant="h4"
+                    sx={{
+                        mb: { xs: 0.5, sm: 2 },
                         textAlign: { xs: 'center', md: 'left' },
                         fontSize: { xs: '1.45rem', sm: '2.125rem' },
                         fontWeight: 'bold',
@@ -746,7 +746,7 @@ const ProfilePage: React.FC = () => {
                                                 onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
                                                 onBlur={() => handlePasswordBlur('newPassword')}
                                                 error={hasError(passwordErrors.newPassword)}
-                                                helperText={getHelperText(passwordErrors.newPassword) || "Minimum 6 characters"}
+                                                helperText={getHelperText(passwordErrors.newPassword) || "Minimum 8 characters"}
                                             />
                                         </Grid>
                                         <Grid size={{ xs: 12 }}>
@@ -797,9 +797,9 @@ const ProfilePage: React.FC = () => {
                                             </Typography>
                                         </Grid>
                                         <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
-                                            <Button 
-                                                variant="contained" 
-                                                color="error" 
+                                            <Button
+                                                variant="contained"
+                                                color="error"
                                                 onClick={() => setDeleteAccountDialogOpen(true)}
                                                 sx={{ px: 4 }}
                                             >
@@ -815,8 +815,8 @@ const ProfilePage: React.FC = () => {
             </Box>
 
             {/* Account Deletion Confirmation Dialog */}
-            <Dialog 
-                open={deleteAccountDialogOpen} 
+            <Dialog
+                open={deleteAccountDialogOpen}
                 onClose={() => !loading && setDeleteAccountDialogOpen(false)}
                 maxWidth="xs"
                 fullWidth
@@ -843,9 +843,9 @@ const ProfilePage: React.FC = () => {
                     <Button onClick={() => setDeleteAccountDialogOpen(false)} disabled={loading}>
                         Cancel
                     </Button>
-                    <Button 
-                        onClick={handleDeleteAccount} 
-                        color="error" 
+                    <Button
+                        onClick={handleDeleteAccount}
+                        color="error"
                         variant="contained"
                         disabled={loading || deleteConfirmText !== 'DELETE'}
                     >
@@ -859,13 +859,13 @@ const ProfilePage: React.FC = () => {
                 <Box role="tabpanel" hidden={activeTab !== 1} id="profile-tabpanel-1" aria-labelledby="profile-tab-1">
                     {activeTab === 1 && (
                         <Paper sx={{ p: { xs: 2, md: 3 } }}>
-                            <Box sx={{ 
-                                display: 'flex', 
+                            <Box sx={{
+                                display: 'flex',
                                 flexDirection: { xs: 'column', sm: 'row' },
-                                justifyContent: 'space-between', 
-                                alignItems: { xs: 'center', sm: 'center' }, 
+                                justifyContent: 'space-between',
+                                alignItems: { xs: 'center', sm: 'center' },
                                 gap: { xs: 1.5, sm: 0 },
-                                mb: 2 
+                                mb: 2
                             }}>
                                 <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>Saved Addresses</Typography>
                                 <Button
@@ -942,13 +942,13 @@ const ProfilePage: React.FC = () => {
                 <Box role="tabpanel" hidden={activeTab !== 2} id="profile-tabpanel-2" aria-labelledby="profile-tab-2">
                     {activeTab === 2 && (
                         <Paper sx={{ p: { xs: 2, md: 3 } }}>
-                            <Box sx={{ 
-                                display: 'flex', 
+                            <Box sx={{
+                                display: 'flex',
                                 flexDirection: { xs: 'column', sm: 'row' },
-                                justifyContent: 'space-between', 
-                                alignItems: { xs: 'center', sm: 'center' }, 
+                                justifyContent: 'space-between',
+                                alignItems: { xs: 'center', sm: 'center' },
                                 gap: { xs: 0.5, sm: 0 },
-                                mb: 2 
+                                mb: 2
                             }}>
                                 <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>Saved Cards</Typography>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -986,8 +986,8 @@ const ProfilePage: React.FC = () => {
                                                                 {card.brand}
                                                             </Typography>
                                                         </Box>
-                                                        <IconButton 
-                                                            size="small" 
+                                                        <IconButton
+                                                            size="small"
                                                             color="error"
                                                             onClick={() => handleDeleteCard(index)}
                                                         >
@@ -1269,9 +1269,9 @@ const ProfilePage: React.FC = () => {
                         </Box>
                         <FormControlLabel
                             control={
-                                <Checkbox 
-                                    checked={cardForm.isDefault} 
-                                    onChange={(e) => setCardForm({ ...cardForm, isDefault: e.target.checked })} 
+                                <Checkbox
+                                    checked={cardForm.isDefault}
+                                    onChange={(e) => setCardForm({ ...cardForm, isDefault: e.target.checked })}
                                 />
                             }
                             label="Set as default payment method"
@@ -1280,8 +1280,8 @@ const ProfilePage: React.FC = () => {
                 </DialogContent>
                 <DialogActions sx={{ p: 2 }}>
                     <Button onClick={() => setCardDialogOpen(false)}>Cancel</Button>
-                    <Button 
-                        variant="contained" 
+                    <Button
+                        variant="contained"
                         onClick={handleSaveCard}
                         disabled={loading}
                         startIcon={loading && <CircularProgress size={20} color="inherit" />}

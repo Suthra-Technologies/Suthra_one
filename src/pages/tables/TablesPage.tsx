@@ -1,5 +1,4 @@
-// src/pages/tables/TablesPage.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +17,7 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
+    DialogContentText,
     DialogActions,
     TextField,
     FormControl,
@@ -42,6 +42,8 @@ import {
     Alert,
     InputAdornment,
     TablePagination,
+    Checkbox,
+    OutlinedInput,
     useTheme,
     useMediaQuery,
     alpha,
@@ -66,6 +68,7 @@ import {
     FilterList as FilterIcon,
     Refresh as RefreshIcon,
     Close as CloseIcon,
+    Clear as ClearIcon,
     ShoppingCart as OrderIcon,
     ViewList as ListIcon,
     Timeline as TimelineIcon,
@@ -75,11 +78,22 @@ import {
     AccessTime as TimeIcon,
     RestoreFromTrash as RestoreIcon,
     PersonAdd as AssignWaiterIcon,
+    Map as FloorPlanIcon,
+    GridView as GridIcon,
+    QrCode2 as QrCodeIcon,
+    MergeType as MergeTypeIcon,
+    MeetingRoom as RoomIcon,
+    Visibility as VisibilityIcon,
+    VisibilityOff as VisibilityOffIcon,
+    CallSplit as CallSplitIcon,
+    CheckCircleOutline as CheckIcon,
+    History as HistoryIcon,
 } from '@mui/icons-material';
 import { validatePhone, validateEmail } from '../../utils/validation';
 import { useSettings } from '../../context/SettingsContext';
 import PhoneInput from '../../components/PhoneInput';
-import { tablesAPI, bookingsAPI, usersAPI } from '../../services/api';
+import { tablesAPI, bookingsAPI, usersAPI, floorElementsAPI, settingsAPI } from '../../services/api';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 // Extracted Dialog Components
 import AddTableDialog from './components/AddTableDialog';
@@ -87,6 +101,8 @@ import EditTableDialog from './components/EditTableDialog';
 import BookingDialog from './components/BookingDialog';
 import ViewBookingDialog from './components/ViewBookingDialog';
 import HistoryDialog from '../../components/common/HistoryDialog';
+import FloorPlanView from './components/FloorPlanView';
+import ContactlessDiningModal from './components/ContactlessDiningModal';
 
 // Import Table Images
 import Table2Img from '../../assets/images/table-2.jpeg';
@@ -114,6 +130,253 @@ function TabPanel(props: TabPanelProps) {
         </div>
     );
 }
+
+/* ── DELETED TABLES & AUDIT LOGS DIALOG (EMBEDDED TO AVOID NEW FILES) ── */
+interface DeletedTablesDialogProps {
+    open: boolean;
+    onClose: () => void;
+    onRestoreSuccess: () => void;
+    tables: any[];
+}
+
+const DeletedTablesDialog: React.FC<DeletedTablesDialogProps> = ({
+    open,
+    onClose,
+    onRestoreSuccess,
+    tables = []
+}) => {
+    const [activeTab, setActiveTab] = useState(0);
+    const [restoringId, setRestoringId] = useState<string | null>(null);
+
+    const deletedTables = tables.filter(
+        t => t && (t.isActive === false || t.isDeleted === true || (t.status === 'out_of_order' && t.deletedAt))
+    );
+
+    const handleRestore = async (tableId: string, tableNumber: string | number) => {
+        try {
+            setRestoringId(tableId);
+            await tablesAPI.restore(tableId);
+            toast.success(`Table #${tableNumber} restored to floor plan!`, {
+                icon: '♻️',
+                duration: 4000
+            });
+            onRestoreSuccess();
+        } catch (error: any) {
+            console.error('Error restoring table:', error);
+            toast.error(error.response?.data?.message || 'Failed to restore table');
+        } finally {
+            setRestoringId(null);
+        }
+    };
+
+    const formatDate = (dateStr?: string) => {
+        if (!dateStr) return 'Recently';
+        try {
+            const d = new Date(dateStr);
+            return d.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        } catch {
+            return dateStr;
+        }
+    };
+
+    return (
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{
+                sx: { borderRadius: 3.5, p: 0.5, boxShadow: '0 12px 32px rgba(0,0,0,0.2)' }
+            }}
+        >
+            <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                    <Box sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 2.5,
+                        bgcolor: 'error.50',
+                        color: 'error.main',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <DeleteIcon />
+                    </Box>
+                    <Box>
+                        <Typography variant="h6" fontWeight={800}>
+                            Deleted Tables & Audit History
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                            View deleted tables and restore them back onto the floor plan in 1-click
+                        </Typography>
+                    </Box>
+                </Box>
+                <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
+                    <CloseIcon />
+                </IconButton>
+            </DialogTitle>
+
+            <Box sx={{ px: 3, pt: 1 }}>
+                <Tabs
+                    value={activeTab}
+                    onChange={(_, val) => setActiveTab(val)}
+                    sx={{
+                        minHeight: 40,
+                        '& .MuiTab-root': {
+                            textTransform: 'none',
+                            fontWeight: 800,
+                            fontSize: '0.85rem',
+                            minHeight: 40,
+                            py: 0.5
+                        }
+                    }}
+                >
+                    <Tab label={`🗑️ Deleted Tables (${deletedTables.length})`} />
+                    <Tab label="📜 Audit Logs & Protection" />
+                </Tabs>
+            </Box>
+
+            <DialogContent dividers sx={{ minHeight: 320, maxHeight: 480, py: 2 }}>
+                {activeTab === 0 && (
+                    <Box>
+                        {deletedTables.length === 0 ? (
+                            <Box sx={{ textAlign: 'center', py: 6, opacity: 0.75 }}>
+                                <CheckIcon sx={{ fontSize: 48, color: 'success.main', mb: 1 }} />
+                                <Typography variant="subtitle1" fontWeight={800}>
+                                    No Deleted Tables Found
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    All your dining tables are currently active on the floor plan.
+                                </Typography>
+                            </Box>
+                        ) : (
+                            <Stack spacing={1.5}>
+                                {deletedTables.map((t) => (
+                                    <Paper
+                                        key={t._id}
+                                        variant="outlined"
+                                        sx={{
+                                            p: 2,
+                                            borderRadius: 2.5,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            bgcolor: '#FAFBFD',
+                                            '&:hover': { bgcolor: '#F1F5F9', borderColor: 'primary.main' },
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                            <Box sx={{
+                                                width: 36,
+                                                height: 36,
+                                                borderRadius: 2,
+                                                bgcolor: 'action.hover',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontWeight: 800
+                                            }}>
+                                                <TableIcon color="action" />
+                                            </Box>
+                                            <Box>
+                                                <Typography variant="subtitle2" fontWeight={800}>
+                                                    Table #{t.tableNumber} {t.tableName ? `(${t.tableName})` : ''}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ display: 'block' }}>
+                                                    {t.capacity} Seats • Room: <b>{(t.section || t.location || 'Indoor').toUpperCase()}</b>
+                                                </Typography>
+                                                {t.deletedAt && (
+                                                    <Typography variant="caption" color="error.main" fontWeight={700}>
+                                                        Deleted on {formatDate(t.deletedAt)}
+                                                    </Typography>
+                                                )}
+                                            </Box>
+                                        </Box>
+
+                                        <Button
+                                            variant="contained"
+                                            color="success"
+                                            size="small"
+                                            startIcon={restoringId === t._id ? <CircularProgress size={16} color="inherit" /> : <RestoreIcon />}
+                                            disabled={restoringId === t._id}
+                                            onClick={() => handleRestore(t._id, t.tableNumber)}
+                                            sx={{
+                                                textTransform: 'none',
+                                                fontWeight: 800,
+                                                borderRadius: 2,
+                                                px: 2,
+                                                boxShadow: 'none'
+                                            }}
+                                        >
+                                            Restore Table
+                                        </Button>
+                                    </Paper>
+                                ))}
+                            </Stack>
+                        )}
+                    </Box>
+                )}
+
+                {activeTab === 1 && (
+                    <Box sx={{ py: 1 }}>
+                        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5, bgcolor: '#F8FAFC', mb: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                <HistoryIcon color="primary" />
+                                <Typography variant="subtitle2" fontWeight={800}>
+                                    Table Soft-Deletion Policy & History Tracking
+                                </Typography>
+                            </Box>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
+                                When a table is deleted from the floor plan, it is preserved safely via <b>Soft Deletion</b> in the database.
+                                Tables with active unpaid guest checks cannot be deleted until checked out. You can restore deleted tables at any time without losing room sections or seating capacities.
+                            </Typography>
+                        </Paper>
+
+                        <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', mb: 1, display: 'block' }}>
+                            Recent Floor Activity Audit Log
+                        </Typography>
+
+                        <Stack spacing={1}>
+                            {tables.slice(0, 8).map((t, idx) => (
+                                <Box key={idx} sx={{ p: 1.2, borderRadius: 2, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Chip
+                                            label={t.isActive === false ? 'DELETED' : t.status.toUpperCase()}
+                                            size="small"
+                                            color={t.isActive === false ? 'error' : t.status === 'occupied' ? 'error' : 'success'}
+                                            sx={{ fontWeight: 800, fontSize: '0.65rem', height: 20 }}
+                                        />
+                                        <Typography variant="body2" fontWeight={800}>
+                                            Table #{t.tableNumber} ({(t.section || t.location || 'Indoor').toUpperCase()})
+                                        </Typography>
+                                    </Box>
+                                    <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                                        {t.isActive === false ? `Deleted: ${formatDate(t.deletedAt)}` : `Active (${t.capacity} seats)`}
+                                    </Typography>
+                                </Box>
+                            ))}
+                        </Stack>
+                    </Box>
+                )}
+            </DialogContent>
+
+            <DialogActions sx={{ p: 2 }}>
+                <Button onClick={onClose} variant="outlined" sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 2 }}>
+                    Close
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
 
 // Helper to get table image based on capacity
 const getTableImage = (capacity: number) => {
@@ -154,6 +417,7 @@ const TablesPage: React.FC = () => {
     const [bookingsLoading, setBookingsLoading] = useState(false);
     const [tabValue, setTabValue] = useState(0);
     const [bookingViewMode, setBookingViewMode] = useState(0);
+    const [tableViewMode, setTableViewMode] = useState<'floor' | 'grid'>('floor');
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -173,9 +437,49 @@ const TablesPage: React.FC = () => {
 
     // Add Table Dialog
     const [addDialogOpen, setAddDialogOpen] = useState(false);
+    const [deletedDialogOpen, setDeletedDialogOpen] = useState(false);
+    const [selectedRoomForAddTable, setSelectedRoomForAddTable] = useState<string>('indoor');
+
+    const isValidRoomName = (r: string) => {
+        if (!r || typeof r !== 'string') return false;
+        const cleaned = r.trim().toLowerCase();
+        if (cleaned.length < 2 || cleaned.length > 30) return false;
+        return !/^(sdh|asdf|qwer|zxcv|junk)$/i.test(cleaned);
+    };
+
+    const canonicalizeRoomKey = (name: string): string => {
+        if (!name || typeof name !== 'string') return '';
+        return name.trim().toLowerCase().replace(/[\s_\-]+/g, '');
+    };
+
+    const getStoredCustomRooms = (slug?: string): string[] => {
+        try {
+            const key = `pos_custom_rooms_${slug || tenantSlug || 'default'}`;
+            const raw = localStorage.getItem(key);
+            const parsed = raw ? JSON.parse(raw) : [];
+            return Array.isArray(parsed) ? parsed.filter(isValidRoomName) : [];
+        } catch {
+            return [];
+        }
+    };
+
+    const saveStoredCustomRooms = (rooms: string[], slug?: string) => {
+        try {
+            const key = `pos_custom_rooms_${slug || tenantSlug || 'default'}`;
+            const unique = [...new Set(
+                rooms
+                    .filter(r => r != null && typeof r === 'string')
+                    .map(r => r.toLowerCase().trim())
+            )].filter(isValidRoomName);
+            localStorage.setItem(key, JSON.stringify(unique));
+            settingsAPI.update('dining_rooms', { customRooms: unique }).catch(() => null);
+        } catch (e) {
+            console.error('Failed to save custom rooms', e);
+        }
+    };
 
     // Custom Location State
-    const [customLocations, setCustomLocations] = useState<string[]>([]);
+    const [customLocations, setCustomLocations] = useState<string[]>(() => getStoredCustomRooms(tenantSlug || undefined));
     const [addLocationDialogOpen, setAddLocationDialogOpen] = useState(false);
     const [newLocationName, setNewLocationName] = useState('');
 
@@ -212,18 +516,297 @@ const TablesPage: React.FC = () => {
     const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
     const [primaryTableId, setPrimaryTableId] = useState<string>('');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [floorElements, setFloorElements] = useState<any[]>([]);
+    const [contactlessModalOpen, setContactlessModalOpen] = useState(false);
+
+    // Unified Hub Tab States
+    const [mergeHubTab, setMergeHubTab] = useState(0);
+    const [manageHubTab, setManageHubTab] = useState(0);
+    const [masterTableSearchQuery, setMasterTableSearchQuery] = useState('');
+    const [primaryMergeTableId, setPrimaryMergeTableId] = useState('');
+    const [secondaryMergeTableIds, setSecondaryMergeTableIds] = useState<string[]>([]);
+
+    // Room / Section Management State
+    const [manageRoomsDialogOpen, setManageRoomsDialogOpen] = useState(false);
+
+    useEffect(() => {
+        if (manageRoomsDialogOpen) {
+            fetchTables();
+        }
+    }, [manageRoomsDialogOpen]);
+    const [mergeSectionsDialogOpen, setMergeSectionsDialogOpen] = useState(false);
+    const [sourceSection, setSourceSection] = useState('');
+    const [targetSection, setTargetSection] = useState('');
+    const [deleteRoomSection, setDeleteRoomSection] = useState<string | null>(null);
+    const [deleteRoomTargetSection, setDeleteRoomTargetSection] = useState<string>('');
+    const [renameRoomSection, setRenameRoomSection] = useState<string | null>(null);
+    const [newRoomSectionName, setNewRoomSectionName] = useState<string>('');
+    const [inlineAddRoomName, setInlineAddRoomName] = useState<string>('');
+    const [roomSearchQuery, setRoomSearchQuery] = useState<string>('');
+
+    const handleRenameRoomConfirm = async () => {
+        if (!renameRoomSection || !newRoomSectionName.trim() || isProcessing) return;
+        const oldNorm = renameRoomSection.toLowerCase().trim();
+        const newNorm = newRoomSectionName.toLowerCase().trim();
+
+        if (oldNorm === newNorm) {
+            setRenameRoomSection(null);
+            return;
+        }
+        if (!isValidRoomName(newNorm)) {
+            toast.error('Invalid room name. Must be 2-30 characters.');
+            return;
+        }
+        if (allAvailableSections.some(sec => canonicalizeRoomKey(sec) === canonicalizeRoomKey(newNorm))) {
+            toast.error(`A room named "${newNorm.toUpperCase()}" already exists!`);
+            return;
+        }
+
+        try {
+            setIsProcessing(true);
+            const tablesInSec = tables.filter((t: any) => t.isActive !== false && (t.section || t.location || 'indoor').toLowerCase() === oldNorm);
+            if (tablesInSec.length > 0) {
+                await tablesAPI.mergeSections(oldNorm, newNorm);
+            }
+            setCustomLocations(prev => {
+                const updated = [...new Set([...prev.filter(r => r.toLowerCase() !== oldNorm), newNorm])];
+                saveStoredCustomRooms(updated, tenantSlug || undefined);
+                return updated;
+            });
+            setHiddenSections(prev => {
+                const updated = prev.filter(s => s.toLowerCase() !== newNorm && s.toLowerCase() !== oldNorm);
+                try {
+                    localStorage.setItem('pos_hidden_sections', JSON.stringify(updated));
+                } catch (e) {}
+                return updated;
+            });
+            toast.success(`Room renamed to "${newNorm.toUpperCase()}"`);
+            setRenameRoomSection(null);
+            setNewRoomSectionName('');
+            fetchTables();
+        } catch (error: any) {
+            console.error('Error renaming room:', error);
+            toast.error(error.response?.data?.message || 'Failed to rename room');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const [hiddenSections, setHiddenSections] = useState<string[]>(() => {
+        try {
+            const stored = localStorage.getItem('pos_hidden_sections');
+            return stored ? JSON.parse(stored) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const handleToggleSectionVisibility = (secName: string) => {
+        const norm = secName.toLowerCase();
+        let updated: string[];
+        if (hiddenSections.includes(norm)) {
+            updated = hiddenSections.filter(s => s !== norm);
+            toast.success(`Room "${secName.toUpperCase()}" is now visible`);
+        } else {
+            updated = [...hiddenSections, norm];
+            toast.success(`Room "${secName.toUpperCase()}" is now hidden for off-season`);
+        }
+        setHiddenSections(updated);
+        try {
+            localStorage.setItem('pos_hidden_sections', JSON.stringify(updated));
+            settingsAPI.update('dining_rooms', { customRooms: customLocations, hiddenSections: updated }).catch(() => null);
+        } catch (e) {
+            console.error('Failed to save hidden sections', e);
+        }
+    };
+
+    const handleDeleteRoomConfirm = async () => {
+        if (!deleteRoomSection || isProcessing) return;
+        const delNorm = deleteRoomSection.toLowerCase().trim();
+        const tablesInSec = tables.filter((t: any) => t.isActive !== false && (t.section || t.location || 'indoor').toLowerCase() === delNorm);
+        
+        if (tablesInSec.length > 0 && !deleteRoomTargetSection) {
+            toast.error('Please select a target room to transfer existing tables');
+            return;
+        }
+
+        try {
+            setIsProcessing(true);
+            if (tablesInSec.length > 0) {
+                await tablesAPI.deleteSection(deleteRoomSection, deleteRoomTargetSection || undefined);
+            }
+            const updatedCustom = customLocations.filter(r => r.toLowerCase() !== delNorm);
+            setCustomLocations(updatedCustom);
+            
+            let updatedHidden = hiddenSections;
+            if (!hiddenSections.includes(delNorm)) {
+                updatedHidden = [...hiddenSections, delNorm];
+                setHiddenSections(updatedHidden);
+            }
+
+            try {
+                localStorage.setItem('pos_custom_rooms_' + (tenantSlug || 'default'), JSON.stringify(updatedCustom));
+                localStorage.setItem('pos_hidden_sections', JSON.stringify(updatedHidden));
+                settingsAPI.update('dining_rooms', { customRooms: updatedCustom, hiddenSections: updatedHidden }).catch(() => null);
+            } catch (e) {
+                console.error('Failed to save room deletion settings', e);
+            }
+
+            toast.success(`Room "${deleteRoomSection.toUpperCase()}" deleted successfully`);
+            setDeleteRoomSection(null);
+            setDeleteRoomTargetSection('');
+            fetchTables();
+        } catch (error: any) {
+            console.error('Error deleting room:', error);
+            toast.error(error.response?.data?.message || 'Failed to delete room');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const allAvailableSections = useMemo(() => {
+        const BASE_ROOMS = ['indoor', 'outdoor', 'private_room', 'bar'];
+        const map = new Map<string, string>();
+        BASE_ROOMS.forEach(r => map.set(canonicalizeRoomKey(r), r.toLowerCase().trim()));
+        tables.filter((t: any) => t.isActive !== false).forEach((t: any) => {
+            const sec = (t.section || t.location || '').trim();
+            const canon = canonicalizeRoomKey(sec);
+            if (sec && isValidRoomName(sec) && !map.has(canon)) {
+                map.set(canon, sec.toLowerCase());
+            }
+        });
+        customLocations.forEach(loc => {
+            const canon = canonicalizeRoomKey(loc);
+            if (loc && isValidRoomName(loc) && !map.has(canon)) {
+                map.set(canon, loc.toLowerCase());
+            }
+        });
+        return Array.from(map.values());
+    }, [tables, customLocations]);
+
+    const filteredSections = useMemo(() => {
+        if (!roomSearchQuery.trim()) return allAvailableSections;
+        const q = roomSearchQuery.toLowerCase().trim();
+        return allAvailableSections.filter(sec => sec.toLowerCase().includes(q) || sec.replace(/_/g, ' ').toLowerCase().includes(q));
+    }, [allAvailableSections, roomSearchQuery]);
+
+    const handleMergeSections = async () => {
+        if (isProcessing) return;
+        if (!sourceSection || !targetSection) {
+            toast.error('Please select both source and target rooms/sections');
+            return;
+        }
+        if (sourceSection.toLowerCase() === targetSection.toLowerCase()) {
+            toast.error('Source and target rooms must be different');
+            return;
+        }
+
+        try {
+            setIsProcessing(true);
+            await tablesAPI.mergeSections(sourceSection, targetSection);
+            toast.success(`Merged room "${sourceSection.toUpperCase()}" into "${targetSection.toUpperCase()}" successfully`);
+            setMergeSectionsDialogOpen(false);
+            setSourceSection('');
+            setTargetSection('');
+            fetchTables();
+        } catch (error: any) {
+            console.error('Error merging rooms:', error);
+            toast.error(error.response?.data?.message || 'Failed to merge rooms');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleMergeTablesConfirm = async () => {
+        if (!primaryMergeTableId || secondaryMergeTableIds.length === 0 || isProcessing) return;
+        try {
+            setIsProcessing(true);
+            await tablesAPI.merge(primaryMergeTableId, secondaryMergeTableIds);
+            toast.success('Tables merged successfully!');
+            setPrimaryMergeTableId('');
+            setSecondaryMergeTableIds([]);
+            fetchTables();
+        } catch (error: any) {
+            console.error('Error merging tables:', error);
+            toast.error(error.response?.data?.message || 'Failed to merge tables');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleUnmergeTablesConfirm = async (primaryTableId: string) => {
+        try {
+            setIsProcessing(true);
+            await tablesAPI.unmerge(primaryTableId);
+            toast.success('Tables unmerged successfully!');
+            fetchTables();
+        } catch (error: any) {
+            console.error('Error unmerging tables:', error);
+            toast.error(error.response?.data?.message || 'Failed to unmerge tables');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
 
     const fetchTables = async () => {
         try {
             setLoading(true);
-            const response = await tablesAPI.getAll({ includeDeleted: true });
-            const tablesData = Array.isArray(response.data) ? response.data : [];
-            setTables(tablesData);
+            const [response, bookingsRes, elementsRes, settingsRes] = await Promise.all([
+                tablesAPI.getAll({ includeDeleted: true }),
+                bookingsAPI.getAll({ limit: 1000 }).catch(() => ({ data: { data: [] } })),
+                floorElementsAPI.getAll().catch(() => ({ data: [] })),
+                settingsAPI.get('dining_rooms').catch(() => ({ data: null }))
+            ]);
+            let tablesData = Array.isArray(response.data) ? response.data : [];
+            const activeBookings = Array.isArray(bookingsRes?.data?.data) ? bookingsRes.data.data : (Array.isArray(bookingsRes?.data) ? bookingsRes.data : []);
 
-            const defaultLocations = ['indoor', 'outdoor', 'private_room', 'bar', 'patio', 'main_dining', 'vip_section', 'party_hall', 'terrace'];
-            const locations = tablesData.filter((t: any) => t.isActive !== false).map((t: any) => t.location).filter(Boolean);
-            const uniqueCustom = [...new Set(locations)].filter(loc => !defaultLocations.includes(loc as string)) as string[];
-            setCustomLocations(uniqueCustom);
+            tablesData = tablesData.map((t: any) => {
+                const linkedBooking = activeBookings.find((b: any) =>
+                    !['cancelled', 'no_show'].includes(b.status) &&
+                    (b.table?._id === t._id || b.table === t._id || String(b.table?.tableNumber || b.tableNumber) === String(t.tableNumber))
+                );
+                if (linkedBooking) {
+                    return {
+                        ...t,
+                        currentBooking: linkedBooking,
+                        guestCount: linkedBooking.guests || linkedBooking.guestCount || t.guestCount
+                    };
+                }
+                return t;
+            });
+            setTables(tablesData);
+            setFloorElements(Array.isArray(elementsRes.data) ? elementsRes.data : []);
+
+            const storedCustom = getStoredCustomRooms(tenantSlug || undefined);
+            const dbCustomRooms = settingsRes?.data?.customRooms || settingsRes?.data?.settings?.customRooms || [];
+            const dbHiddenSections = settingsRes?.data?.hiddenSections || settingsRes?.data?.settings?.hiddenSections || [];
+
+            const hiddenMap = new Map<string, string>();
+            if (Array.isArray(dbHiddenSections)) {
+                dbHiddenSections.forEach((h: string) => {
+                    if (h && typeof h === 'string') {
+                        const canon = canonicalizeRoomKey(h);
+                        if (!hiddenMap.has(canon)) hiddenMap.set(canon, h.trim().toLowerCase());
+                    }
+                });
+            }
+            const cleanedHidden = Array.from(hiddenMap.values());
+            setHiddenSections(cleanedHidden);
+
+            const locations = tablesData.filter((t: any) => t.isActive !== false).map((t: any) => (t.section || t.location || '').toLowerCase()).filter(Boolean);
+            const roomMap = new Map<string, string>();
+            [...storedCustom, ...dbCustomRooms, ...locations].forEach((loc: string) => {
+                if (loc && typeof loc === 'string' && isValidRoomName(loc)) {
+                    const canon = canonicalizeRoomKey(loc);
+                    if (!roomMap.has(canon)) {
+                        roomMap.set(canon, loc.trim().toLowerCase());
+                    }
+                }
+            });
+            const combinedCustom = Array.from(roomMap.values());
+            setCustomLocations(combinedCustom);
+            saveStoredCustomRooms(combinedCustom, tenantSlug || undefined);
+            settingsAPI.update('dining_rooms', { customRooms: combinedCustom, hiddenSections: cleanedHidden }).catch(() => null);
         } catch (error) {
             console.error('Error fetching tables:', error);
             toast.error('Failed to load tables');
@@ -242,6 +825,21 @@ const TablesPage: React.FC = () => {
             toast.error('Failed to load bookings');
         } finally {
             setBookingsLoading(false);
+        }
+    };
+
+    const handleSaveTableCoordinates = async (updatedTables: { _id: string; coordinates: { x: number; y: number } }[]) => {
+        try {
+            await Promise.all(
+                updatedTables.map(item =>
+                    tablesAPI.update(item._id, { coordinates: item.coordinates })
+                )
+            );
+            toast.success('Floor layout saved successfully');
+            fetchTables();
+        } catch (error) {
+            console.error('Error saving floor layout:', error);
+            toast.error('Failed to save floor layout');
         }
     };
 
@@ -320,6 +918,13 @@ const TablesPage: React.FC = () => {
         } finally {
             setIsProcessing(false);
         }
+        handleCloseMenu();
+    };
+
+    const handleOpenHistory = (tableId: string, title: string) => {
+        setHistoryTargetId(tableId);
+        setHistoryTitle(title);
+        setHistoryDialogOpen(true);
         handleCloseMenu();
     };
 
@@ -729,26 +1334,7 @@ const TablesPage: React.FC = () => {
                 >
                     Table Management
                 </Typography>
-                <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', sm: 'auto' }, justifyContent: 'center' }}>
-                    {/* <Button
-                        variant={selectionMode ? "contained" : "outlined"}
-                        color={selectionMode ? "secondary" : "primary"}
-                        startIcon={<SelectionIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
-                        onClick={() => {
-                            setSelectionMode(!selectionMode);
-                            setSelectedTableIds([]);
-                        }}
-                        size={isMobile ? "small" : "medium"}
-                        sx={{ 
-                            fontSize: { xs: '0.65rem', sm: '0.875rem' },
-                            px: { xs: 1, sm: 2 },
-                            borderRadius: 2,
-                            textTransform: 'none',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        {selectionMode ? "Exit" : "Select Tables"}
-                    </Button> */}
+                <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', sm: 'auto' }, flexWrap: 'wrap', gap: 1, justifyContent: { xs: 'center', sm: 'flex-end' }, alignItems: 'center' }}>
                     {selectionMode && selectedTableIds.length >= 2 && (
                         <Button
                             variant="contained"
@@ -760,8 +1346,9 @@ const TablesPage: React.FC = () => {
                             }}
                             size={isMobile ? "small" : "medium"}
                             sx={{ 
-                                fontSize: { xs: '0.65rem', sm: '0.875rem' },
-                                px: { xs: 1, sm: 2 },
+                                fontSize: { xs: '0.75rem', sm: '0.85rem' },
+                                px: { xs: 1.5, sm: 2 },
+                                height: 38,
                                 borderRadius: 2,
                                 textTransform: 'none',
                                 fontWeight: 'bold'
@@ -770,103 +1357,298 @@ const TablesPage: React.FC = () => {
                             Merge ({selectedTableIds.length})
                         </Button>
                     )}
-                    <Button 
-                        variant="contained" 
-                        startIcon={<AddIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />} 
-                        onClick={() => setAddDialogOpen(true)}
+                    {/* View Mode Switcher (Floor Plan vs Grid Cards) */}
+                    <Stack direction="row" spacing={0.5} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.08), p: 0.5, borderRadius: 2.5, height: 38, alignItems: 'center' }}>
+                        <Button
+                            size={isMobile ? "small" : "medium"}
+                            variant={tableViewMode === 'floor' ? "contained" : "text"}
+                            color={tableViewMode === 'floor' ? "primary" : "inherit"}
+                            startIcon={<FloorPlanIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
+                            onClick={() => setTableViewMode('floor')}
+                            sx={{
+                                fontSize: { xs: '0.75rem', sm: '0.825rem' },
+                                px: { xs: 1.25, sm: 1.75 },
+                                height: 30,
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                fontWeight: 800,
+                                boxShadow: tableViewMode === 'floor' ? '0 2px 8px rgba(0,0,0,0.12)' : 'none',
+                            }}
+                        >
+                            Floor Plan
+                        </Button>
+                        <Button
+                            size={isMobile ? "small" : "medium"}
+                            variant={tableViewMode === 'grid' ? "contained" : "text"}
+                            color={tableViewMode === 'grid' ? "primary" : "inherit"}
+                            startIcon={<GridIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
+                            onClick={() => setTableViewMode('grid')}
+                            sx={{
+                                fontSize: { xs: '0.75rem', sm: '0.825rem' },
+                                px: { xs: 1.25, sm: 1.75 },
+                                height: 30,
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                fontWeight: 800,
+                                boxShadow: tableViewMode === 'grid' ? '0 2px 8px rgba(0,0,0,0.12)' : 'none',
+                            }}
+                        >
+                            Grid
+                        </Button>
+                    </Stack>
+
+                    {/* Contactless QR Dining Action */}
+                    <Button
+                        variant="outlined"
+                        color="inherit"
+                        startIcon={<QrCodeIcon sx={{ fontSize: { xs: '1rem !important', sm: '1.1rem' } }} />}
+                        onClick={() => setContactlessModalOpen(true)}
                         size={isMobile ? "small" : "medium"}
-                        sx={{ 
-                            fontSize: { xs: '0.65rem', sm: '0.875rem' },
-                            px: { xs: 1, sm: 2 },
-                            borderRadius: 2,
+                        sx={{
+                            fontSize: { xs: '0.75rem', sm: '0.825rem' },
+                            px: { xs: 1.25, sm: 1.75 },
+                            height: 38,
+                            borderRadius: 2.5,
                             textTransform: 'none',
-                            fontWeight: 'bold'
+                            fontWeight: 700,
+                            borderColor: alpha(theme.palette.divider, 0.8),
+                            color: 'text.primary',
+                            bgcolor: 'background.paper',
+                            '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05), borderColor: 'primary.main' }
                         }}
                     >
-                        Add Table
+                        Contactless QR Dining
+                    </Button>
+
+                    {/* Merge Tables Action */}
+                    <Button
+                        variant="outlined"
+                        color="inherit"
+                        startIcon={<LinkIcon sx={{ fontSize: { xs: '1rem !important', sm: '1.1rem' } }} />}
+                        onClick={() => {
+                            if (selectedTableIds.length < 2 && tables.length >= 2) {
+                                const activeTables = tables.filter(t => t.isActive !== false);
+                                if (activeTables.length >= 2) {
+                                    setSelectedTableIds([activeTables[0]._id, activeTables[1]._id]);
+                                    setPrimaryTableId(activeTables[0]._id);
+                                }
+                            } else if (selectedTableIds.length >= 1 && !primaryTableId) {
+                                setPrimaryTableId(selectedTableIds[0]);
+                            }
+                            setMergeDialogOpen(true);
+                        }}
+                        size={isMobile ? "small" : "medium"}
+                        sx={{
+                            fontSize: { xs: '0.75rem', sm: '0.825rem' },
+                            px: { xs: 1.25, sm: 1.75 },
+                            height: 38,
+                            borderRadius: 2.5,
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            borderColor: alpha(theme.palette.divider, 0.8),
+                            color: 'text.primary',
+                            bgcolor: 'background.paper',
+                            '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05), borderColor: 'primary.main' }
+                        }}
+                    >
+                        Merge Tables
+                    </Button>
+
+                    {/* Merge Hub Action */}
+                    <Button
+                        variant="outlined"
+                        color="inherit"
+                        startIcon={<CallSplitIcon sx={{ fontSize: { xs: '1rem !important', sm: '1.1rem' } }} />}
+                        onClick={() => setMergeSectionsDialogOpen(true)}
+                        size={isMobile ? "small" : "medium"}
+                        sx={{
+                            fontSize: { xs: '0.75rem', sm: '0.825rem' },
+                            px: { xs: 1.25, sm: 1.75 },
+                            height: 38,
+                            borderRadius: 2.5,
+                            textTransform: 'none',
+                            fontWeight: 800,
+                            borderColor: alpha(theme.palette.divider, 0.8),
+                            color: 'text.primary',
+                            bgcolor: 'background.paper',
+                            '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05), borderColor: 'primary.main' }
+                        }}
+                    >
+                        🔀 Merge Hub
+                    </Button>
+
+                    {/* Manage Hub Action */}
+                    <Button
+                        variant="outlined"
+                        color="inherit"
+                        startIcon={<RoomIcon sx={{ fontSize: { xs: '1rem !important', sm: '1.1rem' } }} />}
+                        onClick={() => setManageRoomsDialogOpen(true)}
+                        size={isMobile ? "small" : "medium"}
+                        sx={{
+                            fontSize: { xs: '0.75rem', sm: '0.825rem' },
+                            px: { xs: 1.25, sm: 1.75 },
+                            height: 38,
+                            borderRadius: 2.5,
+                            textTransform: 'none',
+                            fontWeight: 800,
+                            borderColor: alpha(theme.palette.divider, 0.8),
+                            color: 'text.primary',
+                            bgcolor: 'background.paper',
+                            '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05), borderColor: 'primary.main' }
+                        }}
+                    >
+                        ⚙️ Manage Hub
                     </Button>
                 </Stack>
             </Box>
 
             {/* Tabs */}
-            <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: { xs: 1, sm: 2 } }} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
-                <Tab
-                    label={
-                        <Badge badgeContent={statusCounts.all} color="primary" max={99}>
-                            <Box sx={{ pr: { xs: 1, sm: 2 } }}>Tables</Box>
-                        </Badge>
-                    }
-                />
-                <Tab
-                    label={
-                        <Badge badgeContent={filteredBookings.length} color="warning" max={99}>
-                            <Box sx={{ pr: { xs: 1, sm: 2 } }}>Bookings</Box>
-                        </Badge>
-                    }
-                />
-            </Tabs>
+            {(() => {
+                const overdueCount = tables.filter(t => {
+                    if ((t.status !== 'occupied' && t.status !== 'partially_occupied') || !t.occupiedAt) return false;
+                    const diffMins = Math.floor((Date.now() - new Date(t.occupiedAt).getTime()) / (1000 * 60));
+                    return diffMins > 90;
+                }).length;
+                return (
+                    <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: { xs: 1, sm: 2 } }} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
+                        <Tab
+                            label={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Box sx={{ display: 'inline-flex', alignItems: 'center', mr: 1.5 }}>
+                                        <Badge badgeContent={statusCounts.all} color="primary" max={99}>
+                                            <Typography component="span" sx={{ pr: 1.5, fontWeight: 'bold' }}>Tables</Typography>
+                                        </Badge>
+                                    </Box>
+                                    {overdueCount > 0 && (
+                                        <Chip
+                                            label={`⚠️ ${overdueCount} overdue`}
+                                            size="small"
+                                            sx={{
+                                                height: 20,
+                                                fontSize: '0.65rem',
+                                                fontWeight: 900,
+                                                bgcolor: '#DC2626',
+                                                color: '#FFFFFF',
+                                                borderRadius: 1.5,
+                                                ml: 1,
+                                                boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)',
+                                                animation: 'overdueTabPulse 2s ease-in-out infinite',
+                                                '@keyframes overdueTabPulse': {
+                                                    '0%, 100%': { opacity: 1 },
+                                                    '50%': { opacity: 0.65 },
+                                                },
+                                            }}
+                                        />
+                                    )}
+                                </Box>
+                            }
+                        />
+                        <Tab
+                            label={
+                                <Badge badgeContent={filteredBookings.length} color="warning" max={99}>
+                                    <Box sx={{ pr: { xs: 1, sm: 2 } }}>Bookings</Box>
+                                </Badge>
+                            }
+                        />
+                    </Tabs>
+                );
+            })()}
 
             {/* Tab Panel: Tables */}
             <TabPanel value={tabValue} index={0}>
-                {/* Status Filter Chips */}
-                <Box sx={{ 
-                    display: 'flex', 
-                    overflowX: 'auto', 
-                    flexWrap: { xs: 'nowrap', sm: 'wrap' }, 
-                    gap: 1, 
-                    mb: { xs: 1.5, sm: 3 },
-                    pb: { xs: 1, sm: 0 },
-                    '&::-webkit-scrollbar': { display: 'none' }
-                }}>
-                    <Chip
-                        label={`All (${statusCounts.all})`}
-                        color={statusFilter === 'all' ? 'primary' : 'default'}
-                        variant={statusFilter === 'all' ? 'filled' : 'outlined'}
-                        onClick={() => setStatusFilter('all')}
-                        size={isMobile ? "small" : "medium"}
-                    />
-                    <Chip
-                        label={`Available (${statusCounts.available})`}
-                        color={statusFilter === 'available' ? 'primary' : 'default'}
-                        variant={statusFilter === 'available' ? 'filled' : 'outlined'}
-                        onClick={() => setStatusFilter('available')}
-                        size={isMobile ? "small" : "medium"}
-                    />
-                    <Chip
-                        label={`Occupied (${statusCounts.occupied})`}
-                        color={statusFilter === 'occupied' ? 'primary' : 'default'}
-                        variant={statusFilter === 'occupied' ? 'filled' : 'outlined'}
-                        onClick={() => setStatusFilter('occupied')}
-                        size={isMobile ? "small" : "medium"}
-                    />
-                    <Chip
-                        label={`Reserved (${statusCounts.reserved})`}
-                        color={statusFilter === 'reserved' ? 'primary' : 'default'}
-                        variant={statusFilter === 'reserved' ? 'filled' : 'outlined'}
-                        onClick={() => setStatusFilter('reserved')}
-                        size={isMobile ? "small" : "medium"}
-                    />
-                    <Chip
-                        icon={<RestoreIcon />}
-                        label={`Deleted (${statusCounts.deleted})`}
-                        color={statusFilter === 'deleted' ? 'warning' : 'default'}
-                        variant={statusFilter === 'deleted' ? 'filled' : 'outlined'}
-                        onClick={() => setStatusFilter('deleted')}
-                        size={isMobile ? "small" : "medium"}
-                    />
-                </Box>
-
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                        <CircularProgress />
-                    </Box>
-                ) : filteredTables.length === 0 ? (
-                    <Paper sx={{ p: 3, textAlign: 'center' }}>
-                        <Typography variant="body1" color="text.secondary">
-                            No tables found.
-                        </Typography>
-                    </Paper>
+                    <CardGridSkeleton count={8} cardHeight={220} />
+                ) : tableViewMode === 'floor' ? (
+                    /* Interactive 2D Floor Plan Canvas */
+                    <FloorPlanView
+                        tables={tables}
+                        floorElements={floorElements}
+                        tenantSlug={tenantSlug || ''}
+                        customLocations={customLocations}
+                        canDeleteTables={canDeleteTables}
+                        isMobile={isMobile}
+                        hiddenSections={hiddenSections}
+                        onOpenBooking={handleOpenBooking}
+                        onOpenAddTable={(room) => {
+                            setSelectedRoomForAddTable(room || 'indoor');
+                            setAddDialogOpen(true);
+                        }}
+                        onOpenAddLocation={() => setAddLocationDialogOpen(true)}
+                        onOpenEditTable={handleEditTable}
+                        onOpenDeleteTable={handleDeleteTable}
+                        onRestoreTable={handleRestoreTable}
+                        onOpenDeletedTables={() => setDeletedDialogOpen(true)}
+                        onQuickStatusChange={handleQuickStatusChange}
+                        onOpenHistory={handleOpenHistory}
+                        onSaveTableCoordinates={handleSaveTableCoordinates}
+                        onAddFloorElement={async (element) => {
+                            try {
+                                const res = await floorElementsAPI.create(element);
+                                if (res.data) {
+                                    setFloorElements(prev => [...prev, res.data]);
+                                }
+                            } catch (err) {
+                                console.error('Failed to add floor element:', err);
+                            }
+                        }}
+                    />
                 ) : (
+                    <>
+                        {/* Status Filter Chips for Grid View */}
+                        <Box sx={{ 
+                            display: 'flex', 
+                            overflowX: 'auto', 
+                            flexWrap: { xs: 'nowrap', sm: 'wrap' }, 
+                            gap: 1, 
+                            mb: { xs: 1.5, sm: 3 },
+                            pb: { xs: 1, sm: 0 },
+                            '&::-webkit-scrollbar': { display: 'none' }
+                        }}>
+                            <Chip
+                                label={`All (${statusCounts.all})`}
+                                color={statusFilter === 'all' ? 'primary' : 'default'}
+                                variant={statusFilter === 'all' ? 'filled' : 'outlined'}
+                                onClick={() => setStatusFilter('all')}
+                                size={isMobile ? "small" : "medium"}
+                            />
+                            <Chip
+                                label={`Available (${statusCounts.available})`}
+                                color={statusFilter === 'available' ? 'primary' : 'default'}
+                                variant={statusFilter === 'available' ? 'filled' : 'outlined'}
+                                onClick={() => setStatusFilter('available')}
+                                size={isMobile ? "small" : "medium"}
+                            />
+                            <Chip
+                                label={`Occupied (${statusCounts.occupied})`}
+                                color={statusFilter === 'occupied' ? 'primary' : 'default'}
+                                variant={statusFilter === 'occupied' ? 'filled' : 'outlined'}
+                                onClick={() => setStatusFilter('occupied')}
+                                size={isMobile ? "small" : "medium"}
+                            />
+                            <Chip
+                                label={`Reserved (${statusCounts.reserved})`}
+                                color={statusFilter === 'reserved' ? 'primary' : 'default'}
+                                variant={statusFilter === 'reserved' ? 'filled' : 'outlined'}
+                                onClick={() => setStatusFilter('reserved')}
+                                size={isMobile ? "small" : "medium"}
+                            />
+                            <Chip
+                                icon={<RestoreIcon />}
+                                label={`Deleted (${statusCounts.deleted})`}
+                                color={statusFilter === 'deleted' ? 'warning' : 'default'}
+                                variant={statusFilter === 'deleted' ? 'filled' : 'outlined'}
+                                onClick={() => setStatusFilter('deleted')}
+                                size={isMobile ? "small" : "medium"}
+                            />
+                        </Box>
+
+                        {filteredTables.length === 0 ? (
+                            <Paper sx={{ p: 3, textAlign: 'center' }}>
+                                <Typography variant="body1" color="text.secondary">
+                                    No tables found.
+                                </Typography>
+                            </Paper>
+                        ) : (
                     <Grid container spacing={{ xs: 1, sm: 3 }}>
                         {filteredTables.map((table) => (
                             <Grid size={{ xs: 6, sm: 6, md: 4, lg: 3 }} key={table._id}>
@@ -1034,6 +1816,8 @@ const TablesPage: React.FC = () => {
                             </Grid>
                         ))}
                     </Grid>
+                        )}
+                    </>
                 )}
             </TabPanel>
 
@@ -1734,98 +2518,101 @@ const TablesPage: React.FC = () => {
                             </MenuItem>
                         </span>
                     </Tooltip>
-                ) : (
-                    <>
+                ) : [
+                    <MenuItem 
+                        key="book"
+                        onClick={() => menuTable && handleOpenBooking(menuTable)}
+                        sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                    >
+                        <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                            <BookIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                        </ListItemIcon>
+                        <ListItemText 
+                            primary="Book Table" 
+                            primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                        />
+                    </MenuItem>,
+                    <MenuItem
+                        key="edit"
+                        onClick={() => menuTable && handleEditTable(menuTable)}
+                        sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                    >
+                        <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                            <EditIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                        </ListItemIcon>
+                        <ListItemText
+                            primary="Edit Table"
+                            primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }}
+                        />
+                    </MenuItem>,
+                    <MenuItem
+                        key="assign-waiter"
+                        onClick={() => menuTable && handleOpenAssignWaiter(menuTable)}
+                        sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                    >
+                        <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                            <AssignWaiterIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                        </ListItemIcon>
+                        <ListItemText
+                            primary="Assign Waiter"
+                            primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }}
+                        />
+                    </MenuItem>,
+                    <MenuItem 
+                        key="history"
+                        onClick={() => {
+                            if (menuTable) {
+                                setHistoryTargetId(menuTable._id);
+                                setHistoryTitle(`Table ${menuTable.tableNumber || menuTable.tableName} History`);
+                                setHistoryDialogOpen(true);
+                            }
+                            handleCloseMenu();
+                        }}
+                        sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                    >
+                        <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                            <TimelineIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                        </ListItemIcon>
+                        <ListItemText 
+                            primary="View History" 
+                            primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                        />
+                    </MenuItem>,
+                    (menuTable?.isMerged || menuTable?.isPrimary) && (
                         <MenuItem 
-                            onClick={() => menuTable && handleOpenBooking(menuTable)}
+                            key="unmerge"
+                            onClick={() => menuTable && handleUnmerge(menuTable)}
                             sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
                         >
                             <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                <BookIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                                <LinkOffIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
                             </ListItemIcon>
                             <ListItemText 
-                                primary="Book Table" 
-                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                                primary="Unmerge Table(s)" 
+                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }} 
                             />
                         </MenuItem>
-                        <MenuItem
-                            onClick={() => menuTable && handleEditTable(menuTable)}
-                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
-                        >
-                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                <EditIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                            </ListItemIcon>
-                            <ListItemText
-                                primary="Edit Table"
-                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }}
-                            />
-                        </MenuItem>
-                        <MenuItem
-                            onClick={() => menuTable && handleOpenAssignWaiter(menuTable)}
-                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
-                        >
-                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                <AssignWaiterIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                            </ListItemIcon>
-                            <ListItemText
-                                primary="Assign Waiter"
-                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }}
-                            />
-                        </MenuItem>
-                        <MenuItem 
-                            onClick={() => {
-                                if (menuTable) {
-                                    setHistoryTargetId(menuTable._id);
-                                    setHistoryTitle(`Table ${menuTable.tableNumber || menuTable.tableName} History`);
-                                    setHistoryDialogOpen(true);
-                                }
-                                handleCloseMenu();
-                            }}
-                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
-                        >
-                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                <TimelineIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                            </ListItemIcon>
-                            <ListItemText 
-                                primary="View History" 
-                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
-                            />
-                        </MenuItem>
-                        {(menuTable?.isMerged || menuTable?.isPrimary) && (
-                            <MenuItem 
-                                onClick={() => menuTable && handleUnmerge(menuTable)}
-                                sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                    ),
+                    <Divider key="div" sx={{ my: { xs: 0.25, sm: 1 } }} />,
+                    <Tooltip key="delete" title={canDeleteTables ? '' : "You don't have permission to delete tables"}>
+                        {/* span keeps the tooltip working while the item is disabled */}
+                        <span>
+                            <MenuItem
+                                onClick={() => menuTable && handleDeleteTable(menuTable)}
+                                disabled={!canDeleteTables}
+                                sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'error.main' }}
                             >
                                 <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                    <LinkOffIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
+                                    <DeleteIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
                                 </ListItemIcon>
-                                <ListItemText 
-                                    primary="Unmerge Table(s)" 
-                                    primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }} 
+                                <ListItemText
+                                    primary="Delete Table"
+                                    primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }}
                                 />
                             </MenuItem>
-                        )}
-                        <Divider sx={{ my: { xs: 0.25, sm: 1 } }} />
-                        <Tooltip title={canDeleteTables ? '' : "You don't have permission to delete tables"}>
-                            {/* span keeps the tooltip working while the item is disabled */}
-                            <span>
-                                <MenuItem
-                                    onClick={() => menuTable && handleDeleteTable(menuTable)}
-                                    disabled={!canDeleteTables}
-                                    sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'error.main' }}
-                                >
-                                    <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                        <DeleteIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
-                                    </ListItemIcon>
-                                    <ListItemText
-                                        primary="Delete Table"
-                                        primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }}
-                                    />
-                                </MenuItem>
-                            </span>
-                        </Tooltip>
-                    </>
-                )}
+                        </span>
+                    </Tooltip>
+                ].filter(Boolean)}
             </Menu>
 
             {/* Add Table Dialog */}
@@ -1838,6 +2625,8 @@ const TablesPage: React.FC = () => {
                 }}
                 customLocations={customLocations}
                 onOpenAddLocation={() => setAddLocationDialogOpen(true)}
+                initialLocation={selectedRoomForAddTable}
+                existingTables={tables}
             />
 
             {/* Edit Table Dialog */}
@@ -1851,6 +2640,15 @@ const TablesPage: React.FC = () => {
                 table={selectedTable}
                 customLocations={customLocations}
                 onOpenAddLocation={() => setAddLocationDialogOpen(true)}
+                existingTables={tables}
+            />
+
+            {/* Deleted Tables & Restoration Dialog */}
+            <DeletedTablesDialog
+                open={deletedDialogOpen}
+                onClose={() => setDeletedDialogOpen(false)}
+                onRestoreSuccess={fetchTables}
+                tables={tables}
             />
 
             {/* History Dialog */}
@@ -2001,9 +2799,40 @@ const TablesPage: React.FC = () => {
                             value={newLocationName}
                             inputProps={{ maxLength: 40 }}
                             onChange={(e) => {
-                                const val = e.target.value;
-                                if (/^[a-zA-Z_\s]*$/.test(val)) {
+                                const val = e.target.value.replace(/^\s+/, '');
+                                if (/^[a-zA-Z0-9_\-\s]*$/.test(val)) {
                                     setNewLocationName(val);
+                                }
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (newLocationName.trim()) {
+                                        const formatted = newLocationName.trim().replace(/\s+/g, '_')?.toLowerCase();
+                                        if (!isValidRoomName(formatted)) {
+                                            toast.error('Invalid room name. Must be 2-30 characters.');
+                                            return;
+                                        }
+                                        if (allAvailableSections.some(sec => canonicalizeRoomKey(sec) === canonicalizeRoomKey(formatted))) {
+                                            toast.error(`Room "${formatted.replace(/_/g, ' ').toUpperCase()}" already exists!`);
+                                            return;
+                                        }
+                                        const updatedCustom = [...new Set([...customLocations, formatted])];
+                                        const updatedHidden = hiddenSections.filter(s => s.toLowerCase() !== formatted);
+                                        setCustomLocations(updatedCustom);
+                                        setHiddenSections(updatedHidden);
+                                        saveStoredCustomRooms(updatedCustom, tenantSlug || undefined);
+                                        try {
+                                            localStorage.setItem('pos_hidden_sections', JSON.stringify(updatedHidden));
+                                            settingsAPI.update('dining_rooms', { customRooms: updatedCustom, hiddenSections: updatedHidden }).catch(() => null);
+                                        } catch (e) {}
+                                        if (editDialogOpen && selectedTable) {
+                                            setSelectedTable({ ...selectedTable, location: formatted });
+                                        }
+                                        setAddLocationDialogOpen(false);
+                                        setNewLocationName('');
+                                        toast.success(`Room "${formatted.replace(/_/g, ' ').toUpperCase()}" created & saved`);
+                                    }
                                 }
                             }}
                             placeholder="e.g. Poolside"
@@ -2016,14 +2845,29 @@ const TablesPage: React.FC = () => {
                         onClick={() => {
                             if (newLocationName.trim()) {
                                 const formatted = newLocationName.trim().replace(/\s+/g, '_')?.toLowerCase();
-                                if (!customLocations.includes(formatted)) {
-                                    setCustomLocations(prev => [...prev, formatted]);
+                                if (!isValidRoomName(formatted)) {
+                                    toast.error('Invalid room name. Must be 2-30 characters.');
+                                    return;
                                 }
+                                if (allAvailableSections.some(sec => canonicalizeRoomKey(sec) === canonicalizeRoomKey(formatted))) {
+                                    toast.error(`Room "${formatted.replace(/_/g, ' ').toUpperCase()}" already exists!`);
+                                    return;
+                                }
+                                const updatedCustom = [...new Set([...customLocations, formatted])];
+                                const updatedHidden = hiddenSections.filter(s => s.toLowerCase() !== formatted);
+                                setCustomLocations(updatedCustom);
+                                setHiddenSections(updatedHidden);
+                                saveStoredCustomRooms(updatedCustom, tenantSlug || undefined);
+                                try {
+                                    localStorage.setItem('pos_hidden_sections', JSON.stringify(updatedHidden));
+                                    settingsAPI.update('dining_rooms', { customRooms: updatedCustom, hiddenSections: updatedHidden }).catch(() => null);
+                                } catch (e) {}
                                 if (editDialogOpen && selectedTable) {
                                     setSelectedTable({ ...selectedTable, location: formatted });
                                 }
                                 setAddLocationDialogOpen(false);
                                 setNewLocationName('');
+                                toast.success(`Room "${formatted.replace(/_/g, ' ').toUpperCase()}" created & saved`);
                             }
                         }}
                         variant="contained"
@@ -2038,19 +2882,58 @@ const TablesPage: React.FC = () => {
             <Dialog
                 open={mergeDialogOpen}
                 onClose={() => setMergeDialogOpen(false)}
-                maxWidth="xs"
+                maxWidth="sm"
                 fullWidth
             >
-                <DialogTitle>Merge Tables</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>Merge Tables 🔗</DialogTitle>
                 <DialogContent>
-                    <Typography variant="body2" sx={{ mb: 2 }}>
-                        Select the <strong>primary table</strong>. The order session will be linked to this table.
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+                        Select 2 or more tables to combine into a single seating group. The <strong>primary table</strong> will hold the order billing session.
                     </Typography>
-                    <FormControl fullWidth size="small">
-                        <InputLabel>Primary Table</InputLabel>
+
+                    <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                        <InputLabel id="select-tables-to-merge-label">Select Tables to Merge</InputLabel>
                         <Select
+                            labelId="select-tables-to-merge-label"
+                            multiple
+                            value={selectedTableIds}
+                            onChange={(e) => {
+                                const val = typeof e.target.value === 'string' ? e.target.value.split(',') : (e.target.value as string[]);
+                                setSelectedTableIds(val);
+                                if (!val.includes(primaryTableId)) {
+                                    setPrimaryTableId(val[0] || '');
+                                }
+                            }}
+                            input={<OutlinedInput label="Select Tables to Merge" />}
+                            renderValue={(selected) => (
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                    {selected.map((id) => {
+                                        const t = tables.find(item => item._id === id);
+                                        return (
+                                            <Chip key={id} size="small" color="primary" variant="outlined" label={t ? `T-${t.tableNumber || t.tableName}` : id} />
+                                        );
+                                    })}
+                                </Box>
+                            )}
+                        >
+                            {tables.filter(t => t.isActive !== false).map((t) => (
+                                <MenuItem key={t._id} value={t._id}>
+                                    <Checkbox checked={selectedTableIds.indexOf(t._id) > -1} />
+                                    <ListItemText
+                                        primary={`Table ${t.tableNumber || t.tableName} (${t.capacity} seats)`}
+                                        secondary={`Room: ${(t.section || t.location || 'Indoor').toUpperCase()} • Status: ${t.status}`}
+                                    />
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+
+                    <FormControl fullWidth size="small" disabled={selectedTableIds.length < 2} sx={{ mb: 2 }}>
+                        <InputLabel id="primary-table-select-label">Primary Table (Bill / Main Seating)</InputLabel>
+                        <Select
+                            labelId="primary-table-select-label"
                             value={primaryTableId}
-                            label="Primary Table"
+                            label="Primary Table (Bill / Main Seating)"
                             onChange={(e) => setPrimaryTableId(e.target.value)}
                         >
                             {selectedTableIds.map(id => {
@@ -2064,12 +2947,12 @@ const TablesPage: React.FC = () => {
                         </Select>
                     </FormControl>
 
-                    <Box sx={{ mt: 2, p: 1.5, bgcolor: 'info.lighter', borderRadius: 1, border: '1px solid', borderColor: 'info.light' }}>
+                    <Box sx={{ p: 2, bgcolor: alpha(theme.palette.primary.main, 0.06), borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.primary.main, 0.2) }}>
                         <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Typography variant="body2" color="info.darker" fontWeight="bold">
+                            <Typography variant="body2" color="primary.main" fontWeight="bold">
                                 Combined Capacity:
                             </Typography>
-                            <Typography variant="body1" color="info.darker" fontWeight="bold">
+                            <Typography variant="subtitle1" color="primary.dark" fontWeight="800">
                                 {selectedTableIds.reduce((sum, id) => {
                                     const table = tables.find(t => t._id === id);
                                     return sum + (table?.capacity || 0);
@@ -2082,7 +2965,7 @@ const TablesPage: React.FC = () => {
                         const prim = tables.find(t => t._id === primaryTableId);
                         if (prim?.status === 'occupied') {
                             return (
-                                <Alert severity="warning" sx={{ mt: 2 }}>
+                                <Alert severity="warning" sx={{ mt: 2, borderRadius: 2 }}>
                                     The primary table is currently occupied. Ensure the combined capacity can accommodate the guest count.
                                 </Alert>
                             );
@@ -2090,17 +2973,629 @@ const TablesPage: React.FC = () => {
                         return null;
                     })()}
                 </DialogContent>
-                <DialogActions sx={{ pb: 3, px: 3 }}>
+                <DialogActions sx={{ pb: 2.5, px: 3 }}>
                     <Button onClick={() => setMergeDialogOpen(false)}>Cancel</Button>
                     <Button
                         onClick={handleMerge}
                         variant="contained"
-                        disabled={!primaryTableId}
+                        disabled={selectedTableIds.length < 2 || !primaryTableId || isProcessing}
+                        startIcon={isProcessing && <CircularProgress size={16} color="inherit" />}
                     >
-                        Merge {selectedTableIds.length} Tables
+                        {isProcessing ? 'Merging...' : `Merge ${selectedTableIds.length} Tables`}
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* ── UNIFIED MERGE HUB DIALOG (TABLES & ROOMS) ── */}
+            <Dialog
+                open={mergeSectionsDialogOpen}
+                onClose={() => setMergeSectionsDialogOpen(false)}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3.5, p: 0.5 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 800, color: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <CallSplitIcon color="primary" /> 🔀 Unified Merge Hub
+                    </Box>
+                    <IconButton onClick={() => setMergeSectionsDialogOpen(false)} size="small">
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+
+                <Box sx={{ px: 3, pt: 0.5 }}>
+                    <Tabs
+                        value={mergeHubTab}
+                        onChange={(_, val) => setMergeHubTab(val)}
+                        sx={{
+                            minHeight: 40,
+                            '& .MuiTab-root': { textTransform: 'none', fontWeight: 800, fontSize: '0.86rem', minHeight: 40, py: 0.5 }
+                        }}
+                    >
+                        <Tab label="🔀 Merge Dining Tables" />
+                        <Tab label="🏛️ Merge Room Sections" />
+                    </Tabs>
+                </Box>
+
+                <DialogContent dividers sx={{ py: 2.5, minHeight: 280 }}>
+                    {mergeHubTab === 0 ? (
+                        /* TAB 0: MERGE TABLES */
+                        <Stack spacing={2.5}>
+                            <DialogContentText sx={{ fontSize: '0.85rem' }}>
+                                Combine multiple dining tables into a single large party layout. Select the primary lead table and the secondary tables to join with it.
+                            </DialogContentText>
+
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Primary Table (Lead Table)</InputLabel>
+                                <Select
+                                    value={primaryMergeTableId}
+                                    label="Primary Table (Lead Table)"
+                                    onChange={(e) => {
+                                        setPrimaryMergeTableId(e.target.value);
+                                        setSecondaryMergeTableIds(prev => prev.filter(id => id !== e.target.value));
+                                    }}
+                                >
+                                    {tables.filter(t => t.isActive !== false && !t.isMerged).map((t: any) => (
+                                        <MenuItem key={t._id} value={t._id}>
+                                            Table #{t.tableNumber} {t.tableName ? `(${t.tableName})` : ''} • {t.capacity} Seats ({(t.section || t.location || 'indoor').toUpperCase()})
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Secondary Tables to Join</InputLabel>
+                                <Select
+                                    multiple
+                                    value={secondaryMergeTableIds}
+                                    label="Secondary Tables to Join"
+                                    onChange={(e) => {
+                                        const val = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                                        setSecondaryMergeTableIds(val);
+                                    }}
+                                    renderValue={(selected) => (
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                            {selected.map((id) => {
+                                                const found = tables.find(t => t._id === id);
+                                                return <Chip key={id} label={`Table #${found?.tableNumber || id}`} size="small" sx={{ fontWeight: 800 }} />;
+                                            })}
+                                        </Box>
+                                    )}
+                                >
+                                    {tables.filter(t => t.isActive !== false && t._id !== primaryMergeTableId && !t.isMerged).map((t: any) => (
+                                        <MenuItem key={t._id} value={t._id}>
+                                            Table #{t.tableNumber} • {t.capacity} Seats ({(t.section || t.location || 'indoor').toUpperCase()})
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+
+                            {/* Show currently merged tables with Unmerge button */}
+                            {tables.some(t => t.isPrimary || t.isMerged) && (
+                                <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: '#F8FAFC' }}>
+                                    <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', mb: 1, display: 'block' }}>
+                                        Currently Merged Party Tables
+                                    </Typography>
+                                    <Stack spacing={1}>
+                                        {tables.filter(t => t.isPrimary).map(primaryTable => {
+                                            const mergedSecondaries = tables.filter(t => t.mergedWith === primaryTable.number || t.mergedWith === primaryTable._id);
+                                            return (
+                                                <Box key={primaryTable._id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, bgcolor: '#FFFFFF', borderRadius: 1.5, border: '1px solid #E2E8F0' }}>
+                                                    <Box>
+                                                        <Typography variant="subtitle2" fontWeight={800}>
+                                                            Lead Table #{primaryTable.tableNumber} + {mergedSecondaries.map(s => `Table #${s.tableNumber}`).join(', ')}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                                                            Total Combined Capacity: {primaryTable.capacity + mergedSecondaries.reduce((acc, s) => acc + (s.capacity || 0), 0)} Seats
+                                                        </Typography>
+                                                    </Box>
+                                                    <Button
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="error"
+                                                        onClick={() => handleUnmergeTablesConfirm(primaryTable._id)}
+                                                        sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 1.5 }}
+                                                    >
+                                                        Unmerge
+                                                    </Button>
+                                                </Box>
+                                            );
+                                        })}
+                                    </Stack>
+                                </Paper>
+                            )}
+                        </Stack>
+                    ) : (
+                        /* TAB 1: MERGE ROOMS */
+                        <Stack spacing={2.5}>
+                            <DialogContentText sx={{ fontSize: '0.85rem' }}>
+                                Transfer all tables from a source room section into a target room section.
+                            </DialogContentText>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Source Room (Merge From)</InputLabel>
+                                <Select
+                                    value={sourceSection}
+                                    label="Source Room (Merge From)"
+                                    onChange={(e) => setSourceSection(e.target.value)}
+                                >
+                                    {allAvailableSections.map((sec: string) => (
+                                        <MenuItem key={sec} value={sec} sx={{ textTransform: 'capitalize' }}>
+                                            {sec.replace(/_/g, ' ')} ({tables.filter((t: any) => t.isActive !== false && (t.section || t.location || 'indoor').toLowerCase() === sec.toLowerCase()).length} Tables)
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Target Room (Destination Room)</InputLabel>
+                                <Select
+                                    value={targetSection}
+                                    label="Target Room (Destination Room)"
+                                    onChange={(e) => setTargetSection(e.target.value)}
+                                >
+                                    {allAvailableSections.filter((s: string) => s.toLowerCase() !== sourceSection.toLowerCase()).map((sec: string) => (
+                                        <MenuItem key={sec} value={sec} sx={{ textTransform: 'capitalize' }}>
+                                            {sec.replace(/_/g, ' ')} ({tables.filter((t: any) => t.isActive !== false && (t.section || t.location || 'indoor').toLowerCase() === sec.toLowerCase()).length} Tables)
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+
+                            {sourceSection && targetSection && (
+                                <Alert severity="info" sx={{ borderRadius: 2.5 }}>
+                                    Reassigning {tables.filter((t: any) => t.isActive !== false && (t.section || t.location || 'indoor').toLowerCase() === sourceSection.toLowerCase()).length} tables from <strong>{sourceSection.toUpperCase()}</strong> into <strong>{targetSection.toUpperCase()}</strong>.
+                                </Alert>
+                            )}
+                        </Stack>
+                    )}
+                </DialogContent>
+
+                <DialogActions sx={{ pb: 2, px: 3 }}>
+                    <Button onClick={() => setMergeSectionsDialogOpen(false)} disabled={isProcessing} variant="outlined" sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 2 }}>
+                        Cancel
+                    </Button>
+                    {mergeHubTab === 0 ? (
+                        <Button
+                            onClick={handleMergeTablesConfirm}
+                            variant="contained"
+                            color="primary"
+                            disabled={!primaryMergeTableId || secondaryMergeTableIds.length === 0 || isProcessing}
+                            sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 2 }}
+                        >
+                            {isProcessing ? 'Merging...' : 'Confirm Table Merge'}
+                        </Button>
+                    ) : (
+                        <Button
+                            onClick={handleMergeSections}
+                            variant="contained"
+                            color="secondary"
+                            disabled={!sourceSection || !targetSection || isProcessing}
+                            sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 2 }}
+                        >
+                            {isProcessing ? 'Merging...' : 'Confirm Room Merge'}
+                        </Button>
+                    )}
+                </DialogActions>
+            </Dialog>
+
+            {/* ── UNIFIED MANAGEMENT HUB DIALOG (ROOMS & TABLES) ── */}
+            <Dialog
+                open={manageRoomsDialogOpen}
+                onClose={() => setManageRoomsDialogOpen(false)}
+                maxWidth="md"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3.5, p: 0.5 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 800, color: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <RoomIcon color="primary" /> ⚙️ Unified Management Hub
+                    </Box>
+                    <IconButton onClick={() => setManageRoomsDialogOpen(false)} size="small">
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+
+                <Box sx={{ px: 3, pt: 0.5 }}>
+                    <Tabs
+                        value={manageHubTab}
+                        onChange={(_, val) => setManageHubTab(val)}
+                        sx={{
+                            minHeight: 40,
+                            '& .MuiTab-root': { textTransform: 'none', fontWeight: 800, fontSize: '0.86rem', minHeight: 40, py: 0.5 }
+                        }}
+                    >
+                        <Tab label="🏷️ Manage Rooms & Sections" />
+                        <Tab label={`🍽️ Master Tables Directory (${tables.filter(t => t.isActive !== false).length})`} />
+                    </Tabs>
+                </Box>
+
+                <DialogContent dividers sx={{ minHeight: 360, py: 2.5 }}>
+                    {manageHubTab === 0 ? (
+                        /* TAB 0: MANAGE ROOMS */
+                        <Box>
+                            <DialogContentText sx={{ mb: 2, fontSize: '0.875rem' }}>
+                                Manage room lifecycle: create new rooms, rename existing rooms, toggle off-season visibility, or delete unused rooms.
+                            </DialogContentText>
+
+                            {/* Inline Add New Room Bar */}
+                            <Paper variant="outlined" sx={{ p: 1.5, mb: 2, borderRadius: 2.5, bgcolor: '#F8FAFC', border: '1px dashed #94A3B8' }}>
+                                <Typography variant="caption" fontWeight={800} sx={{ display: 'block', mb: 1, color: '#334155' }}>
+                                    ✨ CREATE NEW ROOM
+                                </Typography>
+                                <Stack direction="row" spacing={1}>
+                                    <TextField
+                                        size="small"
+                                        placeholder="e.g. Rooftop Terrace, VIP Lounge..."
+                                        value={inlineAddRoomName}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/^\s+/, '');
+                                            if (/^[a-zA-Z0-9_\-\s]*$/.test(val)) {
+                                                setInlineAddRoomName(val);
+                                            }
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                if (inlineAddRoomName.trim()) {
+                                                    const norm = inlineAddRoomName.trim().toLowerCase();
+                                                    if (!isValidRoomName(norm)) {
+                                                        toast.error('Invalid room name. Must be 2-30 characters.');
+                                                        return;
+                                                    }
+                                                    if (allAvailableSections.some(sec => canonicalizeRoomKey(sec) === canonicalizeRoomKey(norm))) {
+                                                        toast.error(`Room "${norm.toUpperCase()}" already exists!`);
+                                                        return;
+                                                    }
+                                                    const updatedCustom = [...new Set([...customLocations, norm])];
+                                                    const updatedHidden = hiddenSections.filter(s => s.toLowerCase() !== norm);
+                                                    setCustomLocations(updatedCustom);
+                                                    setHiddenSections(updatedHidden);
+                                                    saveStoredCustomRooms(updatedCustom, tenantSlug || undefined);
+                                                    try {
+                                                        localStorage.setItem('pos_hidden_sections', JSON.stringify(updatedHidden));
+                                                        settingsAPI.update('dining_rooms', { customRooms: updatedCustom, hiddenSections: updatedHidden }).catch(() => null);
+                                                    } catch (e) {}
+                                                    toast.success(`Room "${norm.toUpperCase()}" created successfully`);
+                                                    setInlineAddRoomName('');
+                                                }
+                                            }
+                                        }}
+                                        sx={{ flexGrow: 1, bgcolor: '#FFFFFF' }}
+                                    />
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<AddIcon />}
+                                        disabled={inlineAddRoomName.trim().length < 2}
+                                        onClick={() => {
+                                            if (inlineAddRoomName.trim()) {
+                                                const norm = inlineAddRoomName.trim().toLowerCase();
+                                                if (!isValidRoomName(norm)) {
+                                                    toast.error('Invalid room name. Must be 2-30 characters.');
+                                                    return;
+                                                }
+                                                if (allAvailableSections.some(sec => canonicalizeRoomKey(sec) === canonicalizeRoomKey(norm))) {
+                                                    toast.error(`Room "${norm.toUpperCase()}" already exists!`);
+                                                    return;
+                                                }
+                                                const updatedCustom = [...new Set([...customLocations, norm])];
+                                                const updatedHidden = hiddenSections.filter(s => s.toLowerCase() !== norm);
+                                                setCustomLocations(updatedCustom);
+                                                setHiddenSections(updatedHidden);
+                                                saveStoredCustomRooms(updatedCustom, tenantSlug || undefined);
+                                                try {
+                                                    localStorage.setItem('pos_hidden_sections', JSON.stringify(updatedHidden));
+                                                    settingsAPI.update('dining_rooms', { customRooms: updatedCustom, hiddenSections: updatedHidden }).catch(() => null);
+                                                } catch (e) {}
+                                                toast.success(`Room "${norm.toUpperCase()}" created successfully`);
+                                                setInlineAddRoomName('');
+                                            }
+                                        }}
+                                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800 }}
+                                    >
+                                        Add Room
+                                    </Button>
+                                </Stack>
+                            </Paper>
+
+                            {/* Real-Time Room Search Bar */}
+                            <TextField
+                                fullWidth
+                                size="small"
+                                placeholder="Search rooms by name..."
+                                value={roomSearchQuery}
+                                onChange={(e) => setRoomSearchQuery(e.target.value)}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                                        </InputAdornment>
+                                    ),
+                                    endAdornment: roomSearchQuery ? (
+                                        <InputAdornment position="end">
+                                            <IconButton size="small" onClick={() => setRoomSearchQuery('')}>
+                                                <ClearIcon fontSize="small" />
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ) : null
+                                }}
+                                sx={{ mb: 2, bgcolor: '#FFFFFF' }}
+                            />
+
+                            <Stack spacing={1.5} sx={{ mt: 1 }}>
+                                {filteredSections.length === 0 ? (
+                                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3, fontStyle: 'italic' }}>
+                                        No rooms match "{roomSearchQuery}"
+                                    </Typography>
+                                ) : (
+                                    filteredSections.map((sec: string) => {
+                                        const isHidden = hiddenSections.includes(sec.toLowerCase());
+                                        const tableCount = tables.filter((t: any) => !t.isDeleted && t.isActive !== false && (t.section || t.location || 'indoor').toLowerCase() === sec.toLowerCase()).length;
+                                        return (
+                                            <Paper key={sec} variant="outlined" sx={{ p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: isHidden ? 'action.hover' : 'background.paper' }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                    <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: isHidden ? 'grey.300' : 'primary.50', color: isHidden ? 'grey.600' : 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
+                                                        <RoomIcon fontSize="small" />
+                                                    </Box>
+                                                    <Box>
+                                                        <Typography variant="subtitle2" fontWeight={800} sx={{ textTransform: 'capitalize' }}>
+                                                            {sec.replace(/_/g, ' ')}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                                                            {tableCount} Tables • Status: {isHidden ? 'Hidden (Off-Season)' : 'Visible on Canvas'}
+                                                        </Typography>
+                                                    </Box>
+                                                </Box>
+
+                                                <Stack direction="row" spacing={1} alignItems="center">
+                                                    <Tooltip title={isHidden ? 'Show Room on Canvas' : 'Hide Room (Off-Season)'}>
+                                                        <IconButton size="small" onClick={() => handleToggleSectionVisibility(sec)} color={isHidden ? 'default' : 'primary'}>
+                                                            {isHidden ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Rename Room">
+                                                        <IconButton size="small" onClick={() => { setRenameRoomSection(sec); setNewRoomSectionName(sec.replace(/_/g, ' ')); }}>
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Delete Room">
+                                                        <IconButton color="error" onClick={() => { setDeleteRoomSection(sec); setDeleteRoomTargetSection(''); }} size="small">
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Stack>
+                                            </Paper>
+                                        );
+                                    })
+                                )}
+                            </Stack>
+                        </Box>
+                    ) : (
+                        /* TAB 1: MANAGE MASTER TABLES DIRECTORY */
+                        <Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                                <Typography variant="subtitle2" fontWeight={800}>
+                                    Master Dining Tables Directory
+                                </Typography>
+                                <Button
+                                    size="small"
+                                    variant="contained"
+                                    color="primary"
+                                    startIcon={<AddIcon />}
+                                    onClick={() => {
+                                        setManageRoomsDialogOpen(false);
+                                        setAddDialogOpen(true);
+                                    }}
+                                    sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 2 }}
+                                >
+                                    Add New Table
+                                </Button>
+                            </Box>
+
+                            {/* Real-Time Table Search Bar */}
+                            <TextField
+                                fullWidth
+                                size="small"
+                                placeholder="Search by table #, name, room, status, or seats..."
+                                value={masterTableSearchQuery}
+                                onChange={(e) => setMasterTableSearchQuery(e.target.value)}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                                        </InputAdornment>
+                                    ),
+                                    endAdornment: masterTableSearchQuery ? (
+                                        <InputAdornment position="end">
+                                            <IconButton size="small" onClick={() => setMasterTableSearchQuery('')}>
+                                                <ClearIcon fontSize="small" />
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ) : null
+                                }}
+                                sx={{ mb: 2, bgcolor: '#FFFFFF' }}
+                            />
+
+                            {(() => {
+                                const q = masterTableSearchQuery.trim().toLowerCase();
+                                const activeTables = tables.filter(t => t.isActive !== false);
+                                const filteredTables = activeTables.filter(table => {
+                                    if (!q) return true;
+                                    const numStr = String(table.tableNumber || '').toLowerCase();
+                                    const nameStr = String(table.tableName || '').toLowerCase();
+                                    const roomStr = String(table.section || table.location || 'indoor').toLowerCase();
+                                    const statusStr = String(table.status || '').toLowerCase();
+                                    const capStr = `${table.capacity || 0} seats`.toLowerCase();
+                                    return numStr.includes(q) || nameStr.includes(q) || roomStr.includes(q) || statusStr.includes(q) || capStr.includes(q);
+                                });
+
+                                if (filteredTables.length === 0) {
+                                    return (
+                                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4, fontStyle: 'italic' }}>
+                                            No dining tables match "{masterTableSearchQuery}"
+                                        </Typography>
+                                    );
+                                }
+
+                                return (
+                                    <Stack spacing={1.2}>
+                                        {filteredTables.map((table: any) => (
+                                            <Paper key={table._id} variant="outlined" sx={{ p: 1.5, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                    <Chip label={`#${table.tableNumber}`} size="small" color="primary" sx={{ fontWeight: 900, borderRadius: 1.5 }} />
+                                                    <Box>
+                                                        <Typography variant="subtitle2" fontWeight={800}>
+                                                            Table #{table.tableNumber} {table.tableName ? `(${table.tableName})` : ''}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                                                            {table.capacity} Seats • Room: <b>{(table.section || table.location || 'indoor').toUpperCase()}</b> • Shape: <b>{(table.shape || 'rectangle').toUpperCase()}</b>
+                                                        </Typography>
+                                                    </Box>
+                                                </Box>
+
+                                                <Stack direction="row" spacing={1} alignItems="center">
+                                                    <Chip
+                                                        label={table.status.toUpperCase()}
+                                                        size="small"
+                                                        color={table.status === 'occupied' ? 'error' : table.status === 'reserved' ? 'warning' : 'success'}
+                                                        sx={{ fontWeight: 800, fontSize: '0.68rem' }}
+                                                    />
+                                                    <IconButton size="small" onClick={() => { setManageRoomsDialogOpen(false); handleEditTable(table); }}>
+                                                        <EditIcon fontSize="small" />
+                                                    </IconButton>
+                                                    <IconButton size="small" color="error" onClick={() => handleDeleteTable(table)}>
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Stack>
+                                            </Paper>
+                                        ))}
+                                    </Stack>
+                                );
+                            })()}
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ pb: 2, px: 3 }}>
+                    <Button onClick={() => setManageRoomsDialogOpen(false)} variant="outlined" sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 2 }}>
+                        Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* ── RENAME ROOM DIALOG ── */}
+            <Dialog
+                open={Boolean(renameRoomSection)}
+                onClose={() => setRenameRoomSection(null)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 800, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <EditIcon /> Rename Room: {renameRoomSection?.toUpperCase()}
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText sx={{ mb: 2 }}>
+                        Enter new name for room <strong>"{renameRoomSection?.toUpperCase()}"</strong>. All assigned tables will be updated automatically.
+                    </DialogContentText>
+                    <TextField
+                        fullWidth
+                        autoFocus
+                        label="New Room Name"
+                        value={newRoomSectionName}
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/^\s+/, '');
+                            if (/^[a-zA-Z0-9_\-\s]*$/.test(val)) {
+                                setNewRoomSectionName(val);
+                            }
+                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleRenameRoomConfirm(); }}
+                        sx={{ mt: 1 }}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ pb: 2, px: 3 }}>
+                    <Button onClick={() => setRenameRoomSection(null)} disabled={isProcessing}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleRenameRoomConfirm}
+                        variant="contained"
+                        color="primary"
+                        disabled={isProcessing || newRoomSectionName.trim().length < 2}
+                    >
+                        {isProcessing ? 'Renaming...' : 'Confirm Rename'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* ── DELETE ROOM CONFIRMATION DIALOG ── */}
+            <Dialog
+                open={Boolean(deleteRoomSection)}
+                onClose={() => setDeleteRoomSection(null)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 800, color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <DeleteIcon /> Delete Room: {deleteRoomSection?.toUpperCase()}
+                </DialogTitle>
+                <DialogContent>
+                    {(() => {
+                        if (!deleteRoomSection) return null;
+                        const tablesInSec = tables.filter((t: any) => t.isActive !== false && (t.section || t.location || 'indoor').toLowerCase() === deleteRoomSection.toLowerCase());
+                        if (tablesInSec.length > 0) {
+                            return (
+                                <Box>
+                                    <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+                                        Room <strong>{deleteRoomSection.toUpperCase()}</strong> contains <strong>{tablesInSec.length} table(s)</strong>.
+                                    </Alert>
+                                    <Typography variant="body2" sx={{ mb: 1.5, fontWeight: 600 }}>
+                                        Select destination room to transfer these {tablesInSec.length} tables before deleting:
+                                    </Typography>
+                                    <FormControl fullWidth>
+                                        <InputLabel>Destination Room</InputLabel>
+                                        <Select
+                                            value={deleteRoomTargetSection}
+                                            label="Destination Room"
+                                            onChange={(e) => setDeleteRoomTargetSection(e.target.value)}
+                                        >
+                                            {allAvailableSections.filter((s: string) => s.toLowerCase() !== deleteRoomSection.toLowerCase()).map((sec: string) => (
+                                                <MenuItem key={sec} value={sec} sx={{ textTransform: 'capitalize' }}>
+                                                    {sec.replace(/_/g, ' ')} ({tables.filter((t: any) => t.isActive !== false && (t.section || t.location || 'indoor').toLowerCase() === sec.toLowerCase()).length} Tables)
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Box>
+                            );
+                        }
+                        return (
+                            <DialogContentText>
+                                Are you sure you want to delete room <strong>"{deleteRoomSection.toUpperCase()}"</strong>? This room is empty (0 tables).
+                            </DialogContentText>
+                        );
+                    })()}
+                </DialogContent>
+                <DialogActions sx={{ pb: 2, px: 3 }}>
+                    <Button onClick={() => setDeleteRoomSection(null)} disabled={isProcessing}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleDeleteRoomConfirm}
+                        variant="contained"
+                        color="error"
+                        disabled={isProcessing}
+                    >
+                        Confirm Delete Room
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* ── CONTACTLESS DINING & TABLE QR MODAL ── */}
+            <ContactlessDiningModal
+                open={contactlessModalOpen}
+                onClose={() => setContactlessModalOpen(false)}
+                tables={tables}
+                tenantSlug={tenantSlug}
+            />
         </Box >
     );
 };

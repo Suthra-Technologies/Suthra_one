@@ -44,6 +44,7 @@ import { expensesAPI, usersAPI } from '../../services/api';
 import { getCurrentUser } from '../../services/authService';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
+import { ListSkeleton } from '../../components/common/PageSkeleton';
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -157,7 +158,7 @@ const ExpenseDetailPage: React.FC = () => {
         }
     };
 
-    if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
+    if (loading) return <ListSkeleton count={4} />;
     if (!expense) return null;
 
     return (

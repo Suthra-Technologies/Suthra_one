@@ -61,6 +61,7 @@ import AddressAutocomplete from '../../components/AddressAutocomplete';
 import { useSettings } from '../../context/SettingsContext';
 import { inventoryAPI, vendorsAPI } from '../../services/api';
 import CustomInput from '../../components/common/CustomInput';
+import { CardGridSkeleton, TableSkeleton } from '../../components/common/PageSkeleton';
 
 interface Vendor {
     _id: string;
@@ -572,7 +573,7 @@ const VendorsPage: React.FC = () => {
             {/* Mobile Cards */}
             <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 2, alignItems: 'center' }}>
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress thickness={2} size={50} /></Box>
+                    <Box sx={{ width: '100%' }}><CardGridSkeleton count={4} cardHeight={180} /></Box>
                 ) : vendors.length === 0 ? (
                     <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 4, border: '2px dashed', borderColor: 'divider', bgcolor: 'transparent', width: '100%', maxWidth: 500 }}>
                         <Typography color="text.secondary" fontWeight={900} sx={{ fontSize: headingFontSize, color: { xs: '#000', sm: 'text.secondary' } }}>No vendors found</Typography>
@@ -705,8 +706,8 @@ const VendorsPage: React.FC = () => {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                                    <CircularProgress />
+                                <TableCell colSpan={7} sx={{ p: 0, border: 0 }}>
+                                    <TableSkeleton rows={8} columns={7} />
                                 </TableCell>
                             </TableRow>
                         ) : vendors.length === 0 ? (

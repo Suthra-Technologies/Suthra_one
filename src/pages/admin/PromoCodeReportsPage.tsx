@@ -23,7 +23,6 @@ import {
   Button,
   Stack,
   Chip,
-  CircularProgress,
   IconButton,
   Tooltip,
   Divider,
@@ -54,6 +53,7 @@ import {
 import { reportsAPI } from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
 import { toast } from 'react-hot-toast';
+import { DashboardSkeleton } from '../../components/common/PageSkeleton';
 
 const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
@@ -372,9 +372,7 @@ const PromoCodeReportsPage: React.FC = () => {
       {/* Content */}
       <Box>
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
-            <CircularProgress />
-          </Box>
+          <DashboardSkeleton />
         ) : (
           <>
             {activeTab === 0 && renderSummary()}

@@ -60,6 +60,7 @@ import { useNavigate } from 'react-router-dom';
 import { expensesAPI, cateringAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const ExpensesPage: React.FC = () => {
     const navigate = useNavigate();
@@ -580,7 +581,7 @@ const ExpensesPage: React.FC = () => {
 
             {/* List */}
             {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
+                <TableSkeleton rows={8} columns={7} />
             ) : expenses.length === 0 ? (
                 <Paper sx={{ p: 10, textAlign: 'center', borderRadius: 4 }}>
                     <ExpenseIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />

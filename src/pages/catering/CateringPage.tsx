@@ -50,6 +50,7 @@ import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMa
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { formatSpiceLevelLabel } from '../../utils/spiceLevel';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 interface CartItem {
     menuItem: string;
@@ -582,12 +583,7 @@ const CateringPage = () => {
         }
     };
 
-    if (loading) return (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh" flexDirection="column" gap={2}>
-            <CircularProgress size={40} />
-            <Typography color="text.secondary" sx={{ fontSize: bodyFontSize }}>Loading catering menu...</Typography>
-        </Box>
-    );
+    if (loading) return <CardGridSkeleton count={6} cardHeight={140} />;
 
     return (
         <Container

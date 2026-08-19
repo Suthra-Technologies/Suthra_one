@@ -192,7 +192,7 @@ const SuperAdminProfilePage: React.FC = () => {
         if (!file) return;
         try {
             setAvatarUploading(true);
-            const response = await uploadAPI.uploadImage(file);
+            const response = await uploadAPI.uploadImage(file, 'user');
             setProfileData(prev => ({ ...prev, profileImage: response.data.url }));
         } catch (error: any) {
             console.error('Error uploading avatar:', error);

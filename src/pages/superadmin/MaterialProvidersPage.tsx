@@ -16,6 +16,7 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import { materialProvidersAPI, materialCategoriesAPI, uploadAPI } from '../../services/api';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
 import { toast } from 'react-hot-toast';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const EMPTY_FORM = {
   name: '',
@@ -153,7 +154,7 @@ const MaterialProvidersPage: React.FC = () => {
     if (!file) return;
     const loadingToast = toast.loading('Uploading image...');
     try {
-      const res = await uploadAPI.uploadImage(file);
+      const res = await uploadAPI.uploadImage(file, 'provider');
       setForm(prev => ({ ...prev, [field]: res.data.url }));
       toast.success('Image uploaded');
     } catch {
@@ -284,6 +285,10 @@ const MaterialProvidersPage: React.FC = () => {
     }
   };
 
+  if (loading && rows.length === 0) {
+    return <TableSkeleton rows={8} columns={7} />;
+  }
+
   return (
     <Box sx={{ pb: 4 }}>
       {/* Header */}
@@ -350,13 +355,7 @@ const MaterialProvidersPage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                    <CircularProgress size={28} />
-                  </TableCell>
-                </TableRow>
-              ) : rows.length === 0 ? (
+              {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
                     <Typography color="text.secondary">No material providers found.</Typography>

@@ -44,6 +44,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BRAND_CONFIG } from 'src/config/brandConfig';
+import { planFeaturesOf, resolveLandingPath } from '../utils/landingPath';
 import { useAuth } from 'src/context/AuthContext';
 import { useNotifications } from 'src/context/NotificationProvider';
 import { useSettings } from 'src/context/SettingsContext';
@@ -562,8 +563,9 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
                 if (window.history.length > 1) {
                   navigate(-1);
                 } else {
-                  // Accountant has no dashboard access — fall back to Reports.
-                  navigate(getRelativePath(activeRole === 'accountant' ? '/reports' : '/dashboard'), { replace: true });
+                  // Not every role/plan has Dashboard — fall back to the first
+                  // page this user can open.
+                  navigate(getRelativePath(resolveLandingPath(activeRole, planFeaturesOf(user))), { replace: true });
                 }
               }}
               sx={{

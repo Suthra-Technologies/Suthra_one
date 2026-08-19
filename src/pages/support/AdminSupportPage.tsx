@@ -112,7 +112,7 @@ const AdminSupportPage: React.FC = () => {
     try {
       setUploading(true);
       toast.loading('Uploading image...');
-      const response = await uploadAPI.uploadImage(file);
+      const response = await uploadAPI.uploadImage(file, 'support');
       toast.dismiss();
       toast.success('Image uploaded successfully!');
 

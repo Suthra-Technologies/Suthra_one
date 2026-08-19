@@ -245,6 +245,8 @@ export const ordersAPI = {
     api.get('/orders/filter', { params }),
   getActive: () => api.get('/orders/active'),
   getKitchen: () => api.get('/orders/kitchen'),
+  getDeliveryHistory: (from?: string, to?: string) =>
+    api.get('/orders/delivery-history', { params: { from, to } }),
   getCompleted: () => api.get('/orders/completed'),
   getCancelled: () => api.get('/orders/cancelled'),
 
@@ -361,6 +363,56 @@ export const attendanceAPI = {
   exportFinancials: (filters: any) => api.get('/attendance/admin/export', { params: filters, responseType: 'blob', timeout: 120000 }),
 };
 
+// -------------------- Payroll API --------------------
+export const payrollAPI = {
+  // Profiles
+  getProfiles: (params?: { page?: number; limit?: number; search?: string; status?: string; role?: string }) =>
+    api.get('/payroll/profiles', { params }),
+  getProfile: (id: string) => api.get(`/payroll/profiles/${id}`),
+  createProfile: (data: any) => api.post('/payroll/profiles', data),
+  updateProfile: (id: string, data: any) => api.put(`/payroll/profiles/${id}`, data),
+  deactivateProfile: (id: string, data: { status?: string; reason?: string; resignationDate?: string; letterUrl?: string }) =>
+    api.delete(`/payroll/profiles/${id}`, { data }),
+  syncUsers: () => api.post('/payroll/sync-users'),
+
+  // Payroll runs
+  getSheet: (month: number, year: number) => api.get('/payroll/sheet', { params: { month, year } }),
+  getMonthlySheet: (month: number, year: number) => api.get('/payroll/monthly-sheet', { params: { month, year } }),
+  compute: (id: string, month: number, year: number) =>
+    api.get(`/payroll/profiles/${id}/compute`, { params: { month, year } }),
+  processSalary: (id: string, data: any) => api.post(`/payroll/profiles/${id}/process`, data),
+  processAll: (data: { month: number; year: number; status?: string; reprocess?: boolean }) =>
+    api.post('/payroll/process-all', data, { timeout: 180000 }),
+  updateSalaryStatus: (id: string, data: { month: number; year: number; status: string }) =>
+    api.patch(`/payroll/profiles/${id}/salary-status`, data),
+  getPayslip: (id: string, month: number, year: number) =>
+    api.get(`/payroll/profiles/${id}/payslip`, { params: { month, year } }),
+  exportPayroll: (month: number, year: number) =>
+    api.get('/payroll/export', { params: { month, year }, responseType: 'blob', timeout: 120000 }),
+
+  backfillExpenses: () => api.post('/payroll/backfill-expenses', {}, { timeout: 180000 }),
+
+  // Attendance marking
+  getDailyRoster: (date: string) => api.get('/payroll/daily-roster', { params: { date } }),
+  markBulkDay: (data: { date: string; records: Array<{ profileId: string; status: string; note?: string }> }) =>
+    api.post('/payroll/daily-attendance', data, { timeout: 120000 }),
+  getEmployeeAttendance: (id: string, params?: { month?: number; year?: number; limit?: number }) =>
+    api.get(`/payroll/profiles/${id}/attendance`, { params }),
+  markDay: (id: string, data: { date: string; status: string; leaveType?: string; reason?: string; note?: string }) =>
+    api.post(`/payroll/profiles/${id}/attendance`, data),
+
+  // Advances
+  addAdvance: (id: string, data: { amount: number; reason?: string; date?: string }) =>
+    api.post(`/payroll/profiles/${id}/advances`, data),
+  repayAdvance: (id: string, data: { amount: number }) =>
+    api.post(`/payroll/profiles/${id}/advances/repay`, data),
+
+  // Leave
+  markLeave: (id: string, data: { date: string; type?: 'paid' | 'unpaid'; reason?: string }) =>
+    api.post(`/payroll/profiles/${id}/leave`, data),
+  removeLeave: (id: string, date: string) => api.delete(`/payroll/profiles/${id}/leave/${date}`),
+};
+
 // -------------------- Menu API --------------------
 export const menuAPI = {
   getAll: (params?: { search?: string; cursor?: string; limit?: number; category?: string; subcategory?: string; foodType?: string; isAvailable?: boolean; isCateringAvailable?: boolean; isDeleted?: boolean }) => api.get('/menu', { params }),
@@ -445,6 +497,18 @@ export const tablesAPI = {
   updateStatus: (id: string, status: string) => api.patch(`/tables/${id}/status`, { status }),
   merge: (primaryId: string, secondaryIds: string[]) => api.post('/tables/merge', { primaryId, secondaryIds }),
   unmerge: (primaryId: string) => api.post('/tables/unmerge', { primaryId }),
+  mergeSections: (sourceSection: string, targetSection: string) => api.post('/tables/merge-sections', { sourceSection, targetSection }),
+  deleteSection: (section: string, targetSection?: string) => api.post('/tables/delete-section', { section, targetSection }),
+};
+
+// -------------------- Floor Elements API (Architectural: doors, bar, windows, etc.) --------------------
+export const floorElementsAPI = {
+  getAll: (params?: { section?: string }) => api.get('/floor-elements', { params }),
+  create: (data: any) => api.post('/floor-elements', data),
+  update: (id: string, data: any) => api.put(`/floor-elements/${id}`, data),
+  batchUpdateCoordinates: (updates: { _id: string; coordinates: { x: number; y: number } }[]) =>
+    api.patch('/floor-elements/batch-coordinates', { updates }),
+  remove: (id: string) => api.delete(`/floor-elements/${id}`),
 };
 
 // -------------------- Inventory API --------------------
@@ -674,6 +738,8 @@ export const bookingsAPI = {
   getAvailableSlots: (date: string, guests: number) => api.get('/bookings/available-slots', { params: { date, guests } }),
   checkIn: (id: string) => api.post(`/bookings/${id}/check-in`),
   addPreOrderedItem: (id: string, item: { name: string, cost: number, price: number }) => api.post(`/bookings/${id}/pre-order`, item),
+  createWalkIn: (data: { tableId: string; guests: number; orderId: string; customerName?: string; customerPhone?: string }) =>
+    api.post('/bookings/walk-in', data),
 
   // Public (no auth) — for guest users
   publicGetUnavailableSlots: (tenantSlug: string, date: string, guests: number) =>
@@ -822,6 +888,8 @@ export const tenantAPI = {
   updateSettings: (data: any) => api.patch('/tenants/settings', data),
   getStripeSettings: () => api.get('/tenants/stripe-settings'),
   updateStripeSettings: (data: any) => api.patch('/tenants/stripe-settings', data),
+  verifyEmailWithGoogle: (idToken: string) => api.post('/tenants/verify-email', { idToken }),
+  verifyEmailWithGmailSend: (code: string, redirectUri: string) => api.post('/tenants/verify-email/gmail-send', { code, redirectUri }),
   // Restaurant open/close status
   updateRestaurantStatus: (data: { isOpen: boolean; reopenAt?: string; closeReason?: string; customerMessage?: string }) => api.patch('/tenants/restaurant-status', data),
   getRestaurantStatus: (slug: string) => api.get(`/tenants/${slug}/status`),
@@ -885,14 +953,45 @@ export const recipesAPI = {
 };
 
 // -------------------- Upload API --------------------
+/**
+ * Which folder the file lands in inside the tenant's S3 prefix. Must match
+ * MODULE_PREFIXES in the backend upload controller; omitting it files the
+ * upload under misc/.
+ */
+export type UploadModule =
+  | 'menu'
+  | 'category'
+  | 'recipe'
+  | 'gallery'
+  | 'menu-pdf'
+  | 'qr-code'
+  | 'menu-document'
+  | 'promo'
+  | 'event'
+  | 'inventory'
+  | 'table'
+  | 'asset'
+  | 'purchase'
+  | 'expense'
+  | 'support'
+  | 'dispute'
+  | 'user'
+  | 'payroll'
+  | 'branding'
+  | 'vendor'
+  | 'provider'
+  | 'stamp'
+  | 'homepage';
+
 export const uploadAPI = {
-  uploadImage: (file: File) => {
+  uploadImage: (file: File, module?: UploadModule) => {
     const formData = new FormData();
     formData.append('file', file);
     return api.post('/upload/image', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      params: module ? { module } : undefined,
       timeout: 60000, // 60 seconds
     });
   },

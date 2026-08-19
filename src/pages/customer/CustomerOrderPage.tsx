@@ -31,13 +31,15 @@ import {
     ArrowForwardIos as ChevronIcon,
     LocalFireDepartment as HotIcon,
     RestaurantMenu as MenuIcon,
+    Restaurant as RestaurantMenuIcon,
 } from '@mui/icons-material';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { menuAPI, ordersAPI } from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
 import { useGuestCart } from '../../context/GuestCartContext';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 interface MenuItem {
     _id: string;
@@ -97,6 +99,21 @@ const CustomerOrderPage: React.FC = () => {
     const [categories, setCategories] = useState<string[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [loading, setLoading] = useState(true);
+
+    const [searchParams] = useSearchParams();
+    const tableNoParam = searchParams.get('tableNo');
+    const tableIdParam = searchParams.get('tableId');
+
+    useEffect(() => {
+        if (tableNoParam) {
+            sessionStorage.setItem('qr_table_no', tableNoParam);
+        }
+        if (tableIdParam) {
+            sessionStorage.setItem('qr_table_id', tableIdParam);
+        }
+    }, [tableNoParam, tableIdParam]);
+
+    const activeTableNo = tableNoParam || sessionStorage.getItem('qr_table_no');
 
     useEffect(() => {
         if (slug) {
@@ -222,12 +239,7 @@ const CustomerOrderPage: React.FC = () => {
     };
 
     if (loading) {
-        return (
-            <Box sx={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 2 }}>
-                <CircularProgress size={40} thickness={4} />
-                <Typography variant="h6" color="text.secondary" fontWeight="500" sx={{ fontSize: headingFontSize }}>Preparing Menu...</Typography>
-            </Box>
-        );
+        return <CardGridSkeleton count={9} cardHeight={220} />;
     }
 
     return (
@@ -280,6 +292,27 @@ const CustomerOrderPage: React.FC = () => {
                     </Box>
                 </Container>
             </Box>
+
+            {/* Seated Table Contactless Banner */}
+            {activeTableNo && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 1, px: 2 }}>
+                    <Chip
+                        icon={<RestaurantMenuIcon sx={{ color: '#fff !important' }} />}
+                        label={`📍 Seated at Table ${activeTableNo} • Contactless Dining`}
+                        sx={{
+                            bgcolor: 'primary.main',
+                            color: '#fff',
+                            fontWeight: 900,
+                            fontSize: { xs: '0.85rem', sm: '1rem' },
+                            py: 2.2,
+                            px: 2,
+                            borderRadius: 4,
+                            boxShadow: '0 6px 18px rgba(25, 118, 210, 0.35)',
+                            '& .MuiChip-label': { px: 1 }
+                        }}
+                    />
+                </Box>
+            )}
 
             {/* Categorical Navigation - Elevated & Sticky */}
             <Paper sx={{

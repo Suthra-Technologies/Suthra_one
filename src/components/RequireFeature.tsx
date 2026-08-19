@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { hasPlanFeature } from '../utils/landingPath';
 import { CircularProgress, Box } from '@mui/material';
 
 type Props = {
@@ -42,22 +43,18 @@ export const RequireFeature: React.FC<Props> = ({ feature, guestAllowed = false 
 
     const tenant: any = user.tenant;
     if (tenant && typeof tenant === 'object') {
-        // Access features from populated currentPlan
-        const features = tenant.currentPlan?.features || [];
-        // Legacy plans stored a single bundled "core" feature. Before the module-level
-        // split, every one of these pages was ungated (open to any admin/manager), so a
-        // legacy "core" plan must keep unlocking all of them to avoid regressing access.
-        const CORE_FEATURES = [
-            'dashboard', 'orders', 'pos', 'tables', 'bookings', 'kitchen', 'menu', 'globaladdons',
-            'promocoupons', 'disputes', 'purchaseorders', 'vendors', 'materialproviders', 'recipes',
-            'users', 'customers', 'assets', 'expenses', 'customisescreens', 'reports', 'serviceusage',
-            'customeractivities', 'invoices', 'auditlogs', 'subscription', 'support', 'customersupport',
-            'settings', 'managenotifications',
-        ];
-        if (features.includes(feature) || (features.includes('core') && CORE_FEATURES.includes(feature))) {
+        // Shared with the Sidebar and the landing resolver so the link you see,
+        // the page you land on, and this guard can never disagree.
+        if (hasPlanFeature(feature, tenant.currentPlan?.features || [])) {
             return <Outlet />;
         }
+
+        return <Navigate to="/unauthorized" state={{ reason: 'plan', feature }} replace />;
     }
 
-    return <Navigate to="/unauthorized" replace />;
+    // Tenant not populated yet (e.g. `user.tenant` is still a bare id right
+    // after login). The plan is unknown, not known-to-be-missing — blocking
+    // here would bounce a legitimate user to /unauthorized, so let the route
+    // render and leave enforcement to the API, which always checks.
+    return <Outlet />;
 };

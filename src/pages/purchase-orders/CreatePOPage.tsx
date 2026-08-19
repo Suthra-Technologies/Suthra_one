@@ -50,6 +50,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { purchaseOrdersAPI, uploadAPI, inventoryAPI, usersAPI, vendorsAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 // --- Global Utilities ---
 const normalizeUnit = (unit: string): string => {
@@ -323,7 +324,7 @@ const CreatePOPage: React.FC = () => {
 
         setUploading(true);
         try {
-            const response = await uploadAPI.uploadImage(file);
+            const response = await uploadAPI.uploadImage(file, 'purchase');
             const url = response.data.url || response.data.imageUrl || response.data;
             const finalUrl = typeof url === 'string' ? url : (url.url || url);
 
@@ -527,7 +528,7 @@ const CreatePOPage: React.FC = () => {
 
             // Also upload as visual evidence
             try {
-                const uploadRes = await uploadAPI.uploadImage(file);
+                const uploadRes = await uploadAPI.uploadImage(file, 'purchase');
                 const url = uploadRes.data.url || uploadRes.data.imageUrl || uploadRes.data;
                 const finalUrl = typeof url === 'string' ? url : (url.url || url);
                 setFormData(prev => ({
@@ -766,11 +767,7 @@ const CreatePOPage: React.FC = () => {
     const isInventory = formData.category === 'raw_materials';
 
     if (id && loading && formData.poNumber.startsWith('PO-')) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                <CircularProgress />
-            </Box>
-        );
+        return <TableSkeleton rows={6} columns={7} />;
     }
 
     const statusPill = getStatusPill();

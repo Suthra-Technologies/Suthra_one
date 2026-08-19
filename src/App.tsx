@@ -11,9 +11,11 @@ import LoginPage from './pages/auth/LoginPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import { TenantRoutes } from './routes/TenantRoutes';
 import { getTenantSlugFromHostname } from './utils/tenant.utils';
+import { planFeaturesOf, resolveLandingPath } from './utils/landingPath';
 
 import HomePage from './pages/public/HomePage';
 import PrivacyPolicyPage from './pages/public/PrivacyPolicyPage';
+import GoogleAuthRelayPage from './pages/public/GoogleAuthRelayPage';
 import RescheduleDemoPage from './pages/public/RescheduleDemoPage';
 import TermsConditionsPage from './pages/public/TermsConditionsPage';
 import RestaurantRegisterPage from './pages/RestaurantRegisterPage';
@@ -133,6 +135,15 @@ const ThemedAppContent: React.FC = () => {
 
 const AppPlugin = registerPlugin<any>('App');
 
+/** The back handler runs outside AuthContext, so read the persisted user. */
+const readStoredUser = (): any => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || 'null');
+  } catch {
+    return null;
+  }
+};
+
 const MobileBackHandler: React.FC = () => {
   const location = useLocation();
   const isNative = Capacitor.isNativePlatform();
@@ -146,7 +157,13 @@ const MobileBackHandler: React.FC = () => {
         const currentPath = location.pathname;
         const storedTenantSlug = localStorage.getItem('tenantSlug');
         const isAuthScreen = ['/login', '/reset-password', '/register', '/customer-register'].some((path) => currentPath === path || currentPath.startsWith(`${path}/`));
-        const defaultPath = storedTenantSlug ? `/${storedTenantSlug}/dashboard` : '/dashboard';
+        // Home is whatever this role can actually open, not always Dashboard.
+        const storedUser = readStoredUser();
+        const home = resolveLandingPath(
+          localStorage.getItem('activeRole'),
+          planFeaturesOf(storedUser),
+        );
+        const defaultPath = storedTenantSlug ? `/${storedTenantSlug}${home}` : home;
 
         // If we have browser history, go back within app.
         if (canGoBack && !isAuthScreen) {
@@ -186,11 +203,22 @@ const AppRoutes: React.FC = () => {
   const role = activeRole || (typeof window !== 'undefined' ? localStorage.getItem('activeRole') : null);
   const isSuperAdmin = role === 'superadmin';
 
+  // Land on the first page this role can open under the tenant's plan —
+  // Dashboard is not available to every role, and gating it by plan is fine,
+  // but sending the user there regardless produced an /unauthorized bounce.
+  const landingPath = resolveLandingPath(role, planFeaturesOf(user));
+
   const defaultAuthedPath = isSuperAdmin
     ? '/superadmin'
-    : (hostnameSlug ? '/dashboard' : (storedTenantSlug ? `/${storedTenantSlug}/dashboard` : '/dashboard'));
+    : (hostnameSlug ? landingPath : (storedTenantSlug ? `/${storedTenantSlug}${landingPath}` : landingPath));
 
-  const hasStoredSession = isAuthenticated || !!storedToken;
+  // Must agree with what RequireRole actually enforces. RequireRole sends any
+  // non-superadmin without a tenant slug to /login; if this only checked for a
+  // token, /login would send them straight back, and neither side clears state —
+  // an endless login/dashboard flicker. Treating "token but no resolvable
+  // tenant" as no session stops it at /login, which is visible and recoverable.
+  const hasTenantContext = isSuperAdmin || !!storedTenantSlug || !!hostnameSlug;
+  const hasStoredSession = (isAuthenticated || !!storedToken) && hasTenantContext;
   console.log('AppRoutes: Rendering. Token present:', hasStoredSession, 'Role:', role, 'Tenant:', storedTenantSlug, 'AuthedPath:', defaultAuthedPath);
 
   return (
@@ -198,6 +226,7 @@ const AppRoutes: React.FC = () => {
       {/* Public routes (no layout, no slug) */}
       <Route path="/" element={hasStoredSession ? <Navigate to={defaultAuthedPath} replace /> : (isNative ? <Navigate to="/login" replace /> : <HomePage />)} />
       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+      <Route path="/google-auth-relay" element={<GoogleAuthRelayPage />} />
       <Route path="/terms-and-conditions" element={<TermsConditionsPage />} />
       <Route path="/reschedule-demo/:token" element={<RescheduleDemoPage />} />
       <Route path="/login" element={hasStoredSession ? <Navigate to={defaultAuthedPath} replace /> : <LoginPage />} />
@@ -255,6 +284,8 @@ const AppRoutes: React.FC = () => {
       )}
 
       {/* Fallback for old routes without slug - redirect to login or default authed path */}
+      {/* No slug in the URL. defaultAuthedPath resolves to a page this user can
+          open; only fall through to /unauthorized if that would loop back here. */}
       <Route path="/dashboard" element={<Navigate to={hasStoredSession ? (defaultAuthedPath === '/dashboard' ? '/unauthorized' : defaultAuthedPath) : '/login'} replace />} />
       <Route path="/users" element={<Navigate to={hasStoredSession ? defaultAuthedPath : '/login'} replace />} />
       <Route path="/unauthorized" element={<Unauthorized />} />

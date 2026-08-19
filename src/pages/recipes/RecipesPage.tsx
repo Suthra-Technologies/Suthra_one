@@ -40,6 +40,7 @@ import { recipesAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 interface RecipesPageProps {
     hideHeader?: boolean;
@@ -141,7 +142,7 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ hideHeader }) => {
                     <Button
                         variant="contained"
                         startIcon={<AddIcon />}
-                        onClick={() => navigate(getRelativePath('/recipes/create'))}
+                        onClick={() => navigate(getRelativePath('/recipes/create?returnTo=/menu'))}
                         sx={{ width: { xs: '100%', sm: 'auto' }, fontSize: bodyFontSize }}
                     >
                         Create Recipe
@@ -162,15 +163,13 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ hideHeader }) => {
             </Paper>
 
             {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-                    <CircularProgress />
-                </Box>
+                <TableSkeleton rows={8} columns={9} />
             ) : recipes.length === 0 ? (
                 <Box sx={{ textAlign: 'center', py: { xs: 3.5, sm: 5 } }}>
                     <Typography color="textSecondary" sx={{ fontSize: bodyFontSize }}>No recipes found</Typography>
                     <Button
                         startIcon={<AddIcon />}
-                        onClick={() => navigate(getRelativePath('/recipes/create'))}
+                        onClick={() => navigate(getRelativePath('/recipes/create?returnTo=/menu'))}
                         sx={{ mt: 2, fontSize: bodyFontSize }}
                     >
                         Create Your First Recipe
@@ -230,7 +229,7 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ hideHeader }) => {
                                     <Tooltip title="Edit">
                                         <IconButton
                                             size="small"
-                                            onClick={() => navigate(getRelativePath(`/recipes/${recipe._id}/edit`))}
+                                            onClick={() => navigate(getRelativePath(`/recipes/${recipe._id}/edit?returnTo=/menu`))}
                                         >
                                             <EditIcon />
                                         </IconButton>
@@ -319,7 +318,7 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ hideHeader }) => {
                                         <Tooltip title="Edit">
                                             <IconButton
                                                 size="small"
-                                                onClick={() => navigate(getRelativePath(`/recipes/${recipe._id}/edit`))}
+                                                onClick={() => navigate(getRelativePath(`/recipes/${recipe._id}/edit?returnTo=/menu`))}
                                             >
                                                 <EditIcon />
                                             </IconButton>

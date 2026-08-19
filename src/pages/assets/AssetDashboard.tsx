@@ -44,6 +44,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { assetsAPI } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
+import { DashboardSkeleton } from '../../components/common/PageSkeleton';
 
 // --- StatCard Component (Styled for Assets) ---
 interface StatCardProps {
@@ -167,11 +168,7 @@ const AssetDashboard: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (

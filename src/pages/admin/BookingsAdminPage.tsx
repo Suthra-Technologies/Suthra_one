@@ -64,6 +64,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { bookingsAPI, tablesAPI, usersAPI } from '../../services/api';
 import { validateEmail } from '../../utils/validation';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const formatUSPhone = (phone: string) => {
     if (!phone) return phone;
@@ -666,7 +667,7 @@ const BookingsAdminPage: React.FC = () => {
                             )}
                         </Grid>
                         {loading ? (
-                            <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>
+                            <TableSkeleton rows={8} columns={8} />
                         ) : bookings.length === 0 ? (
                             <Box textAlign="center" p={4}><Typography color="text.secondary">No bookings found</Typography></Box>
                         ) : isMobile ? (

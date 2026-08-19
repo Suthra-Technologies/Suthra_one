@@ -39,6 +39,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { inventoryAPI, menuAPI, modifierTemplatesAPI } from '../../services/api';
 import type { ModifierGroupTemplate } from './types';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 interface AddOnGroupsPageProps {
     hideHeader?: boolean;
@@ -252,7 +253,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
             </Box>
 
             {loading ? (
-                <Box display="flex" justifyContent="center" p={5}><CircularProgress /></Box>
+                <CardGridSkeleton count={6} cardHeight={260} />
             ) : templates.length === 0 ? (
                 <Paper sx={{ p: 5, textAlign: 'center', borderRadius: 3, bgcolor: 'grey.50', border: '1px dashed', borderColor: 'divider' }}>
                     <PlaylistAddIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />

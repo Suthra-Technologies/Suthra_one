@@ -156,7 +156,11 @@ const ServiceUsagePage: React.FC = () => {
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const { formatCurrency } = useSettings();
     const [activeTab, setActiveTab] = useState(0);
-    const [period, setPeriod] = useState<string>('today');
+    // Default to "This Month" so the quota/usage shown here matches the monthly
+    // window the backend actually enforces (subscription-limits.service.ts) —
+    // "Today" was misleading since a tenant could be blocked by the monthly
+    // limit while today's own stats showed 0 usage.
+    const [period, setPeriod] = useState<string>('thisMonth');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
 

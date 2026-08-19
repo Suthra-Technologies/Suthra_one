@@ -11,6 +11,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const statusColor = (status: string) => {
     switch (status) {
@@ -64,6 +65,10 @@ const StoresLogPage: React.FC = () => {
         active: stores.filter(s => s.status === 'active').length,
         inactive: stores.filter(s => s.status !== 'active').length,
     };
+
+    if (loading && stores.length === 0) {
+        return <TableSkeleton rows={8} columns={9} />;
+    }
 
     return (
         <Box sx={{ px: { xs: 1, sm: 2, md: 3 }, pb: { xs: 2, sm: 3 }, pt: { xs: 1, sm: 2, md: 3 } }}>

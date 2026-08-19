@@ -690,8 +690,8 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                         onChange={(e) => setWaiterName(e.target.value)}
                                     >
                                         {waiters.map((w) => (
-                                            <MenuItem key={w._id} value={w.name || w.fullName || w.username}>
-                                                {w.name || w.fullName || w.username}
+                                            <MenuItem key={w._id} value={`${w.firstName || ''} ${w.lastName || ''}`.trim() || w.email}>
+                                                {`${w.firstName || ''} ${w.lastName || ''}`.trim() || w.email}
                                             </MenuItem>
                                         ))}
                                     </Select>

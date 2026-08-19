@@ -225,7 +225,9 @@ const RestaurantRegisterPage: React.FC = () => {
     formData.append('file', file);
 
     try {
-      const res = await fetch(`${API_BASE}/upload/image`, {
+      // No tenant exists yet at registration time, so this lands under
+      // tenants/unassigned/branding/logos/ until the restaurant is created.
+      const res = await fetch(`${API_BASE}/upload/image?module=branding`, {
         method: 'POST',
         body: formData,
       });

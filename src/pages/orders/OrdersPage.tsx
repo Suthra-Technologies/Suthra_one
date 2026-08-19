@@ -44,6 +44,7 @@ import { enUS } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import OrderCard from '../../components/OrderCard';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 import OrderDetailsDialog from '../../components/OrderDetailsDialog';
 import OrderTrackingDialog from '../../components/OrderTrackingDialog';
 import OrderUpdateDialog from '../../components/OrderUpdateDialog';
@@ -276,8 +277,16 @@ const OrdersPage = () => {
       await ordersAPI.updateStatus(orderId, 'confirmed');
       toast.success('Order accepted');
       handleOrderRefresh(orderId);
-    } catch {
-      toast.error('Failed to accept order');
+    } catch (error: any) {
+      const backendMsg: string = error?.response?.data?.message || '';
+      const isPreOrderLockError =
+        error?.response?.status === 400 &&
+        backendMsg.toLowerCase().includes('pre-order');
+      toast.error(
+        isPreOrderLockError
+          ? '⏰ This pre-order is locked until 1 hour before its scheduled time'
+          : backendMsg || 'Failed to accept order'
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -406,9 +415,7 @@ const OrdersPage = () => {
 
       {/* Orders Grid */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-          <CircularProgress />
-        </Box>
+        <CardGridSkeleton count={8} cardHeight={260} />
       ) : orders.length === 0 ? (
         <Paper sx={{ p: 5, textAlign: 'center' }}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
