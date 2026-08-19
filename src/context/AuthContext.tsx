@@ -326,6 +326,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         localStorage.setItem('availableTenants', JSON.stringify(tenants));
       }
 
+      // The profile is the most authoritative view of the tenant, so use it to
+      // repair a missing slug — otherwise RequireRole keeps redirecting to
+      // /login while a perfectly valid session sits in localStorage.
+      const slugFromProfile =
+        userData?.tenantSlug ||
+        (userData?.tenant && typeof userData.tenant === 'object' ? userData.tenant.slug : null);
+      if (slugFromProfile) {
+        setTenantSlug(slugFromProfile);
+        localStorage.setItem('tenantSlug', slugFromProfile);
+      }
+
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
       console.log('AuthContext: Profile refreshed');
@@ -381,12 +392,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
             localStorage.setItem('activeRole', targetRole);
           }
 
-          // Rehydrate tenant slug
+          // Rehydrate tenant slug. RequireRole bounces any non-superadmin without
+          // one back to /login, so a missing slug here is what turns a healthy
+          // session into a login/dashboard redirect loop. The JWT carries the
+          // tenant as an object (or a bare id) rather than a `tenantSlug` field,
+          // so fall back to reading the slug off it before giving up.
+          const slugFromUser =
+            u.tenantSlug ||
+            (u.tenant && typeof u.tenant === 'object' ? u.tenant.slug : null);
+
           if (storedSlug) {
             setTenantSlug(storedSlug);
-          } else if (u.tenantSlug) {
-            setTenantSlug(u.tenantSlug);
-            localStorage.setItem('tenantSlug', u.tenantSlug);
+          } else if (slugFromUser) {
+            setTenantSlug(slugFromUser);
+            localStorage.setItem('tenantSlug', slugFromUser);
           }
         }
 

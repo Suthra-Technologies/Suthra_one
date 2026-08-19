@@ -212,7 +212,13 @@ const AppRoutes: React.FC = () => {
     ? '/superadmin'
     : (hostnameSlug ? landingPath : (storedTenantSlug ? `/${storedTenantSlug}${landingPath}` : landingPath));
 
-  const hasStoredSession = isAuthenticated || !!storedToken;
+  // Must agree with what RequireRole actually enforces. RequireRole sends any
+  // non-superadmin without a tenant slug to /login; if this only checked for a
+  // token, /login would send them straight back, and neither side clears state —
+  // an endless login/dashboard flicker. Treating "token but no resolvable
+  // tenant" as no session stops it at /login, which is visible and recoverable.
+  const hasTenantContext = isSuperAdmin || !!storedTenantSlug || !!hostnameSlug;
+  const hasStoredSession = (isAuthenticated || !!storedToken) && hasTenantContext;
   console.log('AppRoutes: Rendering. Token present:', hasStoredSession, 'Role:', role, 'Tenant:', storedTenantSlug, 'AuthedPath:', defaultAuthedPath);
 
   return (
