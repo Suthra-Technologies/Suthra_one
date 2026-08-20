@@ -894,6 +894,32 @@ export const materialProvidersAPI = {
   create: (data: any) => api.post('/superadmin/material-providers', data),
   update: (id: string, data: any) => api.patch(`/superadmin/material-providers/${id}`, data),
   remove: (id: string) => api.delete(`/superadmin/material-providers/${id}`),
+  // Provisions portal access if needed and (re)sends the login credentials by email.
+  sendCredentials: (id: string) => api.post(`/superadmin/material-providers/${id}/send-credentials`),
+};
+
+/**
+ * The signed-in material provider's own portal. Every endpoint is scoped to the
+ * provider behind the token — no provider id is ever sent from the client.
+ */
+export const providerPortalAPI = {
+  summary: () => api.get('/provider-portal/summary'),
+  profile: () => api.get('/provider-portal/profile'),
+  listOrders: (params?: { status?: string; tenantSlug?: string; search?: string; page?: number; limit?: number }) =>
+    api.get('/provider-portal/orders', { params }),
+  getOrder: (tenantSlug: string, id: string) =>
+    api.get(`/provider-portal/orders/${tenantSlug}/${id}`),
+  // Moves an order forward: placed -> confirmed -> sent. Only the restaurant
+  // can mark it received.
+  updateOrderStatus: (tenantSlug: string, id: string, data: { status: string; providerNote?: string }) =>
+    api.patch(`/provider-portal/orders/${tenantSlug}/${id}/status`, data),
+  // Catalog — what restaurants pick from when ordering. Items are addressed by
+  // their position in the provider's materials list.
+  addMaterial: (data: { name: string; unit?: string; defaultUnitPrice?: number }) =>
+    api.post('/provider-portal/materials', data),
+  updateMaterial: (index: number, data: { name: string; unit?: string; defaultUnitPrice?: number }) =>
+    api.patch(`/provider-portal/materials/${index}`, data),
+  removeMaterial: (index: number) => api.delete(`/provider-portal/materials/${index}`),
 };
 
 export const materialCategoriesAPI = {
@@ -1019,6 +1045,9 @@ export type UploadModule =
   | 'branding'
   | 'vendor'
   | 'provider'
+  // Photos of individual materials in a provider's catalog, kept apart from
+  // their brand logo ('provider').
+  | 'provider-material'
   | 'stamp'
   | 'homepage';
 

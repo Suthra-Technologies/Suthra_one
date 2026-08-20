@@ -1407,13 +1407,9 @@ const POSPage: React.FC = () => {
 
     const fetchWaiters = async () => {
         try {
-            const res = await usersAPI.getUsers();
-            const rawData = res.data.data || res.data.users || res.data;
-            const allUsers = Array.isArray(rawData) ? rawData : [];
-            setWaiters(allUsers.filter((u: any) =>
-                u.isActive !== false &&
-                (u.role === 'waiter' || (Array.isArray(u.roles) && u.roles.includes('waiter')))
-            ));
+            const res = await usersAPI.getUsers({ role: 'waiter', isActive: true });
+            const raw = res.data?.data || res.data?.users || res.data;
+            setWaiters(Array.isArray(raw) ? raw : []);
         } catch (err) {
             console.error("Failed to load waiters", err);
         }

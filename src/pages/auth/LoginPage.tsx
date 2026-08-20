@@ -208,6 +208,12 @@ const LoginPage: React.FC = () => {
         if (userRole === 'superadmin') {
           console.log('LoginPage: Superadmin detected, navigating to /superadmin');
           navigate('/superadmin', { replace: true });
+        } else if (userRole === 'material_provider') {
+          // Providers are platform-level (no tenant), so they land straight on
+          // their own portal. The portal layout itself forces the password
+          // change on a freshly provisioned account.
+          console.log('LoginPage: Material provider detected, navigating to /provider');
+          navigate('/provider', { replace: true });
         } else if (targetSlug) {
           const from = (location.state as any)?.from;
           console.log('LoginPage: Redirecting. "from" state:', from);

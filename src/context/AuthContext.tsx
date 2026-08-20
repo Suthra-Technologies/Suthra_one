@@ -25,6 +25,11 @@ export interface JwtPayload {
 
   permissions?: Array<{ module: string; actions: string[] }>;
   isRootAdmin?: boolean;
+  // Set on accounts provisioned with a system-generated password (material
+  // providers). Every portal route is blocked until the user picks their own.
+  mustChangePassword?: boolean;
+  // Id of the MaterialProvider record a provider login belongs to.
+  materialProvider?: string | null;
 
   iat: number;
   exp: number;
@@ -138,14 +143,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         }
 
         // Commit the session.
+        // Platform-level roles (superadmin, material_provider) must win over
+        // whatever happens to sit first in `roles`, since their portals are
+        // gated on the active role and they carry no tenant.
+        const primaryRole =
+          userObj.roles?.includes('superadmin') ? 'superadmin'
+            : userObj.roles?.includes('material_provider') ? 'material_provider'
+              : (userObj.roles?.[0] || userObj.role || 'cashier');
+
         setToken(jwt);
         setUser(userObj);
-        setActiveRole(userObj.roles[0] || userObj.role || 'cashier');
+        setActiveRole(primaryRole);
         setAvailableTenants(tenants);
 
         localStorage.setItem('jwt', jwt);
         localStorage.setItem('user', JSON.stringify(userObj));
-        localStorage.setItem('activeRole', userObj.roles[0] || userObj.role || 'cashier');
+        localStorage.setItem('activeRole', primaryRole);
         localStorage.setItem('availableTenants', JSON.stringify(tenants));
 
         if (response.data.tenant?.slug) {
@@ -156,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
           console.warn('AuthContext: No tenant slug in response (likely superadmin)');
         }
 
-        return { success: true, slug: response.data.tenant?.slug, user: userObj, token: jwt, availableTenants: tenants };
+        return { success: true, slug: response.data.tenant?.slug, user: { ...userObj, role: primaryRole }, token: jwt, availableTenants: tenants };
       }
       console.error('AuthContext: Invalid response structure', response.data);
       return { success: false, error: 'Invalid response from server' };
@@ -326,6 +339,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         localStorage.setItem('availableTenants', JSON.stringify(tenants));
       }
 
+      // The profile is the most authoritative view of the tenant, so use it to
+      // repair a missing slug — otherwise RequireRole keeps redirecting to
+      // /login while a perfectly valid session sits in localStorage.
+      const slugFromProfile =
+        userData?.tenantSlug ||
+        (userData?.tenant && typeof userData.tenant === 'object' ? userData.tenant.slug : null);
+      if (slugFromProfile) {
+        setTenantSlug(slugFromProfile);
+        localStorage.setItem('tenantSlug', slugFromProfile);
+      }
+
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
       console.log('AuthContext: Profile refreshed');
@@ -381,12 +405,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
             localStorage.setItem('activeRole', targetRole);
           }
 
-          // Rehydrate tenant slug
+          // Rehydrate tenant slug. RequireRole bounces any non-superadmin without
+          // one back to /login, so a missing slug here is what turns a healthy
+          // session into a login/dashboard redirect loop. The JWT carries the
+          // tenant as an object (or a bare id) rather than a `tenantSlug` field,
+          // so fall back to reading the slug off it before giving up.
+          const slugFromUser =
+            u.tenantSlug ||
+            (u.tenant && typeof u.tenant === 'object' ? u.tenant.slug : null);
+
           if (storedSlug) {
             setTenantSlug(storedSlug);
-          } else if (u.tenantSlug) {
-            setTenantSlug(u.tenantSlug);
-            localStorage.setItem('tenantSlug', u.tenantSlug);
+          } else if (slugFromUser) {
+            setTenantSlug(slugFromUser);
+            localStorage.setItem('tenantSlug', slugFromUser);
           }
         }
 
