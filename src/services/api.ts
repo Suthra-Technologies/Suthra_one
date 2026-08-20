@@ -296,6 +296,11 @@ export const ordersAPI = {
   updateLocation: (id: string, lat: number, lng: number) => api.patch(`/orders/${id}/location`, { lat, lng }),
   syncUberEatsStatus: (orderId: string) => api.post(`/ubereats/sync/${orderId}`),
   syncDoordashStatus: (orderId: string) => api.post(`/doordash/sync/${orderId}`),
+  acceptUberEatsMarketplaceOrder: (orderId: string) => api.post(`/ubereats-marketplace/orders/${orderId}/accept`),
+  rejectUberEatsMarketplaceOrder: (orderId: string, reason?: string) => api.post(`/ubereats-marketplace/orders/${orderId}/reject`, { reason }),
+  getUberEatsMarketplaceConnectUrl: () => api.get('/ubereats-marketplace/connect'),
+  getUberEatsMarketplaceStatus: () => api.get('/ubereats-marketplace/status'),
+  syncUberEatsMarketplaceMenu: () => api.post('/ubereats-marketplace/menu/sync'),
   dispatchUberEatsDelivery: (orderId: string) => api.post(`/ubereats/dispatch/${orderId}`),
   simulateUberEatsStatus: (orderId: string, status: string) => api.post(`/ubereats/simulate/${orderId}`, { status }),
 
@@ -852,6 +857,12 @@ export const superAPI = {
   updateGlobalDeliverySettings: (payload: any) =>
     api.patch('/superadmin/global-delivery-settings', payload),
 
+  // Per-tenant allowed delivery services (managed by superadmin on Tenant Details)
+  getTenantDeliveryServices: (tenantId: string) =>
+    api.get(`/superadmin/tenants/${tenantId}/delivery-services`),
+  updateTenantDeliveryServices: (tenantId: string, services: { doordash?: boolean; ubereats?: boolean; grubhub?: boolean; ubereatsMarketplace?: boolean }) =>
+    api.patch(`/superadmin/tenants/${tenantId}/delivery-services`, services),
+
   // Tenant platform processing fee (managed by superadmin only)
   getTenantProcessingFee: (tenantId: string) =>
     api.get(`/superadmin/tenants/${tenantId}/processing-fee`),
@@ -915,7 +926,7 @@ export const tenantAPI = {
   getStripeSettings: () => api.get('/tenants/stripe-settings'),
   updateStripeSettings: (data: any) => api.patch('/tenants/stripe-settings', data),
   verifyEmailWithGoogle: (idToken: string) => api.post('/tenants/verify-email', { idToken }),
-  verifyEmailWithGmailSend: (code: string, redirectUri: string) => api.post('/tenants/verify-email/gmail-send', { code, redirectUri }),
+  verifyEmailWithGmailSend: (code: string) => api.post('/tenants/verify-email/gmail-send', { code }),
   getPhonePeSettings: () => api.get('/tenants/phonepe-settings'),
   updatePhonePeSettings: (data: any) => api.patch('/tenants/phonepe-settings', data),
   // Restaurant open/close status

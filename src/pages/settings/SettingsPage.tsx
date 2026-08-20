@@ -93,7 +93,7 @@ import {
     type UnitConfig
 } from '../../context/SettingsContext';
 
-import { apiBaseUrl, menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, uploadAPI } from '../../services/api';
+import { apiBaseUrl, menuAPI, ordersAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, uploadAPI } from '../../services/api';
 import { VerifyEmailWithGoogle } from './components/VerifyEmailWithGoogle';
 import { isThermalPrintAvailable, startPrintStation, stopPrintStation } from '../../services/thermalPrint';
 import { connectUsbPrinter, disconnectUsbPrinter, isUsbPrintAvailable, isUsbPrinterConnected } from '../../services/usbPrint';
@@ -594,7 +594,8 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
             ubereats: {
                 ...defaults.delivery!.ubereats,
                 ...(partial.delivery?.ubereats || {}),
-            }
+            },
+            allowedServices: partial.delivery?.allowedServices,
         }
     };
 };
@@ -998,6 +999,58 @@ const SettingsPage: React.FC = () => {
         }
     };
 
+    // Uber Eats Marketplace connect flow redirects back here with a result flag.
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const ubereatsResult = params.get('ubereats');
+        if (!ubereatsResult) return;
+
+        if (ubereatsResult === 'connected') {
+            toast.success('Uber Eats connected successfully');
+        } else if (ubereatsResult === 'denied') {
+            toast.error('Uber Eats connection was cancelled');
+        } else if (ubereatsResult === 'error') {
+            toast.error('Failed to connect Uber Eats — please try again');
+        }
+
+        params.delete('ubereats');
+        const newSearch = params.toString();
+        window.history.replaceState({}, '', `${window.location.pathname}${newSearch ? `?${newSearch}` : ''}`);
+    }, []);
+
+    const handleConnectUberEatsMarketplace = async () => {
+        try {
+            const res = await ordersAPI.getUberEatsMarketplaceConnectUrl();
+            window.location.href = res.data.authorizeUrl;
+        } catch (error) {
+            toast.error('Failed to start Uber Eats connection');
+        }
+    };
+
+    const [ubereatsMarketplaceStatus, setUbereatsMarketplaceStatus] = useState<{ connected: boolean; storeId?: string; storeName?: string; connectedAt?: string } | null>(null);
+    const [ubereatsMenuSyncing, setUbereatsMenuSyncing] = useState(false);
+
+    useEffect(() => {
+        ordersAPI.getUberEatsMarketplaceStatus()
+            .then(res => setUbereatsMarketplaceStatus(res.data))
+            .catch(() => setUbereatsMarketplaceStatus({ connected: false }));
+    }, []);
+
+    const handleSyncUberEatsMenu = async () => {
+        setUbereatsMenuSyncing(true);
+        try {
+            const res = await ordersAPI.syncUberEatsMarketplaceMenu();
+            toast.success(`Menu synced to Uber Eats — ${res.data.itemCount} items in ${res.data.categoryCount} categories`);
+            if (res.data.skippedCount > 0) {
+                toast(`${res.data.skippedCount} item(s) skipped (over Uber's $375 price limit): ${res.data.skippedItems.slice(0, 3).join(', ')}${res.data.skippedCount > 3 ? '…' : ''}`, { icon: '⚠️', duration: 8000 });
+            }
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || 'Failed to sync menu to Uber Eats');
+        } finally {
+            setUbereatsMenuSyncing(false);
+        }
+    };
+
     useEffect(() => {
         if (tabValue === 5) {
             fetchAgents();
@@ -1203,6 +1256,7 @@ const SettingsPage: React.FC = () => {
                         builtIn: { ...defaults.delivery!.builtIn, ...(found.settings.builtIn || {}) },
                         doordash: { ...defaults.delivery!.doordash, ...(found.settings.doordash || {}) },
                         ubereats: { ...defaults.delivery!.ubereats, ...(found.settings.ubereats || {}) },
+                        allowedServices: found.settings.allowedServices,
                     };
                 }
             } else if (latestResp.data?.delivery) {
@@ -1210,6 +1264,7 @@ const SettingsPage: React.FC = () => {
                     builtIn: { ...defaults.delivery!.builtIn, ...(latestResp.data.delivery.builtIn || {}) },
                     doordash: { ...defaults.delivery!.doordash, ...(latestResp.data.delivery.doordash || {}) },
                     ubereats: { ...defaults.delivery!.ubereats, ...(latestResp.data.delivery.ubereats || {}) },
+                    allowedServices: latestResp.data.delivery.allowedServices,
                 };
             }
 
@@ -1228,7 +1283,8 @@ const SettingsPage: React.FC = () => {
                 ubereats: {
                     ...latestDelivery.ubereats,
                     ...(provider === 'ubereats' ? currentDelivery.ubereats : {})
-                }
+                },
+                allowedServices: latestDelivery.allowedServices ?? currentDelivery.allowedServices,
             };
 
             await settingsAPI.update('delivery', updatedDelivery);
@@ -1251,6 +1307,50 @@ const SettingsPage: React.FC = () => {
         } catch (error) {
             console.error('Error saving delivery settings:', error);
             toast.error((error as any)?.response?.data?.message || 'Failed to save delivery settings');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Which platform delivery services the superadmin allows this restaurant to use.
+    // Absent map (legacy tenants) = all allowed.
+    const isDeliveryServiceAllowed = (key: 'doordash' | 'ubereats' | 'grubhub' | 'ubereatsMarketplace') => {
+        const allowed = settings.delivery?.allowedServices;
+        return !allowed || !!allowed[key];
+    };
+
+    // One-click "enable everything my platform admin made available to me".
+    const handleEnableAllDeliveryServices = async () => {
+        if (loading) return;
+        try {
+            setLoading(true);
+            const defaults = createDefaultSettings();
+            const latestResp = await settingsAPI.getAll();
+            let latestDelivery: DeliverySettings = settings.delivery ? { ...settings.delivery } : { ...defaults.delivery! };
+            if (Array.isArray(latestResp.data)) {
+                const found = latestResp.data.find((c: any) => c.category === 'delivery');
+                if (found && found.settings) {
+                    latestDelivery = {
+                        builtIn: { ...defaults.delivery!.builtIn, ...(found.settings.builtIn || {}) },
+                        doordash: { ...defaults.delivery!.doordash, ...(found.settings.doordash || {}) },
+                        ubereats: { ...defaults.delivery!.ubereats, ...(found.settings.ubereats || {}) },
+                        allowedServices: found.settings.allowedServices,
+                    };
+                }
+            }
+            const allowed = latestDelivery.allowedServices;
+            const updatedDelivery: DeliverySettings = {
+                ...latestDelivery,
+                doordash: { ...latestDelivery.doordash, enabled: !allowed || !!allowed.doordash },
+                ubereats: { ...latestDelivery.ubereats, enabled: !allowed || !!allowed.ubereats },
+            };
+            await settingsAPI.update('delivery', updatedDelivery);
+            updateGlobalSettings({ ...settings, delivery: updatedDelivery });
+            setSettings(prev => ({ ...prev, delivery: updatedDelivery }));
+            toast.success('All available delivery services enabled');
+        } catch (error) {
+            console.error('Error enabling delivery services:', error);
+            toast.error((error as any)?.response?.data?.message || 'Failed to enable delivery services');
         } finally {
             setLoading(false);
         }
@@ -5383,11 +5483,24 @@ const SettingsPage: React.FC = () => {
 
                 <TabPanel value={tabValue} index={7}>
                     <Box sx={{ mb: 4 }}>
-                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <DeliveryDiningIcon color="primary" /> Delivery Integration
-                        </Typography>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1}>
+                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <DeliveryDiningIcon color="primary" /> Delivery Integration
+                            </Typography>
+                            {(isDeliveryServiceAllowed('doordash') || isDeliveryServiceAllowed('ubereats')) && (
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    onClick={handleEnableAllDeliveryServices}
+                                    disabled={loading}
+                                    sx={{ borderRadius: 2.5, fontWeight: 700, textTransform: 'none' }}
+                                >
+                                    Enable All Available Services
+                                </Button>
+                            )}
+                        </Stack>
                         <Alert severity="info" sx={{ mb: 3 }}>
-                            Configure your DoorDash and Uber Eats accounts to enable automated delivery dispatch from your POS and Storefront.
+                            Enable the delivery services made available to your restaurant by the platform administrator — turn on all of them, or only the ones you want.
                         </Alert>
 
                         <Grid container spacing={4}>
@@ -5538,7 +5651,8 @@ const SettingsPage: React.FC = () => {
                                 </Paper>
                             </Grid>
 
-                            {/* DoorDash Section */}
+                            {/* DoorDash Section — only when the superadmin allows it for this tenant */}
+                            {isDeliveryServiceAllowed('doordash') && (
                             <Grid size={{ xs: 12, md: 6 }}>
                                 <Paper variant="outlined" sx={{ p: 3, borderRadius: 4, height: '100%', borderColor: settings.delivery?.doordash?.enabled ? 'primary.main' : 'divider', bgcolor: settings.delivery?.doordash?.enabled ? alpha('#4F46E5', 0.02) : 'background.paper' }}>
                                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
@@ -5579,8 +5693,10 @@ const SettingsPage: React.FC = () => {
                                     </Box>
                                 </Paper>
                             </Grid>
+                            )}
 
-                            {/* Uber Eats Section */}
+                            {/* Uber Direct Section — only when the superadmin allows it for this tenant */}
+                            {isDeliveryServiceAllowed('ubereats') && (
                             <Grid size={{ xs: 12, md: 6 }}>
                                 <Paper variant="outlined" sx={{ p: 3, borderRadius: 4, height: '100%', borderColor: settings.delivery?.ubereats?.enabled ? 'primary.main' : 'divider', bgcolor: settings.delivery?.ubereats?.enabled ? alpha('#4F46E5', 0.02) : 'background.paper' }}>
                                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
@@ -5649,6 +5765,91 @@ const SettingsPage: React.FC = () => {
                                     </Box>
                                 </Paper>
                             </Grid>
+                            )}
+
+                            {/* Uber Eats Marketplace Section — only when the superadmin allows it for this tenant */}
+                            {isDeliveryServiceAllowed('ubereatsMarketplace') && (
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <Paper variant="outlined" sx={{ p: 3, borderRadius: 4, height: '100%' }}>
+                                    <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>Uber Eats Marketplace</Typography>
+                                    <Divider sx={{ mb: 2 }} />
+                                    <Typography variant="body2" color="text.secondary">
+                                        Connect your Uber Eats storefront so orders placed by customers in the Uber Eats app flow directly into this POS for staff to accept and prepare.
+                                    </Typography>
+                                    {ubereatsMarketplaceStatus?.connected ? (
+                                        <Box sx={{ mt: 3 }}>
+                                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                                                <Chip label="Connected" color="success" size="small" sx={{ fontWeight: 700 }} />
+                                                <Typography variant="body1" fontWeight={700}>
+                                                    {ubereatsMarketplaceStatus.storeName || `Store ${ubereatsMarketplaceStatus.storeId?.slice(0, 8)}…`}
+                                                </Typography>
+                                            </Stack>
+                                            {ubereatsMarketplaceStatus.connectedAt && (
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Connected on {new Date(ubereatsMarketplaceStatus.connectedAt).toLocaleDateString()}
+                                                </Typography>
+                                            )}
+                                            <Box sx={{ mt: 2, display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: { xs: 'center', md: 'flex-start' } }}>
+                                                <Button
+                                                    variant="contained"
+                                                    size={isMobile ? "medium" : "large"}
+                                                    onClick={handleSyncUberEatsMenu}
+                                                    disabled={ubereatsMenuSyncing}
+                                                    startIcon={ubereatsMenuSyncing ? <CircularProgress size={18} color="inherit" /> : undefined}
+                                                    sx={{
+                                                        borderRadius: 2.5,
+                                                        px: 4,
+                                                        fontWeight: 800,
+                                                        fontFamily: "'Outfit', sans-serif",
+                                                        bgcolor: '#06C167',
+                                                        '&:hover': { bgcolor: '#059c53' },
+                                                    }}
+                                                >
+                                                    {ubereatsMenuSyncing ? 'Syncing Menu…' : 'Sync Menu to Uber Eats'}
+                                                </Button>
+                                                <Button
+                                                    variant="outlined"
+                                                    size={isMobile ? "medium" : "large"}
+                                                    onClick={handleConnectUberEatsMarketplace}
+                                                    sx={{ borderRadius: 2.5, px: 3, fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}
+                                                >
+                                                    Reconnect
+                                                </Button>
+                                            </Box>
+                                        </Box>
+                                    ) : (
+                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
+                                        <Button
+                                            variant="contained"
+                                            size={isMobile ? "medium" : "large"}
+                                            onClick={handleConnectUberEatsMarketplace}
+                                            disabled={ubereatsMarketplaceStatus === null}
+                                            sx={{
+                                                borderRadius: 2.5,
+                                                px: 4,
+                                                fontWeight: 800,
+                                                fontFamily: "'Outfit', sans-serif",
+                                                width: { xs: '100%', sm: 'auto' },
+                                                maxWidth: { xs: '320px', sm: 'none' },
+                                                bgcolor: '#06C167',
+                                                '&:hover': { bgcolor: '#059c53' },
+                                            }}
+                                        >
+                                            Connect Uber Eats
+                                        </Button>
+                                    </Box>
+                                    )}
+                                </Paper>
+                            </Grid>
+                            )}
+
+                            {!isDeliveryServiceAllowed('doordash') && !isDeliveryServiceAllowed('ubereats') && !isDeliveryServiceAllowed('ubereatsMarketplace') && (
+                                <Grid size={{ xs: 12 }}>
+                                    <Alert severity="warning">
+                                        No third-party delivery services have been made available to your restaurant yet. Contact your platform administrator to request access.
+                                    </Alert>
+                                </Grid>
+                            )}
                         </Grid>
 
                     </Box>

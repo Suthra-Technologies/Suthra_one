@@ -17,7 +17,10 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID || '';
  * single-use and useless without the client secret, so passing it via postMessage is safe.
  */
 const GOOGLE_AUTH_RELAY_MESSAGE_TYPE = 'nexzen-google-auth-relay';
-const GMAIL_SEND_SCOPE = 'email profile https://www.googleapis.com/auth/gmail.send';
+// Gmail's SMTP AUTH XOAUTH2 (smtp.gmail.com) requires the full mail.google.com scope —
+// the narrower gmail.send scope only works against the Gmail REST API, not raw SMTP.
+// Since sending goes through nodemailer's SMTP transport, this broader scope is required.
+const GMAIL_SEND_SCOPE = 'email profile https://mail.google.com/';
 
 const RelayButton: React.FC = () => {
     const login = useGoogleLogin({
@@ -29,15 +32,13 @@ const RelayButton: React.FC = () => {
         // a refresh_token (already-granted account, no new consent shown), the backend
         // keeps the previously stored one rather than clobbering it with nothing.
         select_account: true,
-        redirect_uri: window.location.origin + window.location.pathname,
+        // NOTE: Google's popup-based code flow ignores any redirect_uri passed here and
+        // always issues the code against the special 'postmessage' redirect — the backend
+        // token exchange MUST use that same literal value, not this page's own URL.
         onSuccess: (codeResponse) => {
             if (window.opener) {
                 window.opener.postMessage(
-                    {
-                        type: GOOGLE_AUTH_RELAY_MESSAGE_TYPE,
-                        code: codeResponse.code,
-                        redirectUri: window.location.origin + window.location.pathname,
-                    },
+                    { type: GOOGLE_AUTH_RELAY_MESSAGE_TYPE, code: codeResponse.code },
                     '*',
                 );
             }

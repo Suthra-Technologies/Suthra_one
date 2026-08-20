@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, IconButton, Divider,
-  TextField, Button, Alert, Chip, CircularProgress, Stack, Tooltip,
+  TextField, Button, Alert, Chip, CircularProgress, Stack, Tooltip, Switch,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -206,6 +206,39 @@ const TenantDetailsPage: React.FC = () => {
       .catch(() => {})
       .finally(() => setGlobalDeliveryLoading(false));
   }, []);
+
+  // Per-tenant allowed delivery services — which platforms this restaurant may use.
+  // The tenant admin can then enable all or a subset of these from their Settings page.
+  const [allowedServices, setAllowedServices] = useState<Record<string, boolean> | null>(null);
+  const [allowedLoading, setAllowedLoading] = useState(false);
+  const [allowedSaving, setAllowedSaving] = useState<string | null>(null);
+  const [allowedError, setAllowedError] = useState('');
+
+  useEffect(() => {
+    if (!tenantId) return;
+    setAllowedLoading(true);
+    superAPI.getTenantDeliveryServices(tenantId)
+      .then(res => setAllowedServices(res.data?.allowedDeliveryServices || null))
+      .catch(() => setAllowedError('Failed to load delivery services for this restaurant'))
+      .finally(() => setAllowedLoading(false));
+  }, [tenantId]);
+
+  const handleToggleAllowedService = async (key: string, value: boolean) => {
+    if (!tenantId || !allowedServices) return;
+    const previous = allowedServices;
+    setAllowedServices({ ...allowedServices, [key]: value });
+    setAllowedSaving(key);
+    setAllowedError('');
+    try {
+      const res = await superAPI.updateTenantDeliveryServices(tenantId, { [key]: value });
+      setAllowedServices(res.data?.allowedDeliveryServices || { ...previous, [key]: value });
+    } catch (err: any) {
+      setAllowedServices(previous);
+      setAllowedError(err?.response?.data?.message || 'Failed to update delivery service');
+    } finally {
+      setAllowedSaving(null);
+    }
+  };
 
   // Platform processing fee (superadmin-managed) state.
   // Slab model: `processingFee` ($) charged per `processingFeeOrderValue` ($)
@@ -472,56 +505,77 @@ const TenantDetailsPage: React.FC = () => {
 
       <Divider sx={{ my: 4 }} />
 
-      {/* Delivery Options â€” read-only view of the global fallback platforms.
-          Credentials are managed once, globally, from the superadmin's Profile page. */}
+      {/* Delivery Services — per-tenant availability. The superadmin decides which
+          platform delivery services this restaurant may use; the restaurant admin then
+          enables all or a subset of them from their own Settings → Delivery tab.
+          Credentials remain managed globally from the superadmin Profile page. */}
       <Card elevation={2} sx={{ borderRadius: 3, p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
           <LocalShippingIcon sx={{ color: '#ed6c02', fontSize: 28 }} />
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>Delivery Options</Typography>
-          {globalDeliveryLoading && <CircularProgress size={18} />}
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>Delivery Services</Typography>
+          {(globalDeliveryLoading || allowedLoading) && <CircularProgress size={18} />}
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-          Delivery platform credentials are managed globally by superadmin, not per restaurant.
-          This restaurant automatically uses whichever platforms are enabled below.{' '}
+          Choose which delivery services this restaurant is allowed to use. The restaurant
+          admin can then turn on all of them, or only the ones they want, from their Settings
+          page. Platform credentials are managed globally in{' '}
           <Button
             variant="text"
             size="small"
             onClick={() => navigate('/superadmin/profile')}
             sx={{ p: 0, minWidth: 0, verticalAlign: 'baseline', textTransform: 'none' }}
           >
-            Manage in Profile
+            Profile
           </Button>
         </Typography>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <Grid container spacing={2}>
           {([
-            { key: 'doordash', label: 'DoorDash' },
-            { key: 'ubereats', label: 'Uber Eats' },
-            { key: 'grubhub', label: 'Grubhub' },
-          ] as const).map(({ key, label }) => {
-            const enabled = !!globalDeliverySettings?.[key]?.enabled;
+            { key: 'doordash', label: 'DoorDash', globalKey: 'doordash' },
+            { key: 'ubereats', label: 'Uber Direct', globalKey: 'ubereats' },
+            { key: 'ubereatsMarketplace', label: 'Uber Eats Marketplace', globalKey: null },
+            { key: 'grubhub', label: 'Grubhub', globalKey: 'grubhub' },
+          ] as const).map(({ key, label, globalKey }) => {
+            const allowed = !!allowedServices?.[key];
+            const globallyConfigured = globalKey ? !!globalDeliverySettings?.[globalKey]?.enabled : null;
             return (
-              <Box
-                key={key}
-                sx={{
-                  flex: 1,
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  border: '1px solid', borderColor: enabled ? 'success.main' : 'divider',
-                  borderRadius: 2, p: 2,
-                }}
-              >
-                <Typography variant="subtitle2" fontWeight="bold">{label}</Typography>
-                <Chip
-                  size="small"
-                  icon={enabled ? <CheckCircleIcon /> : <CancelIcon />}
-                  label={enabled ? 'Enabled' : 'Disabled'}
-                  color={enabled ? 'success' : 'default'}
-                  variant={enabled ? 'filled' : 'outlined'}
-                />
-              </Box>
+              <Grid xs={12} sm={6} key={key}>
+                <Box
+                  sx={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    border: '1px solid', borderColor: allowed ? 'success.main' : 'divider',
+                    borderRadius: 2, p: 2, height: '100%',
+                  }}
+                >
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight="bold">{label}</Typography>
+                    {globallyConfigured !== null && (
+                      <Chip
+                        size="small"
+                        sx={{ mt: 0.5 }}
+                        icon={globallyConfigured ? <CheckCircleIcon /> : <CancelIcon />}
+                        label={globallyConfigured ? 'Platform credentials ready' : 'No platform credentials'}
+                        color={globallyConfigured ? 'success' : 'default'}
+                        variant="outlined"
+                      />
+                    )}
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {allowedSaving === key && <CircularProgress size={16} />}
+                    <Switch
+                      checked={allowed}
+                      onChange={(e) => handleToggleAllowedService(key, e.target.checked)}
+                      disabled={allowedLoading || !allowedServices || allowedSaving !== null}
+                      color="success"
+                    />
+                  </Box>
+                </Box>
+              </Grid>
             );
           })}
-        </Stack>
+        </Grid>
+
+        {allowedError && <Alert severity="error" sx={{ mt: 2 }}>{allowedError}</Alert>}
       </Card>
     </Box>
   );

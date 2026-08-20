@@ -40,7 +40,7 @@ export const VerifyEmailWithGoogle: React.FC<VerifyEmailWithGoogleProps> = ({ co
             }
 
             try {
-                const res = await tenantAPI.verifyEmailWithGmailSend(data.code, data.redirectUri);
+                const res = await tenantAPI.verifyEmailWithGmailSend(data.code);
                 onVerified(res.data);
                 toast.success(
                     res.data.gmailSendEnabled

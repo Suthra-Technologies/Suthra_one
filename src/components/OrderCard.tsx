@@ -411,6 +411,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 {formatTime(order.createdAt)}
                             </Typography>
                         </Stack>
+                        {order.uberEatsOrderId && (
+                            <Box sx={{ display: 'inline-flex', alignItems: 'center', mb: 0.5, px: 1, py: 0.25, borderRadius: 1, bgcolor: alpha('#06C167', 0.1), border: '1px solid rgba(6,193,103,0.3)', width: 'fit-content' }}>
+                                <Typography variant="body2" sx={{ color: '#06C167', fontWeight: 700, fontSize: '0.7rem' }}>
+                                    Uber Eats
+                                </Typography>
+                            </Box>
+                        )}
                         {order.scheduledTime && (
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5, px: 1, py: 0.25, borderRadius: 1, bgcolor: alpha('#7c3aed', 0.07), border: '1px solid rgba(124,58,237,0.2)', width: 'fit-content' }}>
                                 <EventIcon sx={{ fontSize: 14, mr: 0.5, color: '#7c3aed' }} />

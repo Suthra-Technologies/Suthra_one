@@ -270,11 +270,16 @@ const OrdersPage = () => {
     console.log("Adding items to:", order);
   };
 
-  const handleAcceptOrder = async (orderId: string) => {
+  const handleAcceptOrder = async (orderId: string, isUberEatsMarketplace?: boolean) => {
     if (isProcessing) return;
     try {
       setIsProcessing(true);
-      await ordersAPI.updateStatus(orderId, 'confirmed');
+      if (isUberEatsMarketplace) {
+        // Also notifies Uber Eats so the customer sees the order is being prepared.
+        await ordersAPI.acceptUberEatsMarketplaceOrder(orderId);
+      } else {
+        await ordersAPI.updateStatus(orderId, 'confirmed');
+      }
       toast.success('Order accepted');
       handleOrderRefresh(orderId);
     } catch (error: any) {
@@ -292,11 +297,15 @@ const OrdersPage = () => {
     }
   };
 
-  const handleRejectOrder = async (orderId: string) => {
+  const handleRejectOrder = async (orderId: string, isUberEatsMarketplace?: boolean) => {
     if (isProcessing) return;
     try {
       setIsProcessing(true);
-      await ordersAPI.updateStatus(orderId, 'cancelled');
+      if (isUberEatsMarketplace) {
+        await ordersAPI.rejectUberEatsMarketplaceOrder(orderId, 'store_too_busy');
+      } else {
+        await ordersAPI.updateStatus(orderId, 'cancelled');
+      }
       toast.success('Order rejected');
       handleOrderRefresh(orderId);
     } catch {
@@ -448,8 +457,8 @@ const OrdersPage = () => {
                   onAddItem={() => handleAddItem(order)}
                   canManage={canManageOrders}
                   onRefresh={() => handleOrderRefresh(order._id)}
-                  onAccept={!isCustomer && order.status === 'pending' && !order.isDisputed ? () => handleAcceptOrder(order._id) : undefined}
-                  onReject={!isCustomer && order.status === 'pending' && !order.isDisputed ? () => handleRejectOrder(order._id) : undefined}
+                  onAccept={!isCustomer && order.status === 'pending' && !order.isDisputed ? () => handleAcceptOrder(order._id, !!order.uberEatsOrderId) : undefined}
+                  onReject={!isCustomer && order.status === 'pending' && !order.isDisputed ? () => handleRejectOrder(order._id, !!order.uberEatsOrderId) : undefined}
                   onFeedback={(id: string) => {
                     const targetSlug = order?.restaurant?.slug || tenantSlug || '';
                     navigate(`/${targetSlug}/feedback/${id}`);

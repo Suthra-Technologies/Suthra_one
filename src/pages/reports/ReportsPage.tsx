@@ -5453,13 +5453,15 @@ const ReportsPage: React.FC = () => {
         const providerColor = (p: string) => {
             if (p === 'doordash') return '#ef4444';
             if (p === 'ubereats') return '#22c55e';
+            if (p === 'ubereats_marketplace') return '#06C167';
             if (p === 'in_house') return '#8b5cf6';
             return '#6b7280';
         };
 
         const providerLabel = (p: string) => {
             if (p === 'doordash') return 'DoorDash';
-            if (p === 'ubereats') return 'Uber Eats';
+            if (p === 'ubereats') return 'Uber Direct';
+            if (p === 'ubereats_marketplace') return 'Uber Eats';
             if (p === 'in_house') return 'In-House';
             return p;
         };
@@ -5481,7 +5483,8 @@ const ReportsPage: React.FC = () => {
                             >
                                 <MenuItem value="all">All Providers</MenuItem>
                                 <MenuItem value="doordash">DoorDash</MenuItem>
-                                <MenuItem value="ubereats">Uber Eats</MenuItem>
+                                <MenuItem value="ubereats">Uber Direct</MenuItem>
+                                <MenuItem value="ubereats_marketplace">Uber Eats</MenuItem>
                                 <MenuItem value="in_house">In-House</MenuItem>
                             </Select>
                         </FormControl>
@@ -5502,7 +5505,8 @@ const ReportsPage: React.FC = () => {
                     {[
                         { label: 'Total Orders', value: summary?.totalOrders ?? 0, isCurrency: false, icon: <ShoppingCartIcon />, color: '#6366f1' },
                         { label: 'DoorDash Orders', value: summary?.doordashOrders ?? 0, isCurrency: false, icon: <LocalShippingIcon />, color: '#ef4444' },
-                        { label: 'Uber Eats Orders', value: summary?.uberEatsOrders ?? 0, isCurrency: false, icon: <TwoWheelerIcon />, color: '#22c55e' },
+                        { label: 'Uber Direct Orders', value: summary?.uberEatsOrders ?? 0, isCurrency: false, icon: <TwoWheelerIcon />, color: '#22c55e' },
+                        { label: 'Uber Eats Orders', value: summary?.uberEatsMarketplaceOrders ?? 0, isCurrency: false, icon: <TwoWheelerIcon />, color: '#06C167' },
                         { label: 'In-House Orders', value: summary?.inHouseOrders ?? 0, isCurrency: false, icon: <DeliveryDiningIcon />, color: '#8b5cf6' },
                         { label: 'Total Revenue', value: summary?.totalRevenue ?? 0, isCurrency: true, icon: <TrendingUpIcon />, color: '#3b82f6' },
                         { label: 'Delivery Charges', value: summary?.totalDeliveryCharges ?? 0, isCurrency: true, icon: <RequestQuoteIcon />, color: '#f59e0b' },

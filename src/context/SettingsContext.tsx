@@ -203,6 +203,14 @@ export interface DeliverySettings {
         pickupBarcodeType?: string;
         dropoffPinEnabled?: boolean;
     };
+    // Which platform delivery services the superadmin allows this restaurant to use
+    // (read-only here; set from the superadmin Tenant Details page). Absent = all allowed.
+    allowedServices?: {
+        doordash: boolean;
+        ubereats: boolean;
+        grubhub: boolean;
+        ubereatsMarketplace: boolean;
+    };
 }
 
 export interface RewardSettings {
