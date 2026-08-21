@@ -15,7 +15,13 @@ const getHealedUrl = (url: string) => {
   if (typeof window !== 'undefined' && window.location) {
     const host = window.location.hostname;
     const isLocal = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.localhost');
-    if (!isLocal && (url.includes('localhost') || url.includes('127.0.0.1'))) {
+    const isLanIp = /^192\.168\.|^10\.|^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host);
+
+    if (isLanIp && (url.includes('localhost:5006') || url.includes('127.0.0.1:5006') || url.includes(':5006'))) {
+      return `http://${host}:5006`;
+    }
+
+    if (!isLocal && !isLanIp && (url.includes('localhost') || url.includes('127.0.0.1'))) {
       return window.location.origin;
     }
   }
@@ -918,9 +924,9 @@ export const providerPortalAPI = {
     api.patch(`/provider-portal/orders/${tenantSlug}/${id}/status`, data),
   // Catalog — what restaurants pick from when ordering. Items are addressed by
   // their position in the provider's materials list.
-  addMaterial: (data: { name: string; unit?: string; defaultUnitPrice?: number }) =>
+  addMaterial: (data: { name: string; unit?: string; defaultUnitPrice?: number; image?: string; images?: string[] }) =>
     api.post('/provider-portal/materials', data),
-  updateMaterial: (index: number, data: { name: string; unit?: string; defaultUnitPrice?: number }) =>
+  updateMaterial: (index: number, data: { name: string; unit?: string; defaultUnitPrice?: number; image?: string; images?: string[] }) =>
     api.patch(`/provider-portal/materials/${index}`, data),
   removeMaterial: (index: number) => api.delete(`/provider-portal/materials/${index}`),
 };

@@ -456,7 +456,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           overscrollBehavior: 'contain',
           touchAction: 'pan-y',
           scrollBehavior: 'smooth',
-          pb: { xs: 1.25, md: 2 },
+          pb: { xs: 'calc(48px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 24px)))', md: 2 },
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
           '&::-webkit-scrollbar': { width: 0, height: 0, display: 'none' },

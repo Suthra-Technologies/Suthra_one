@@ -31,15 +31,18 @@ import {
     Person as PersonIcon,
     Store as StoreIcon,
     ShoppingCartCheckout as OrderIcon,
-    WhatsApp as WhatsAppIcon,
     History as HistoryIcon,
     CheckCircle as ReceivedIcon,
     Add as AddIcon,
     Delete as DeleteIcon,
+    Remove as RemoveIcon,
+    Close as CloseIcon,
     Inventory2 as InventoryIcon,
+    CloudUpload as CloudUploadIcon,
+    ChevronLeft as ChevronLeftIcon,
+    ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
-import { materialProvidersAPI, supportAPI, purchaseOrdersAPI } from '../../services/api';
-import { useSettings } from '../../context/SettingsContext';
+import { materialProvidersAPI, purchaseOrdersAPI, uploadAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
@@ -56,10 +59,8 @@ interface MaterialProvider {
     notes?: string;
     logo?: string;
     materialImage?: string;
-    materials?: { name: string; unit?: string; defaultUnitPrice?: number; image?: string }[];
+    materials?: { name: string; unit?: string; defaultUnitPrice?: number; image?: string; images?: string[] }[];
 }
-
-const POS_PROVIDER_NAME = 'NexZen POS';
 
 /**
  * Colour for a provider-order status chip.
@@ -77,9 +78,59 @@ const ORDER_STATUS_COLOR: Record<string, 'warning' | 'info' | 'primary' | 'succe
 /** An order can be received until it is already received or was cancelled. */
 const CAN_RECEIVE = ['placed', 'confirmed', 'sent'];
 
+/** Image slider used on catalog item cards in the order dialog; falls back to a single frame when there's only one photo (or none). */
+const MaterialImageSlider: React.FC<{ images: string[]; alt: string }> = ({ images, alt }) => {
+    const [index, setIndex] = useState(0);
+    const hasMultiple = images.length > 1;
+
+    const go = (delta: number) => {
+        setIndex(prev => (prev + delta + images.length) % images.length);
+    };
+
+    return (
+        <Box sx={{ position: 'relative', width: '100%', height: 160, bgcolor: 'grey.100', overflow: 'hidden' }}>
+            {images.length > 0 ? (
+                <Box component="img" src={images[index]} alt={alt} sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            ) : (
+                <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <InventoryIcon sx={{ color: 'text.disabled', fontSize: 48 }} />
+                </Box>
+            )}
+            {hasMultiple && (
+                <>
+                    <IconButton
+                        size="small"
+                        onClick={(e) => { e.stopPropagation(); go(-1); }}
+                        sx={{ position: 'absolute', top: '50%', left: 4, transform: 'translateY(-50%)', bgcolor: 'rgba(0,0,0,0.4)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' } }}
+                    >
+                        <ChevronLeftIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                        size="small"
+                        onClick={(e) => { e.stopPropagation(); go(1); }}
+                        sx={{ position: 'absolute', top: '50%', right: 4, transform: 'translateY(-50%)', bgcolor: 'rgba(0,0,0,0.4)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' } }}
+                    >
+                        <ChevronRightIcon fontSize="small" />
+                    </IconButton>
+                    <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)' }}>
+                        {images.map((_, i) => (
+                            <Box
+                                key={i}
+                                onClick={(e) => { e.stopPropagation(); setIndex(i); }}
+                                sx={{
+                                    width: 6, height: 6, borderRadius: '50%', cursor: 'pointer',
+                                    bgcolor: i === index ? '#fff' : 'rgba(255,255,255,0.5)',
+                                }}
+                            />
+                        ))}
+                    </Stack>
+                </>
+            )}
+        </Box>
+    );
+};
+
 const MaterialProvidersPage: React.FC = () => {
-    const { settings } = useSettings();
-    const restaurantName = settings?.restaurant?.name || 'our restaurant';
     const [providers, setProviders] = useState<MaterialProvider[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -87,85 +138,61 @@ const MaterialProvidersPage: React.FC = () => {
 
     // Order dialog state
     const [orderProvider, setOrderProvider] = useState<MaterialProvider | null>(null);
+    // Step 1: pick items from the provider's catalog. Step 2 (reached via
+    // "Proceed to Pay"): notes/date/payment details, gated on a proof upload.
+    const [orderStep, setOrderStep] = useState<'items' | 'payment'>('items');
     const [orderText, setOrderText] = useState('');
     const [orderNeedDate, setOrderNeedDate] = useState('');
-    const [requesting, setRequesting] = useState(false);
+    const [paymentMode, setPaymentMode] = useState('');
+    const [paymentProofUrl, setPaymentProofUrl] = useState('');
+    const [uploadingProof, setUploadingProof] = useState(false);
 
-    // Order dialog — item picker (catalog curated by superadmin for this provider)
-    type OrderItem = { name: string; quantity: string; unit: string };
-    const [orderItems, setOrderItems] = useState<OrderItem[]>([{ name: '', quantity: '', unit: '' }]);
+    // Order dialog — quantities keyed by catalog item name, chosen straight from
+    // what the provider supplies (no free-text item entry).
+    const [orderQtys, setOrderQtys] = useState<Record<string, number>>({});
     const orderMaterialOptions = orderProvider?.materials || [];
 
-    const updateOrderItem = (i: number, field: keyof OrderItem, value: string) => {
-        setOrderItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it));
+    const bumpOrderQty = (name: string, delta: number) => {
+        setOrderQtys(prev => {
+            const next = Math.max(0, (prev[name] || 0) + delta);
+            const copy = { ...prev };
+            if (next === 0) delete copy[name];
+            else copy[name] = next;
+            return copy;
+        });
     };
-    const addOrderItem = () => setOrderItems(prev => [...prev, { name: '', quantity: '', unit: '' }]);
-    const removeOrderItem = (i: number) => setOrderItems(prev => prev.filter((_, idx) => idx !== i));
-    const selectOrderMaterial = (i: number, materialName: string) => {
-        const match = orderMaterialOptions.find(m => m.name === materialName);
-        setOrderItems(prev => prev.map((it, idx) => idx === i ? {
-            ...it,
-            name: materialName,
-            unit: match?.unit ?? it.unit,
-        } : it));
-    };
-    // Combined free text sent to the provider: picked catalog items first, then any extra notes typed below.
-    const orderItemsText = orderItems
-        .filter(it => it.name.trim())
-        .map(it => `${it.quantity ? `${it.quantity} ` : ''}${it.unit ? `${it.unit} ` : ''}${it.name}`.trim())
+
+    const filledOrderItems = orderMaterialOptions
+        .filter(m => (orderQtys[m.name] || 0) > 0)
+        .map(m => ({ name: m.name, quantity: String(orderQtys[m.name]), unit: m.unit || '', unitPrice: m.defaultUnitPrice }));
+    const orderSubtotal = filledOrderItems.reduce((sum, it) => sum + (it.unitPrice || 0) * (parseFloat(it.quantity) || 1), 0);
+    // Free text sent to the provider, built from the picked catalog items plus any extra notes typed on the payment step.
+    const orderItemsText = filledOrderItems
+        .map(it => `${it.quantity} ${it.unit ? `${it.unit} ` : ''}${it.name}`.trim())
         .join('\n');
     const combinedOrderText = [orderItemsText, orderText.trim()].filter(Boolean).join('\n');
 
-    // Our restaurant's contact details (included in every order)
-    const r = settings?.restaurant;
-    const restPhone = (r as any)?.phone || '';
-    const restEmail = (r as any)?.email || '';
-    const restLocation = [(r as any)?.address, (r as any)?.city, (r as any)?.state, (r as any)?.zipCode]
-        .filter(Boolean).join(', ');
-
     const openOrder = (provider: MaterialProvider) => {
         setOrderProvider(provider);
+        setOrderStep('items');
         setOrderText('');
         setOrderNeedDate('');
-        setOrderItems([{ name: '', quantity: '', unit: '' }]);
+        setPaymentMode('');
+        setPaymentProofUrl('');
+        setOrderQtys({});
     };
     const closeOrder = () => setOrderProvider(null);
 
-    const buildSubject = (p: MaterialProvider) => `Order request from ${restaurantName}`;
-    const buildBody = (p: MaterialProvider) => {
-        const lines: string[] = [
-            `Hello ${p.contactPerson || p.name},`,
-            '',
-            `${restaurantName} would like to place the following order. We found you through ${POS_PROVIDER_NAME}.`,
-            '',
-            combinedOrderText || '(order details)',
-            '',
-        ];
-        if (orderNeedDate) {
-            lines.push(`Needed by: ${new Date(orderNeedDate).toLocaleDateString()}`, '');
+    const handleProofUpload = async (file: File) => {
+        try {
+            setUploadingProof(true);
+            const res = await uploadAPI.uploadImage(file, 'purchase');
+            setPaymentProofUrl(res.data?.url || '');
+        } catch {
+            toast.error('Failed to upload payment proof');
+        } finally {
+            setUploadingProof(false);
         }
-        lines.push('Please confirm availability and pricing.', '');
-        lines.push('--- Ordered by ---', restaurantName);
-        if (restPhone) lines.push(`Phone: ${restPhone}`);
-        if (restEmail) lines.push(`Email: ${restEmail}`);
-        if (restLocation) lines.push(`Location: ${restLocation}`);
-        lines.push('', `Referred via ${POS_PROVIDER_NAME}.`);
-        return lines.join('\n');
-    };
-
-    const sendViaEmail = (p: MaterialProvider) => {
-        if (!p.email) return;
-        const url = `mailto:${p.email}?subject=${encodeURIComponent(buildSubject(p))}&body=${encodeURIComponent(buildBody(p))}`;
-        window.open(url, '_blank');
-        placeOrder(p, 'email');
-    };
-
-    const sendViaWhatsApp = (p: MaterialProvider) => {
-        if (!p.phone) return;
-        const digits = p.phone.replace(/\D/g, '');
-        const url = `https://wa.me/${digits}?text=${encodeURIComponent(buildBody(p))}`;
-        window.open(url, '_blank');
-        placeOrder(p, 'whatsapp');
     };
 
     const [placing, setPlacing] = useState(false);
@@ -178,10 +205,11 @@ const MaterialProvidersPage: React.FC = () => {
         providerPhone: p.phone || '',
         providerAddress: p.address || '',
         orderText: combinedOrderText,
-        items: orderItems
-            .filter(it => it.name.trim())
-            .map(it => ({ name: it.name.trim(), quantity: it.quantity || '1', unit: it.unit || '' })),
+        items: filledOrderItems.map(it => ({ name: it.name.trim(), quantity: it.quantity || '1', unit: it.unit || '' })),
         needByDate: orderNeedDate || undefined,
+        note: orderText.trim() || undefined,
+        paymentMode: paymentMode || undefined,
+        paymentProofUrl: paymentProofUrl || undefined,
         channel,
     });
 
@@ -301,25 +329,6 @@ const MaterialProvidersPage: React.FC = () => {
             toast.error('Failed to mark received');
         } finally {
             setReceivingId(null);
-        }
-    };
-
-    const requestSuperadmin = async (p: MaterialProvider) => {
-        if (requesting) return;
-        try {
-            setRequesting(true);
-            await supportAPI.createTicket({
-                subject: `Missing contact details for material provider: ${p.name}`,
-                category: 'Material Provider',
-                priority: 'medium',
-                message: `We want to order from material provider "${p.name}" but it has no email or phone on file. Please add contact details so we can reach them.${orderText.trim() ? `\n\nIntended order:\n${orderText.trim()}` : ''}${orderNeedDate ? `\nNeeded by: ${new Date(orderNeedDate).toLocaleDateString()}` : ''}\n\nOur details: ${restaurantName}${restPhone ? `, ${restPhone}` : ''}${restEmail ? `, ${restEmail}` : ''}${restLocation ? `, ${restLocation}` : ''}`,
-            });
-            toast.success('Request sent to the platform admin');
-            closeOrder();
-        } catch {
-            toast.error('Failed to send request. Please try again.');
-        } finally {
-            setRequesting(false);
         }
     };
 
@@ -484,29 +493,6 @@ const MaterialProvidersPage: React.FC = () => {
                                         </Typography>
                                     )}
                                 </Box>
-
-                                {provider.materialImage && (
-                                    <Box sx={{ mt: 1.75 }}>
-                                        <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ display: 'block', mb: 0.75, textTransform: 'uppercase', letterSpacing: 0.4, fontSize: '0.62rem' }}>
-                                            Material
-                                        </Typography>
-                                        <Box
-                                            component="img"
-                                            src={provider.materialImage}
-                                            alt={`${provider.name} material`}
-                                            loading="lazy"
-                                            sx={{
-                                                width: '100%',
-                                                height: 140,
-                                                objectFit: 'cover',
-                                                borderRadius: 2,
-                                                border: '1px solid',
-                                                borderColor: 'divider',
-                                                display: 'block',
-                                            }}
-                                        />
-                                    </Box>
-                                )}
                             </CardContent>
                         </Card>
                     </Grid>
@@ -514,92 +500,98 @@ const MaterialProvidersPage: React.FC = () => {
             </Grid>
 
             {/* Order dialog */}
-            <Dialog open={!!orderProvider} onClose={closeOrder} maxWidth="xs" fullWidth>
+            <Dialog open={!!orderProvider} onClose={closeOrder} maxWidth="sm" fullWidth>
                 {orderProvider && (() => {
-                    const hasEmail = !!orderProvider.email;
-                    const hasPhone = !!orderProvider.phone;
-                    const hasContact = hasEmail || hasPhone;
+                    if (orderStep === 'items') {
+                        return (
+                            <>
+                                <DialogTitle sx={{ pb: 1 }}>Order from {orderProvider.name}</DialogTitle>
+                                <DialogContent>
+                                    <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ display: 'block', mt: 1, mb: 1, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                                        Items
+                                    </Typography>
+                                    {orderMaterialOptions.length === 0 ? (
+                                        <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+                                            No catalog set for this provider.
+                                        </Typography>
+                                    ) : (
+                                        <Grid container spacing={1.5}>
+                                            {orderMaterialOptions.map((mat) => {
+                                                const qty = orderQtys[mat.name] || 0;
+                                                return (
+                                                    <Grid item xs={6} key={mat.name}>
+                                                        <Box
+                                                            sx={{
+                                                                border: '1px solid', borderColor: qty > 0 ? 'primary.main' : 'divider',
+                                                                borderRadius: 2, overflow: 'hidden', height: '100%',
+                                                                display: 'flex', flexDirection: 'column',
+                                                            }}
+                                                        >
+                                                            <MaterialImageSlider
+                                                                images={(mat.images && mat.images.length > 0) ? mat.images : (mat.image ? [mat.image] : [])}
+                                                                alt={mat.name}
+                                                            />
+                                                            <Box sx={{ p: 1.25, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                                                                <Typography variant="body2" fontWeight={600} noWrap>{mat.name}</Typography>
+                                                                {mat.unit && (
+                                                                    <Typography variant="caption" color="text.secondary" noWrap>{mat.unit}</Typography>
+                                                                )}
+                                                                {mat.defaultUnitPrice != null && (
+                                                                    <Typography variant="body2" fontWeight={700} sx={{ mt: 0.5 }}>
+                                                                        ${Number(mat.defaultUnitPrice).toFixed(2)}
+                                                                    </Typography>
+                                                                )}
+                                                                <Box sx={{ mt: 'auto', pt: 1 }}>
+                                                                    {qty > 0 ? (
+                                                                        <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
+                                                                            <IconButton size="small" onClick={() => bumpOrderQty(mat.name, -1)} sx={{ border: '1px solid', borderColor: 'divider' }}>
+                                                                                <RemoveIcon fontSize="inherit" />
+                                                                            </IconButton>
+                                                                            <Typography variant="body2" fontWeight={600} sx={{ minWidth: 20, textAlign: 'center' }}>{qty}</Typography>
+                                                                            <IconButton size="small" onClick={() => bumpOrderQty(mat.name, 1)} sx={{ border: '1px solid', borderColor: 'divider' }}>
+                                                                                <AddIcon fontSize="inherit" />
+                                                                            </IconButton>
+                                                                        </Stack>
+                                                                    ) : (
+                                                                        <Button size="small" variant="outlined" fullWidth onClick={() => bumpOrderQty(mat.name, 1)}>
+                                                                            Add to cart
+                                                                        </Button>
+                                                                    )}
+                                                                </Box>
+                                                            </Box>
+                                                        </Box>
+                                                    </Grid>
+                                                );
+                                            })}
+                                        </Grid>
+                                    )}
+                                    {orderSubtotal > 0 && (
+                                        <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between' }}>
+                                            <Typography fontWeight={700}>Total</Typography>
+                                            <Typography fontWeight={700}>${orderSubtotal.toFixed(2)}</Typography>
+                                        </Box>
+                                    )}
+                                </DialogContent>
+                                <DialogActions sx={{ p: 2, pt: 0 }}>
+                                    <Button onClick={closeOrder} color="inherit">Cancel</Button>
+                                    <Box sx={{ flexGrow: 1 }} />
+                                    <Button
+                                        variant="contained"
+                                        disabled={filledOrderItems.length === 0}
+                                        startIcon={<OrderIcon />}
+                                        onClick={() => setOrderStep('payment')}
+                                    >
+                                        Proceed to Pay
+                                    </Button>
+                                </DialogActions>
+                            </>
+                        );
+                    }
+
                     return (
                         <>
                             <DialogTitle sx={{ pb: 1 }}>Order from {orderProvider.name}</DialogTitle>
                             <DialogContent>
-                                <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ display: 'block', mt: 1, mb: 1, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                                    Items
-                                </Typography>
-                                <Stack spacing={1.5}>
-                                    {orderItems.map((it, i) => (
-                                        <Box key={i} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                                            <Autocomplete
-                                                freeSolo
-                                                options={orderMaterialOptions.map(m => m.name)}
-                                                renderOption={(props, option) => {
-                                                    const mat = orderMaterialOptions.find(m => m.name === option);
-                                                    return (
-                                                        <Box component="li" {...props} key={option} sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                                                            <Avatar
-                                                                variant="rounded"
-                                                                src={mat?.image || undefined}
-                                                                sx={{ width: 32, height: 32, bgcolor: 'grey.100', color: 'text.disabled' }}
-                                                            >
-                                                                {!mat?.image && <InventoryIcon fontSize="small" />}
-                                                            </Avatar>
-                                                            <Box sx={{ minWidth: 0 }}>
-                                                                <Typography variant="body2" noWrap>{option}</Typography>
-                                                                {(mat?.unit || mat?.defaultUnitPrice != null) && (
-                                                                    <Typography variant="caption" color="text.secondary" noWrap>
-                                                                        {mat?.defaultUnitPrice != null ? `$${Number(mat.defaultUnitPrice).toFixed(2)}` : ''}
-                                                                        {mat?.unit ? `${mat?.defaultUnitPrice != null ? ' / ' : 'per '}${mat.unit}` : ''}
-                                                                    </Typography>
-                                                                )}
-                                                            </Box>
-                                                        </Box>
-                                                    );
-                                                }}
-                                                value={it.name}
-                                                inputValue={it.name}
-                                                onChange={(_e, val) => selectOrderMaterial(i, val || '')}
-                                                onInputChange={(_e, val) => updateOrderItem(i, 'name', val)}
-                                                size="small"
-                                                sx={{ flex: '2 1 160px' }}
-                                                renderInput={(params) => (
-                                                    <TextField
-                                                        {...params}
-                                                        label="Item"
-                                                        autoFocus={i === 0}
-                                                        placeholder={orderMaterialOptions.length ? 'Select an item' : 'No catalog set for this provider'}
-                                                    />
-                                                )}
-                                            />
-                                            <TextField
-                                                label="Qty"
-                                                value={it.quantity}
-                                                onChange={(e) => updateOrderItem(i, 'quantity', e.target.value)}
-                                                size="small"
-                                                sx={{ flex: '0 1 70px' }}
-                                            />
-                                            {/* Read-only: the unit comes from the provider's
-                                                catalog. A restaurant ordering in a unit the
-                                                provider does not supply in would not match
-                                                anything on their side. */}
-                                            <TextField
-                                                label="Unit"
-                                                value={it.unit || ''}
-                                                size="small"
-                                                InputProps={{ readOnly: true }}
-                                                placeholder="—"
-                                                helperText={it.name.trim() && !it.unit ? 'Set by provider' : ' '}
-                                                sx={{
-                                                    flex: '0 1 110px',
-                                                    '& .MuiInputBase-input': { cursor: 'default' },
-                                                }}
-                                            />
-                                            <IconButton size="small" color="error" onClick={() => removeOrderItem(i)} disabled={orderItems.length === 1} sx={{ mt: 0.5 }}>
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        </Box>
-                                    ))}
-                                </Stack>
-                                <Button size="small" startIcon={<AddIcon />} onClick={addOrderItem} sx={{ mt: 1 }}>Add item</Button>
                                 <TextField
                                     label="Additional notes (optional)"
                                     placeholder="e.g. deliver before noon"
@@ -608,7 +600,7 @@ const MaterialProvidersPage: React.FC = () => {
                                     fullWidth
                                     multiline
                                     minRows={2}
-                                    sx={{ mt: 2 }}
+                                    sx={{ mt: 1 }}
                                 />
                                 <TextField
                                     label="Need by date"
@@ -620,88 +612,79 @@ const MaterialProvidersPage: React.FC = () => {
                                     inputProps={{ min: new Date().toISOString().split('T')[0] }}
                                     sx={{ mt: 2 }}
                                 />
+                                <TextField
+                                    label="Payment mode"
+                                    placeholder="e.g. Bank transfer, UPI, Cheque"
+                                    value={paymentMode}
+                                    onChange={(e) => setPaymentMode(e.target.value)}
+                                    fullWidth
+                                    sx={{ mt: 2 }}
+                                />
                                 <Box sx={{ mt: 2 }}>
-                                    <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                                        Preview (what the provider receives)
+                                    <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ display: 'block', mb: 0.75, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                                        Proof of payment
                                     </Typography>
-                                    <Box
-                                        component="pre"
-                                        sx={{
-                                            m: 0,
-                                            p: 1.5,
-                                            bgcolor: 'grey.50',
-                                            borderRadius: 1.5,
-                                            border: '1px solid',
-                                            borderColor: 'divider',
-                                            fontFamily: 'inherit',
-                                            fontSize: '0.8rem',
-                                            lineHeight: 1.5,
-                                            whiteSpace: 'pre-wrap',
-                                            wordBreak: 'break-word',
-                                            maxHeight: 220,
-                                            overflowY: 'auto',
-                                            color: 'text.secondary',
-                                        }}
-                                    >
-                                        {buildBody(orderProvider)}
-                                    </Box>
-                                    {!restPhone && !restEmail && !restLocation && (
-                                        <Typography variant="caption" color="warning.main" display="block" sx={{ mt: 0.5 }}>
-                                            Add your restaurant phone, email and address in Settings so providers can reach you.
+                                    {paymentProofUrl ? (
+                                        <Box sx={{ position: 'relative', width: '100%', height: 140, borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+                                            <Box component="img" src={paymentProofUrl} alt="Payment proof" sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => setPaymentProofUrl('')}
+                                                sx={{ position: 'absolute', top: 6, right: 6, bgcolor: 'rgba(0,0,0,0.55)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.75)' } }}
+                                            >
+                                                <CloseIcon fontSize="small" />
+                                            </IconButton>
+                                        </Box>
+                                    ) : (
+                                        <Button
+                                            component="label"
+                                            variant="outlined"
+                                            fullWidth
+                                            disabled={uploadingProof}
+                                            startIcon={uploadingProof ? <CircularProgress size={16} /> : <CloudUploadIcon />}
+                                            sx={{ height: 100, borderStyle: 'dashed' }}
+                                        >
+                                            {uploadingProof ? 'Uploading…' : 'Drop payment screenshot / receipt'}
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                hidden
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) handleProofUpload(file);
+                                                    e.target.value = '';
+                                                }}
+                                            />
+                                        </Button>
+                                    )}
+                                    {!paymentProofUrl && (
+                                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                                            Upload a payment screenshot or receipt to place the order.
                                         </Typography>
                                     )}
                                 </Box>
-                                {!hasContact && (
-                                    <Alert severity="warning" sx={{ mt: 2 }}>
-                                        This provider has no email or phone on file, so the order can't be sent directly.
-                                        You can request the platform admin to add their contact details.
-                                    </Alert>
-                                )}
+                                <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <Typography variant="body2" color="text.secondary">Subtotal</Typography>
+                                        <Typography variant="body2" color="text.secondary">${orderSubtotal.toFixed(2)}</Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                                        <Typography fontWeight={700}>Total</Typography>
+                                        <Typography fontWeight={700}>${orderSubtotal.toFixed(2)}</Typography>
+                                    </Box>
+                                </Box>
                             </DialogContent>
                             <DialogActions sx={{ p: 2, pt: 0, flexWrap: 'wrap', gap: 1 }}>
-                                <Button onClick={closeOrder} color="inherit">Cancel</Button>
+                                <Button onClick={() => setOrderStep('items')} color="inherit">Back</Button>
                                 <Box sx={{ flexGrow: 1 }} />
-                                {hasContact ? (
-                                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                                        {hasPhone && (
-                                            <Button
-                                                variant="outlined"
-                                                color="success"
-                                                startIcon={<WhatsAppIcon />}
-                                                onClick={() => sendViaWhatsApp(orderProvider)}
-                                            >
-                                                WhatsApp
-                                            </Button>
-                                        )}
-                                        {hasEmail && (
-                                            <Button
-                                                variant="outlined"
-                                                startIcon={<EmailIcon />}
-                                                onClick={() => sendViaEmail(orderProvider)}
-                                            >
-                                                Email
-                                            </Button>
-                                        )}
-                                        <Button
-                                            variant="contained"
-                                            disabled={placing}
-                                            startIcon={placing ? <CircularProgress size={16} color="inherit" /> : <OrderIcon />}
-                                            onClick={() => placeOrder(orderProvider, 'manual')}
-                                        >
-                                            {placing ? 'Saving…' : 'Placed Order'}
-                                        </Button>
-                                    </Stack>
-                                ) : (
-                                    <Button
-                                        variant="contained"
-                                        color="warning"
-                                        disabled={requesting}
-                                        startIcon={requesting ? <CircularProgress size={16} color="inherit" /> : undefined}
-                                        onClick={() => requestSuperadmin(orderProvider)}
-                                    >
-                                        {requesting ? 'Sending…' : 'Request Admin'}
-                                    </Button>
-                                )}
+                                <Button
+                                    variant="contained"
+                                    disabled={placing || !paymentProofUrl}
+                                    startIcon={placing ? <CircularProgress size={16} color="inherit" /> : <OrderIcon />}
+                                    onClick={() => placeOrder(orderProvider, 'manual')}
+                                >
+                                    {placing ? 'Saving…' : 'Place Order'}
+                                </Button>
                             </DialogActions>
                         </>
                     );
@@ -731,7 +714,13 @@ const MaterialProvidersPage: React.FC = () => {
                                                 Placed {new Date(o.createdAt).toLocaleDateString()}
                                                 {o.needByDate ? ` · Needed by ${new Date(o.needByDate).toLocaleDateString()}` : ''}
                                                 {o.channel && o.channel !== 'manual' ? ` · via ${o.channel}` : ''}
+                                                {o.paymentMode ? ` · Paid via ${o.paymentMode}` : ''}
                                             </Typography>
+                                            {o.paymentProofUrl && (
+                                                <Typography variant="caption" display="block">
+                                                    <a href={o.paymentProofUrl} target="_blank" rel="noopener noreferrer">View payment proof</a>
+                                                </Typography>
+                                            )}
                                             {/* The provider's own progress, so the
                                                 restaurant can see an order was
                                                 acknowledged and dispatched. */}

@@ -4,10 +4,10 @@
    * OR overridden at runtime by BrandContext for the multi-tenant SaaS.
    * Components should use these variables for all brand-sensitive colors.
    * ──────────────────────────────────────────────────────────────── */
-  --brand-primary:   #9C27B0;
-  --brand-secondary: #E91E63;
-  --brand-accent:    #FF9800;
-  --brand-splash-bg: #1a0027;
+  --brand-primary:   #4F46E5;
+  --brand-secondary: #EC4899;
+  --brand-accent:    #10B981;
+  --brand-splash-bg: #0f172a;
   --brand-name:      "NexZen POS";
   --brand-font:      "Inter";
 
@@ -36,24 +36,152 @@ a:hover {
 }
 
 html {
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: contain;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  padding: 0;
+  width: 100%;
   min-height: 100vh;
-  overscroll-behavior-y: none;
+  min-height: -webkit-fill-available;
+  overscroll-behavior-y: contain;
+  overflow-x: hidden;
 }
 
-
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* ── Universal Responsive Design System (Mobile, Tablet, iPad) ── */
+@media (max-width: 900px) {
+  /* Prevent horizontal viewport overflow */
+  html, body, #app, #root, main {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* Universal Table Containers: Smooth touch scrolling & bounding */
+  .MuiTableContainer-root {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-x: contain;
+    border-radius: 12px;
+  }
+
+  /* Universal Dialog Container & Paper Sizing with Safe Area bounds */
+  .MuiDialog-container {
+    padding-top: calc(var(--safe-area-inset-top, env(safe-area-inset-top, 24px)) + 12px) !important;
+    padding-bottom: calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 24px)) + 12px) !important;
+    align-items: center !important;
+  }
+
+  .MuiDialog-paper {
+    margin: 12px !important;
+    width: calc(100% - 24px) !important;
+    max-width: calc(100% - 24px) !important;
+    max-height: calc(100vh - var(--safe-area-inset-top, env(safe-area-inset-top, 24px)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 24px)) - 32px) !important;
+    border-radius: 16px !important;
+    overflow-y: auto !important;
+  }
+
+  .MuiDialogActions-root {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 12px 16px !important;
+  }
+
+  /* Auto-wrapping filter & action toolbars */
+  .MuiToolbar-root {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Container paddings for maximum screen usage */
+  .MuiContainer-root {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  /* Universal Dialog Sizing with Mobile Safe Area Bounds */
+  .MuiDialog-container {
+    padding-top: calc(var(--safe-area-inset-top, env(safe-area-inset-top, 24px)) + 8px) !important;
+    padding-bottom: calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 24px)) + 8px) !important;
+  }
+
+  .MuiDialog-paper {
+    margin: 8px !important;
+    width: calc(100% - 16px) !important;
+    max-width: calc(100% - 16px) !important;
+    max-height: calc(100vh - var(--safe-area-inset-top, env(safe-area-inset-top, 24px)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 24px)) - 24px) !important;
+    border-radius: 14px !important;
+  }
+
+  .MuiDialogTitle-root {
+    font-size: 1.05rem !important;
+    padding: 12px 14px !important;
+    font-weight: 700 !important;
+  }
+
+  .MuiDialogContent-root {
+    padding: 10px 14px !important;
+  }
+
+  /* Universal Mobile Card Transformations for Data Tables */
+  .mobile-card-table thead,
+  .MuiTableContainer-root.auto-mobile-cards thead {
+    display: none !important;
+  }
+
+  .mobile-card-table tbody tr,
+  .MuiTableContainer-root.auto-mobile-cards tbody tr {
+    display: block !important;
+    margin-bottom: 12px !important;
+    border-radius: 12px !important;
+    background: var(--card-bg, #ffffff) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    padding: 10px 14px !important;
+  }
+
+  .mobile-card-table tbody td,
+  .MuiTableContainer-root.auto-mobile-cards tbody td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 6px 0 !important;
+    border-bottom: 1px dashed rgba(0, 0, 0, 0.06) !important;
+  }
+
+  .mobile-card-table tbody td:last-child,
+  .MuiTableContainer-root.auto-mobile-cards tbody td:last-child {
+    border-bottom: none !important;
+    padding-top: 8px !important;
+  }
+
+  /* Touch-friendly buttons & chips */
+  .MuiButton-root {
+    min-height: 38px;
+  }
+
+  .MuiChip-root {
+    font-size: 0.75rem !important;
+  }
+
+  /* Responsive Grid Cards */
+  .MuiCard-root {
+    border-radius: 12px !important;
+  }
 }
 
 .logo {

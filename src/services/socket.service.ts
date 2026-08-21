@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { apiBaseUrl } from './api';
 
 class SocketService {
     private socket: Socket | null = null;
@@ -13,8 +14,7 @@ class SocketService {
             return;
         }
 
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5006';
-        const wsUrl = import.meta.env.VITE_SOCKET_URL || (typeof apiUrl === 'string' ? apiUrl.replace('/api', '') : 'http://localhost:5006');
+        const wsUrl = import.meta.env.VITE_SOCKET_URL || (apiBaseUrl ? apiBaseUrl.replace(/\/api\/?$/, '') : 'http://localhost:5006');
 
         // A user with several roles only wants the notifications of the role they
         // are currently acting as, so the active role travels with the handshake.
