@@ -27,8 +27,8 @@ import {
 import React, { useEffect } from 'react';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import PhoneInput from '../../../components/PhoneInput';
-import { formatPhoneDisplay, validateEmail, validatePhone } from '../../../utils/validation';
 import { getActivePaymentMethods } from '../../../utils/orderWorkflows';
+import { formatPhoneDisplay, validateEmail, validatePhone } from '../../../utils/validation';
 import { getMaxGuests, getMergedGroup } from '../utils/tableCapacity';
 
 interface CustomerInfoSectionProps {
@@ -355,7 +355,22 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                             }
                         }}
                         error={customerPhoneTouched && !!customerPhoneError}
-                        helperText={customerPhoneTouched && customerPhoneError}
+                        helperText={suggestedPhone ? (
+                            <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                                <Typography variant="caption" color="primary">Previously used: {suggestedPhone}</Typography>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{ height: 20, px: 1, minWidth: 0, textTransform: 'none', fontSize: '0.65rem' }}
+                                    onClick={() => {
+                                        const clean = suggestedPhone.replace(/\D/g, '').slice(-10);
+                                        setCustomerPhone(clean);
+                                    }}
+                                >
+                                    Use this
+                                </Button>
+                            </Box>
+                        ) : (customerPhoneTouched && customerPhoneError)}
                         disabled={readOnly || user?.role === 'customer'}
                         dialCode={customerDialCode}
                         onDialCodeChange={setCustomerDialCode}
@@ -371,10 +386,6 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                 clickable
                                 onClick={() => {
                                     const clean = suggestedPhone.replace(/\D/g, '').slice(-10);
-                                    setLocalPhone(clean);
-                                    if (debounceTimers.current['phone']) {
-                                        clearTimeout(debounceTimers.current['phone']);
-                                    }
                                     setCustomerPhone(clean);
                                 }}
                                 sx={{
