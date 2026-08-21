@@ -36,6 +36,7 @@ import {
     CheckCircle as ReceivedIcon,
     Add as AddIcon,
     Delete as DeleteIcon,
+    Inventory2 as InventoryIcon,
 } from '@mui/icons-material';
 import { materialProvidersAPI, supportAPI, purchaseOrdersAPI } from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
@@ -55,10 +56,26 @@ interface MaterialProvider {
     notes?: string;
     logo?: string;
     materialImage?: string;
-    materials?: { name: string; unit?: string; defaultUnitPrice?: number }[];
+    materials?: { name: string; unit?: string; defaultUnitPrice?: number; image?: string }[];
 }
 
 const POS_PROVIDER_NAME = 'NexZen POS';
+
+/**
+ * Colour for a provider-order status chip.
+ *
+ * placed -> confirmed -> sent are the provider's steps; received is ours.
+ */
+const ORDER_STATUS_COLOR: Record<string, 'warning' | 'info' | 'primary' | 'success' | 'default'> = {
+    placed: 'warning',
+    confirmed: 'info',
+    sent: 'primary',
+    received: 'success',
+    cancelled: 'default',
+};
+
+/** An order can be received until it is already received or was cancelled. */
+const CAN_RECEIVE = ['placed', 'confirmed', 'sent'];
 
 const MaterialProvidersPage: React.FC = () => {
     const { settings } = useSettings();
@@ -515,6 +532,29 @@ const MaterialProvidersPage: React.FC = () => {
                                             <Autocomplete
                                                 freeSolo
                                                 options={orderMaterialOptions.map(m => m.name)}
+                                                renderOption={(props, option) => {
+                                                    const mat = orderMaterialOptions.find(m => m.name === option);
+                                                    return (
+                                                        <Box component="li" {...props} key={option} sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                                                            <Avatar
+                                                                variant="rounded"
+                                                                src={mat?.image || undefined}
+                                                                sx={{ width: 32, height: 32, bgcolor: 'grey.100', color: 'text.disabled' }}
+                                                            >
+                                                                {!mat?.image && <InventoryIcon fontSize="small" />}
+                                                            </Avatar>
+                                                            <Box sx={{ minWidth: 0 }}>
+                                                                <Typography variant="body2" noWrap>{option}</Typography>
+                                                                {(mat?.unit || mat?.defaultUnitPrice != null) && (
+                                                                    <Typography variant="caption" color="text.secondary" noWrap>
+                                                                        {mat?.defaultUnitPrice != null ? `$${Number(mat.defaultUnitPrice).toFixed(2)}` : ''}
+                                                                        {mat?.unit ? `${mat?.defaultUnitPrice != null ? ' / ' : 'per '}${mat.unit}` : ''}
+                                                                    </Typography>
+                                                                )}
+                                                            </Box>
+                                                        </Box>
+                                                    );
+                                                }}
                                                 value={it.name}
                                                 inputValue={it.name}
                                                 onChange={(_e, val) => selectOrderMaterial(i, val || '')}
@@ -537,13 +577,21 @@ const MaterialProvidersPage: React.FC = () => {
                                                 size="small"
                                                 sx={{ flex: '0 1 70px' }}
                                             />
+                                            {/* Read-only: the unit comes from the provider's
+                                                catalog. A restaurant ordering in a unit the
+                                                provider does not supply in would not match
+                                                anything on their side. */}
                                             <TextField
                                                 label="Unit"
-                                                value={it.unit}
-                                                onChange={(e) => updateOrderItem(i, 'unit', e.target.value)}
+                                                value={it.unit || ''}
                                                 size="small"
-                                                placeholder="kg"
-                                                sx={{ flex: '0 1 80px' }}
+                                                InputProps={{ readOnly: true }}
+                                                placeholder="—"
+                                                helperText={it.name.trim() && !it.unit ? 'Set by provider' : ' '}
+                                                sx={{
+                                                    flex: '0 1 110px',
+                                                    '& .MuiInputBase-input': { cursor: 'default' },
+                                                }}
                                             />
                                             <IconButton size="small" color="error" onClick={() => removeOrderItem(i)} disabled={orderItems.length === 1} sx={{ mt: 0.5 }}>
                                                 <DeleteIcon fontSize="small" />
@@ -684,6 +732,21 @@ const MaterialProvidersPage: React.FC = () => {
                                                 {o.needByDate ? ` · Needed by ${new Date(o.needByDate).toLocaleDateString()}` : ''}
                                                 {o.channel && o.channel !== 'manual' ? ` · via ${o.channel}` : ''}
                                             </Typography>
+                                            {/* The provider's own progress, so the
+                                                restaurant can see an order was
+                                                acknowledged and dispatched. */}
+                                            {(o.confirmedAt || o.sentAt) && (
+                                                <Typography variant="caption" color="text.secondary" display="block">
+                                                    {o.confirmedAt ? `Confirmed ${new Date(o.confirmedAt).toLocaleDateString()}` : ''}
+                                                    {o.confirmedAt && o.sentAt ? ' · ' : ''}
+                                                    {o.sentAt ? `Sent ${new Date(o.sentAt).toLocaleDateString()}` : ''}
+                                                </Typography>
+                                            )}
+                                            {o.providerNote && (
+                                                <Typography variant="caption" color="text.secondary" display="block" sx={{ fontStyle: 'italic' }}>
+                                                    Provider: {o.providerNote}
+                                                </Typography>
+                                            )}
                                             {o.status === 'received' && o.poNumber && (
                                                 <Typography variant="caption" color="success.main" display="block">
                                                     In Purchase Orders: {o.poNumber}
@@ -694,10 +757,16 @@ const MaterialProvidersPage: React.FC = () => {
                                             <Chip
                                                 label={o.status}
                                                 size="small"
-                                                color={o.status === 'received' ? 'success' : o.status === 'cancelled' ? 'default' : 'warning'}
+                                                color={ORDER_STATUS_COLOR[o.status] || 'warning'}
                                                 sx={{ textTransform: 'capitalize', mb: 0.5 }}
                                             />
-                                            {o.status === 'placed' && (
+                                            {/* Receivable from any live state — a
+                                                restaurant may take delivery before
+                                                the provider marks it dispatched.
+                                                Previously this only appeared for
+                                                'placed', which left confirmed and
+                                                sent orders with no way to receive. */}
+                                            {CAN_RECEIVE.includes(o.status) && (
                                                 <Button
                                                     size="small"
                                                     variant="outlined"
@@ -757,13 +826,17 @@ const MaterialProvidersPage: React.FC = () => {
                                     sx={{ flex: '0 1 70px' }}
                                     inputProps={{ min: 0, step: 'any' }}
                                 />
+                                {/* Read-only — the provider defines the unit it supplies in. */}
                                 <TextField
                                     label="Unit"
-                                    value={it.unit}
-                                    onChange={(e) => updateItem(i, 'unit', e.target.value)}
+                                    value={it.unit || ''}
                                     size="small"
-                                    placeholder="kg"
-                                    sx={{ flex: '0 1 80px' }}
+                                    InputProps={{ readOnly: true }}
+                                    placeholder="—"
+                                    sx={{
+                                        flex: '0 1 100px',
+                                        '& .MuiInputBase-input': { cursor: 'default' },
+                                    }}
                                 />
                                 <TextField
                                     label="Unit price"

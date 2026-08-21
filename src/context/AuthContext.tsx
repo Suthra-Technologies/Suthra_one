@@ -25,6 +25,11 @@ export interface JwtPayload {
 
   permissions?: Array<{ module: string; actions: string[] }>;
   isRootAdmin?: boolean;
+  // Set on accounts provisioned with a system-generated password (material
+  // providers). Every portal route is blocked until the user picks their own.
+  mustChangePassword?: boolean;
+  // Id of the MaterialProvider record a provider login belongs to.
+  materialProvider?: string | null;
 
   iat: number;
   exp: number;
@@ -138,14 +143,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         }
 
         // Commit the session.
+        // Platform-level roles (superadmin, material_provider) must win over
+        // whatever happens to sit first in `roles`, since their portals are
+        // gated on the active role and they carry no tenant.
+        const primaryRole =
+          userObj.roles?.includes('superadmin') ? 'superadmin'
+            : userObj.roles?.includes('material_provider') ? 'material_provider'
+              : (userObj.roles?.[0] || userObj.role || 'cashier');
+
         setToken(jwt);
         setUser(userObj);
-        setActiveRole(userObj.roles[0] || userObj.role || 'cashier');
+        setActiveRole(primaryRole);
         setAvailableTenants(tenants);
 
         localStorage.setItem('jwt', jwt);
         localStorage.setItem('user', JSON.stringify(userObj));
-        localStorage.setItem('activeRole', userObj.roles[0] || userObj.role || 'cashier');
+        localStorage.setItem('activeRole', primaryRole);
         localStorage.setItem('availableTenants', JSON.stringify(tenants));
 
         if (response.data.tenant?.slug) {
@@ -156,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
           console.warn('AuthContext: No tenant slug in response (likely superadmin)');
         }
 
-        return { success: true, slug: response.data.tenant?.slug, user: userObj, token: jwt, availableTenants: tenants };
+        return { success: true, slug: response.data.tenant?.slug, user: { ...userObj, role: primaryRole }, token: jwt, availableTenants: tenants };
       }
       console.error('AuthContext: Invalid response structure', response.data);
       return { success: false, error: 'Invalid response from server' };

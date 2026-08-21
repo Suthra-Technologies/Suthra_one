@@ -5,7 +5,7 @@ import {
   TextField, InputAdornment, Stack, Dialog, DialogTitle, DialogContent,
   DialogActions, FormControl, InputLabel, Select, MenuItem, OutlinedInput,
   Divider, List, ListItem, ListItemText, ListItemSecondaryAction, Tooltip,
-  Avatar, Autocomplete,
+  Avatar, Autocomplete, useMediaQuery, useTheme,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -13,10 +13,31 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import CategoryIcon from '@mui/icons-material/Category';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import KeyIcon from '@mui/icons-material/VpnKey';
 import { materialProvidersAPI, materialCategoriesAPI, uploadAPI } from '../../services/api';
+import { renderUnitOptions } from '../../utils/materialUnits';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
 import { toast } from 'react-hot-toast';
 import { TableSkeleton } from '../../components/common/PageSkeleton';
+
+/**
+ * Hide the scrollbar chrome while keeping the area scrollable (touch + wheel).
+ * Matches the convention already used by the Sidebar and Attendance pages.
+ */
+const HIDE_SCROLLBAR = {
+  scrollbarWidth: 'none' as const,
+  msOverflowStyle: 'none' as const,
+  '&::-webkit-scrollbar': { width: 0, height: 0, display: 'none' },
+  WebkitOverflowScrolling: 'touch' as const,
+};
+
+/**
+ * Columns beyond the essentials are dropped as the viewport narrows rather than
+ * pushing the table into a horizontal scroll. Header and body cells share these
+ * so the two never fall out of step.
+ */
+const HIDE_BELOW_LG = { display: { xs: 'none', lg: 'table-cell' } };
+const HIDE_BELOW_MD = { display: { xs: 'none', md: 'table-cell' } };
 
 const EMPTY_FORM = {
   name: '',
@@ -36,12 +57,16 @@ const EMPTY_FORM = {
   notes: '',
   logo: '',
   materialImage: '',
-  materials: [] as { name: string; unit: string; defaultUnitPrice: string }[],
+  materials: [] as { name: string; unit: string; defaultUnitPrice: string; image: string }[],
 };
 
 const MaterialProvidersPage: React.FC = () => {
   // Google Maps key for address autocomplete — sourced from the frontend .env (VITE_GOOGLE_MAPS_API_KEY).
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const theme = useTheme();
+  // The provider form is tall; below sm it gets the full screen rather than a
+  // cramped, inner-scrolling card.
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   // --- providers state ---
   const [rows, setRows] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -59,6 +84,10 @@ const MaterialProvidersPage: React.FC = () => {
 
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Portal credentials (provision on first send, re-issue on later sends).
+  const [credsTarget, setCredsTarget] = useState<any | null>(null);
+  const [sendingCreds, setSendingCreds] = useState(false);
 
   // --- categories state ---
   const [categories, setCategories] = useState<any[]>([]);
@@ -127,6 +156,7 @@ const MaterialProvidersPage: React.FC = () => {
         name: m.name || '',
         unit: m.unit || '',
         defaultUnitPrice: m.defaultUnitPrice != null ? String(m.defaultUnitPrice) : '',
+        image: m.image || '',
       })),
     });
     setErrors({});
@@ -134,13 +164,19 @@ const MaterialProvidersPage: React.FC = () => {
   };
 
   const addMaterial = () => {
-    setForm(prev => ({ ...prev, materials: [...prev.materials, { name: '', unit: '', defaultUnitPrice: '' }] }));
+    setForm(prev => ({ ...prev, materials: [...prev.materials, { name: '', unit: '', defaultUnitPrice: '', image: '' }] }));
   };
 
-  const updateMaterial = (index: number, key: 'name' | 'unit' | 'defaultUnitPrice', value: string) => {
+  const updateMaterial = (index: number, key: 'name' | 'unit' | 'defaultUnitPrice' | 'image', value: string) => {
     setForm(prev => ({
       ...prev,
       materials: prev.materials.map((m, i) => i === index ? { ...m, [key]: value } : m),
+    }));
+    // Clear this row's errors as it is corrected, matching the other fields.
+    setErrors(prev => ({
+      ...prev,
+      [`material_${index}_unit`]: '',
+      [`material_${index}_price`]: '',
     }));
   };
 
@@ -164,6 +200,21 @@ const MaterialProvidersPage: React.FC = () => {
     }
   };
 
+  const handleSendCredentials = async () => {
+    if (!credsTarget) return;
+    setSendingCreds(true);
+    try {
+      const res = await materialProvidersAPI.sendCredentials(credsTarget._id);
+      toast.success(res.data?.message || 'Credentials sent');
+      setCredsTarget(null);
+      load(page, rowsPerPage, search);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to send credentials');
+    } finally {
+      setSendingCreds(false);
+    }
+  };
+
   const handleSave = async () => {
     const newErrors: Record<string, string> = {};
     if (!form.name.trim()) newErrors.name = 'Name is required';
@@ -171,6 +222,23 @@ const MaterialProvidersPage: React.FC = () => {
     else if (form.phone.length !== 10) newErrors.phone = 'Phone number must be exactly 10 digits';
     else if (/^0{2,}/.test(form.phone)) newErrors.phone = 'Phone number cannot start with multiple zeros';
     else if (/(\d)\1{7,}/.test(form.phone)) newErrors.phone = 'Phone number looks invalid';
+
+    // Required: the portal login is created against this address and the
+    // credentials are emailed there, so a provider without one cannot sign in.
+    if (!form.email.trim()) newErrors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) newErrors.email = 'Enter a valid email address';
+
+    // A material row is only saved when it has a name (see payload below), so
+    // only those rows need a unit and a valid price.
+    form.materials.forEach((m, i) => {
+      if (!m.name.trim()) return;
+      if (!m.unit) newErrors[`material_${i}_unit`] = 'Required';
+      const price = m.defaultUnitPrice.trim();
+      if (price !== '') {
+        const parsed = Number(price);
+        if (!Number.isFinite(parsed) || parsed < 0) newErrors[`material_${i}_price`] = 'Invalid';
+      }
+    });
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -196,6 +264,9 @@ const MaterialProvidersPage: React.FC = () => {
             name: m.name.trim(),
             unit: m.unit.trim() || undefined,
             defaultUnitPrice: m.defaultUnitPrice !== '' ? parseFloat(m.defaultUnitPrice) : undefined,
+            // Preserved rather than edited here: providers upload their own
+            // material photos from their portal.
+            image: m.image || undefined,
           })),
       };
 
@@ -203,13 +274,21 @@ const MaterialProvidersPage: React.FC = () => {
         await materialProvidersAPI.update(editing._id, payload);
         toast.success('Provider updated');
       } else {
-        await materialProvidersAPI.create(payload);
-        toast.success('Provider added');
+        const res = await materialProvidersAPI.create(payload);
+        // The provider saves even if the credentials email fails; the server
+        // reports that separately so it is never mistaken for a clean send.
+        if (res.data?.credentialsWarning) {
+          toast.error(res.data.credentialsWarning, { duration: 8000 });
+        } else {
+          toast.success('Provider added — login credentials emailed');
+        }
       }
       setDialogOpen(false);
       load(page, rowsPerPage, search);
-    } catch {
-      toast.error('Failed to save provider');
+    } catch (err: any) {
+      // Surface the server's reason (duplicate email, address already in use,
+      // invalid unit) instead of a generic failure.
+      toast.error(err?.response?.data?.message || 'Failed to save provider', { duration: 6000 });
     } finally {
       setSaving(false);
     }
@@ -286,7 +365,7 @@ const MaterialProvidersPage: React.FC = () => {
   };
 
   if (loading && rows.length === 0) {
-    return <TableSkeleton rows={8} columns={7} />;
+    return <TableSkeleton rows={8} columns={9} />;
   }
 
   return (
@@ -294,7 +373,7 @@ const MaterialProvidersPage: React.FC = () => {
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Typography variant="h5" fontWeight="bold">Material Providers</Typography>
-        <Stack direction="row" spacing={1.5}>
+        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap sx={{ flexGrow: { xs: 1, sm: 0 } }}>
           <Button
             variant="outlined"
             startIcon={<CategoryIcon />}
@@ -315,7 +394,12 @@ const MaterialProvidersPage: React.FC = () => {
       </Box>
 
       {/* Search */}
-      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={{ xs: 1, sm: 2 }}
+        alignItems={{ xs: 'stretch', sm: 'center' }}
+        sx={{ mb: 2 }}
+      >
         <TextField
           size="small"
           placeholder="Search by name, contact, email…"
@@ -332,7 +416,7 @@ const MaterialProvidersPage: React.FC = () => {
               ) : null,
             },
           }}
-          sx={{ width: 320 }}
+          sx={{ width: { xs: '100%', sm: 320 } }}
         />
         <Button variant="outlined" size="small" onClick={() => { setPage(0); setSearch(searchInput); }}>
           Search
@@ -341,15 +425,17 @@ const MaterialProvidersPage: React.FC = () => {
 
       {/* Table */}
       <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, overflow: 'hidden' }}>
-        <TableContainer>
-          <Table size="small">
+        <TableContainer sx={{ ...HIDE_SCROLLBAR, overflowX: 'auto' }}>
+          <Table size="small" sx={{ minWidth: { xs: 0, md: 720 } }}>
             <TableHead>
               <TableRow sx={{ bgcolor: 'grey.50' }}>
                 <TableCell sx={{ fontWeight: 700 }}>Name</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Contact Person</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Phone</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Categories</TableCell>
+                <TableCell sx={{ fontWeight: 700, ...HIDE_BELOW_LG }}>Contact Person</TableCell>
+                <TableCell sx={{ fontWeight: 700, ...HIDE_BELOW_LG }}>Phone</TableCell>
+                <TableCell sx={{ fontWeight: 700, ...HIDE_BELOW_MD }}>Email</TableCell>
+                <TableCell sx={{ fontWeight: 700, ...HIDE_BELOW_LG }}>Categories</TableCell>
+                <TableCell sx={{ fontWeight: 700, ...HIDE_BELOW_MD }}>Materials</TableCell>
+                <TableCell sx={{ fontWeight: 700, ...HIDE_BELOW_MD }}>Portal</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
               </TableRow>
@@ -357,7 +443,7 @@ const MaterialProvidersPage: React.FC = () => {
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 5 }}>
                     <Typography color="text.secondary">No material providers found.</Typography>
                     <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd} sx={{ mt: 2, bgcolor: '#d32f2f', '&:hover': { bgcolor: '#b71c1c' } }}>
                       Add First Provider
@@ -366,11 +452,23 @@ const MaterialProvidersPage: React.FC = () => {
                 </TableRow>
               ) : rows.map((row) => (
                 <TableRow key={row._id} hover>
-                  <TableCell sx={{ fontWeight: 600 }}>{row.name}</TableCell>
-                  <TableCell>{row.contactPerson || '-'}</TableCell>
-                  <TableCell>{row.phone || '-'}</TableCell>
-                  <TableCell>{row.email || '-'}</TableCell>
-                  <TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>
+                    {row.name}
+                    {/* The hidden columns' key facts, surfaced inline on small
+                        screens so nothing is simply lost at that width. */}
+                    <Box sx={{ display: { xs: 'block', lg: 'none' }, fontWeight: 400 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'block', md: 'none' } }} noWrap>
+                        {row.email || '—'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap>
+                        {row.contactPerson || '—'}{row.phone ? ` · ${row.phone}` : ''}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell sx={HIDE_BELOW_LG}>{row.contactPerson || '-'}</TableCell>
+                  <TableCell sx={HIDE_BELOW_LG}>{row.phone || '-'}</TableCell>
+                  <TableCell sx={HIDE_BELOW_MD}>{row.email || '-'}</TableCell>
+                  <TableCell sx={HIDE_BELOW_LG}>
                     <Stack direction="row" spacing={0.5} flexWrap="wrap">
                       {(row.categories || []).length === 0 ? (
                         <Typography variant="caption" color="text.secondary">—</Typography>
@@ -378,6 +476,58 @@ const MaterialProvidersPage: React.FC = () => {
                         <Chip key={c} label={c} size="small" sx={{ fontSize: '0.65rem' }} />
                       ))}
                     </Stack>
+                  </TableCell>
+                  <TableCell sx={HIDE_BELOW_MD}>
+                    {(row.materials || []).length === 0 ? (
+                      <Typography variant="caption" color="text.secondary">—</Typography>
+                    ) : (
+                      <Tooltip
+                        title={
+                          <Box component="span" sx={{ display: 'block' }}>
+                            {(row.materials || []).map((m: any, i: number) => (
+                              <Box component="span" key={i} sx={{ display: 'block' }}>
+                                {m.name}
+                                {m.unit ? ` — per ${m.unit}` : ''}
+                                {m.defaultUnitPrice != null ? ` @ $${Number(m.defaultUnitPrice).toFixed(2)}` : ''}
+                              </Box>
+                            ))}
+                          </Box>
+                        }
+                      >
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ maxWidth: 260 }}>
+                          {(row.materials || []).slice(0, 2).map((m: any, i: number) => (
+                            <Chip
+                              key={i}
+                              size="small"
+                              variant="outlined"
+                              sx={{ fontSize: '0.65rem' }}
+                              label={
+                                m.defaultUnitPrice != null
+                                  ? `${m.name} $${Number(m.defaultUnitPrice).toFixed(2)}${m.unit ? `/${m.unit}` : ''}`
+                                  : `${m.name}${m.unit ? ` (${m.unit})` : ''}`
+                              }
+                            />
+                          ))}
+                          {(row.materials || []).length > 2 && (
+                            <Chip
+                              size="small"
+                              variant="outlined"
+                              sx={{ fontSize: '0.65rem' }}
+                              label={`+${(row.materials || []).length - 2}`}
+                            />
+                          )}
+                        </Stack>
+                      </Tooltip>
+                    )}
+                  </TableCell>
+                  <TableCell sx={HIDE_BELOW_MD}>
+                    {row.portalEnabled ? (
+                      <Tooltip title={row.credentialsSentAt ? `Credentials sent ${new Date(row.credentialsSentAt).toLocaleString()}` : 'Portal access enabled'}>
+                        <Chip label="Enabled" size="small" color="success" variant="outlined" sx={{ fontSize: '0.65rem' }} />
+                      </Tooltip>
+                    ) : (
+                      <Chip label="No access" size="small" variant="outlined" sx={{ fontSize: '0.65rem' }} />
+                    )}
                   </TableCell>
                   <TableCell>
                     <Chip
@@ -389,6 +539,19 @@ const MaterialProvidersPage: React.FC = () => {
                   </TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                      <Tooltip title={row.email ? (row.portalEnabled ? 'Resend portal credentials' : 'Send portal credentials') : 'Add an email address first'}>
+                        {/* span keeps the tooltip working while the button is disabled */}
+                        <span>
+                          <IconButton
+                            size="small"
+                            onClick={() => setCredsTarget(row)}
+                            disabled={!row.email}
+                            sx={{ color: row.portalEnabled ? 'success.main' : 'text.secondary' }}
+                          >
+                            <KeyIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
                       <IconButton size="small" onClick={() => openEdit(row)} color="primary">
                         <EditIcon fontSize="small" />
                       </IconButton>
@@ -413,10 +576,46 @@ const MaterialProvidersPage: React.FC = () => {
         />
       </Paper>
 
-      {/* ---- Add / Edit Provider Dialog ---- */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editing ? 'Edit Provider' : 'Add Material Provider'}</DialogTitle>
+      {/* ---- Send Portal Credentials Dialog ---- */}
+      <Dialog open={!!credsTarget} onClose={() => !sendingCreds && setCredsTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          {credsTarget?.portalEnabled ? 'Resend Portal Credentials' : 'Send Portal Credentials'}
+        </DialogTitle>
         <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            A new password will be generated and emailed to{' '}
+            <strong>{credsTarget?.email}</strong>. They will be asked to set their own
+            password the first time they sign in.
+          </Typography>
+          {credsTarget?.portalEnabled && (
+            <Typography variant="body2" color="warning.main" sx={{ mt: 2 }}>
+              This replaces their current password immediately.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCredsTarget(null)} disabled={sendingCreds}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleSendCredentials}
+            disabled={sendingCreds}
+            sx={{ bgcolor: '#d32f2f', '&:hover': { bgcolor: '#b71c1c' } }}
+          >
+            {sendingCreds ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Send'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ---- Add / Edit Provider Dialog ---- */}
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle>{editing ? 'Edit Provider' : 'Add Material Provider'}</DialogTitle>
+        <DialogContent sx={HIDE_SCROLLBAR}>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
             <TextField fullWidth label="Name *" value={form.name} onChange={f('name')} error={!!errors.name} helperText={errors.name} />
             <TextField fullWidth label="Contact Person" value={form.contactPerson} onChange={f('contactPerson')} />
@@ -433,7 +632,15 @@ const MaterialProvidersPage: React.FC = () => {
                 error={!!errors.phone}
                 helperText={errors.phone}
               />
-              <TextField fullWidth label="Email" type="email" value={form.email} onChange={f('email')} />
+              <TextField
+                fullWidth
+                label="Email *"
+                type="email"
+                value={form.email}
+                onChange={f('email')}
+                error={!!errors.email}
+                helperText={errors.email || 'Portal login credentials are sent here'}
+              />
             </Stack>
             <AddressAutocomplete
               label="Address 1"
@@ -500,30 +707,58 @@ const MaterialProvidersPage: React.FC = () => {
             </Typography>
             <Stack spacing={1.5}>
               {form.materials.map((m, i) => (
-                <Stack key={i} direction="row" spacing={1} alignItems="flex-start">
+                <Stack
+                  key={i}
+                  direction="row"
+                  spacing={1}
+                  alignItems="flex-start"
+                  flexWrap="wrap"
+                  useFlexGap
+                >
+                  <Avatar
+                    variant="rounded"
+                    src={m.image || undefined}
+                    sx={{ width: 40, height: 40, mt: 0.5, bgcolor: 'grey.100', color: 'text.disabled', flexShrink: 0 }}
+                  >
+                    {!m.image && <PhotoCameraIcon fontSize="small" />}
+                  </Avatar>
                   <TextField
                     size="small"
                     label="Item name"
                     value={m.name}
                     onChange={(e) => updateMaterial(i, 'name', e.target.value)}
-                    sx={{ flex: '2 1 160px' }}
+                    sx={{ flex: '2 1 160px', minWidth: 140 }}
                   />
                   <TextField
+                    select
                     size="small"
                     label="Unit"
-                    placeholder="kg"
                     value={m.unit}
                     onChange={(e) => updateMaterial(i, 'unit', e.target.value)}
-                    sx={{ flex: '0 1 90px' }}
-                  />
+                    error={!!errors[`material_${i}_unit`]}
+                    helperText={errors[`material_${i}_unit`]}
+                    sx={{ flex: '1 1 130px', minWidth: 120 }}
+                  >
+                    {renderUnitOptions()}
+                  </TextField>
                   <TextField
                     size="small"
-                    label="Default price"
+                    label="Price per unit"
                     type="number"
                     value={m.defaultUnitPrice}
                     onChange={(e) => updateMaterial(i, 'defaultUnitPrice', e.target.value)}
-                    inputProps={{ min: 0, step: 'any' }}
-                    sx={{ flex: '0 1 110px' }}
+                    error={!!errors[`material_${i}_price`]}
+                    helperText={errors[`material_${i}_price`]}
+                    inputProps={{ min: 0, step: '0.01' }}
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                      endAdornment: m.unit ? (
+                        <InputAdornment position="end">
+                          <Typography variant="caption" color="text.secondary">/ {m.unit}</Typography>
+                        </InputAdornment>
+                      ) : null,
+                    }}
+                    sx={{ flex: '1 1 140px', minWidth: 130 }}
                   />
                   <IconButton size="small" color="error" onClick={() => removeMaterial(i)} sx={{ mt: 0.5 }}>
                     <DeleteIcon fontSize="small" />
@@ -577,9 +812,15 @@ const MaterialProvidersPage: React.FC = () => {
       </Dialog>
 
       {/* ---- Manage Categories Dialog ---- */}
-      <Dialog open={catDialogOpen} onClose={() => { setCatDialogOpen(false); setCatEditTarget(null); setCatName(''); setCatDescription(''); }} maxWidth="sm" fullWidth>
+      <Dialog
+        open={catDialogOpen}
+        onClose={() => { setCatDialogOpen(false); setCatEditTarget(null); setCatName(''); setCatDescription(''); }}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={isMobile}
+      >
         <DialogTitle>Manage Categories</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={HIDE_SCROLLBAR}>
           {/* Add / Edit inline form */}
           <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 2, mb: 2 }}>
             <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1.5 }}>
