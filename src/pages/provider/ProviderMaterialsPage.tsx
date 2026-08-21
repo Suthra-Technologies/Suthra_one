@@ -1,8 +1,10 @@
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { Inventory2 as InventoryIcon } from '@mui/icons-material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import CollectionsIcon from '@mui/icons-material/Collections';
 import {
     Alert,
     Avatar,
@@ -44,7 +46,8 @@ const HIDE_SCROLLBAR = {
     WebkitOverflowScrolling: 'touch' as const,
 };
 
-const EMPTY_FORM = { name: '', unit: '', defaultUnitPrice: '', image: '' };
+const EMPTY_FORM = { name: '', unit: '', defaultUnitPrice: '', images: [] as string[] };
+const MAX_IMAGES = 10;
 
 /**
  * The provider's own catalog, editable.
@@ -89,7 +92,7 @@ const ProviderMaterialsPage: React.FC = () => {
 
     const openAdd = () => {
         setEditIndex(null);
-        setForm({ ...EMPTY_FORM });
+        setForm({ ...EMPTY_FORM, images: [] });
         setErrors({});
         setDialogOpen(true);
     };
@@ -97,11 +100,15 @@ const ProviderMaterialsPage: React.FC = () => {
     const openEdit = (index: number) => {
         const m = materials[index];
         setEditIndex(index);
+        // Backward compat: if only `image` exists, seed the images array from it
+        let imgs = Array.isArray(m.images) && m.images.length > 0
+            ? [...m.images]
+            : m.image ? [m.image] : [];
         setForm({
             name: m.name || '',
             unit: m.unit || '',
             defaultUnitPrice: m.defaultUnitPrice != null ? String(m.defaultUnitPrice) : '',
-            image: m.image || '',
+            images: imgs,
         });
         setErrors({});
         setDialogOpen(true);
@@ -116,25 +123,29 @@ const ProviderMaterialsPage: React.FC = () => {
             toast.error('Please choose an image file');
             return;
         }
-        // The S3 endpoint accepts larger files, but a catalog thumbnail this big
-        // is a mistake worth catching before the upload.
         if (file.size > 5 * 1024 * 1024) {
             toast.error('Image must be under 5 MB');
+            return;
+        }
+        if (form.images.length >= MAX_IMAGES) {
+            toast.error(`Maximum ${MAX_IMAGES} images allowed`);
             return;
         }
 
         setUploading(true);
         try {
-            // Filed under platform/providers/material-images/ in S3 — provider
-            // catalogs belong to no single restaurant.
             const res = await uploadAPI.uploadImage(file, 'provider-material');
-            setForm(prev => ({ ...prev, image: res.data.url }));
+            setForm(prev => ({ ...prev, images: [...prev.images, res.data.url] }));
             toast.success('Image uploaded');
         } catch (err: any) {
             toast.error(err?.response?.data?.message || 'Failed to upload image');
         } finally {
             setUploading(false);
         }
+    };
+
+    const removeImage = (idx: number) => {
+        setForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }));
     };
 
     const validate = () => {
@@ -158,13 +169,13 @@ const ProviderMaterialsPage: React.FC = () => {
                 name: form.name.trim(),
                 unit: form.unit || undefined,
                 defaultUnitPrice: form.defaultUnitPrice !== '' ? Number(form.defaultUnitPrice) : undefined,
-                image: form.image || undefined,
+                // Keep backward compat: `image` = first photo
+                image: form.images.length > 0 ? form.images[0] : undefined,
+                images: form.images.length > 0 ? form.images : undefined,
             };
             const res = editIndex === null
                 ? await providerPortalAPI.addMaterial(payload)
                 : await providerPortalAPI.updateMaterial(editIndex, payload);
-            // The API returns the whole catalog, so the table stays in step
-            // without a second round trip.
             setMaterials(res.data || []);
             toast.success(editIndex === null ? 'Item added' : 'Item updated');
             setDialogOpen(false);
@@ -257,17 +268,33 @@ const ProviderMaterialsPage: React.FC = () => {
                                         </Button>
                                     </TableCell>
                                 </TableRow>
-                            ) : materials.map((m: any, i: number) => (
+                            ) : materials.map((m: any, i: number) => {
+                                const thumb = (Array.isArray(m.images) && m.images.length > 0) ? m.images[0] : m.image;
+                                const imgCount = (Array.isArray(m.images) ? m.images.length : 0) || (m.image ? 1 : 0);
+                                return (
                                 <TableRow key={i} hover>
                                     <TableCell sx={{ fontWeight: 600 }}>
                                         <Stack direction="row" spacing={1.5} alignItems="center">
-                                            <Avatar
-                                                variant="rounded"
-                                                src={m.image || undefined}
-                                                sx={{ width: 36, height: 36, bgcolor: 'grey.100', color: 'text.disabled' }}
-                                            >
-                                                {!m.image && <InventoryIcon fontSize="small" />}
-                                            </Avatar>
+                                            <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                                                <Avatar
+                                                    variant="rounded"
+                                                    src={thumb || undefined}
+                                                    sx={{ width: 36, height: 36, bgcolor: 'grey.100', color: 'text.disabled' }}
+                                                >
+                                                    {!thumb && <InventoryIcon fontSize="small" />}
+                                                </Avatar>
+                                                {imgCount > 1 && (
+                                                    <Box sx={{
+                                                        position: 'absolute', bottom: -4, right: -4,
+                                                        bgcolor: ACCENT, color: '#fff', borderRadius: '50%',
+                                                        width: 18, height: 18, display: 'flex', alignItems: 'center',
+                                                        justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700,
+                                                        border: '2px solid #fff',
+                                                    }}>
+                                                        {imgCount}
+                                                    </Box>
+                                                )}
+                                            </Box>
                                             <span>{m.name}</span>
                                         </Stack>
                                     </TableCell>
@@ -292,7 +319,8 @@ const ProviderMaterialsPage: React.FC = () => {
                                         </Stack>
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            );
+                            })}
                         </TableBody>
                     </Table>
                 </TableContainer>
@@ -345,25 +373,95 @@ const ProviderMaterialsPage: React.FC = () => {
                                 ) : null,
                             }}
                         />
-                        <Box sx={{ border: '1px dashed', borderColor: 'divider', borderRadius: 2, p: 2, textAlign: 'center' }}>
-                            <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ display: 'block', mb: 1 }}>
-                                Material Photo
-                            </Typography>
-                            <Avatar
-                                variant="rounded"
-                                src={form.image || undefined}
-                                sx={{ width: 96, height: 96, mx: 'auto', mb: 1.5, bgcolor: 'grey.100', color: 'text.disabled' }}
-                            >
-                                {!form.image && <PhotoCameraIcon />}
-                            </Avatar>
+                        <Box sx={{ border: '1px dashed', borderColor: 'divider', borderRadius: 2, p: 2 }}>
+                            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                                <Stack direction="row" spacing={0.5} alignItems="center">
+                                    <CollectionsIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                                        Material Photos
+                                    </Typography>
+                                </Stack>
+                                <Typography variant="caption" color="text.disabled">
+                                    {form.images.length} / {MAX_IMAGES}
+                                </Typography>
+                            </Stack>
+                            {form.images.length > 0 && (
+                                <Box sx={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                                    gap: 1,
+                                    mb: 1.5,
+                                }}>
+                                    {form.images.map((url, idx) => (
+                                        <Box
+                                            key={idx}
+                                            sx={{
+                                                position: 'relative',
+                                                borderRadius: 1.5,
+                                                overflow: 'hidden',
+                                                aspectRatio: '1',
+                                                border: idx === 0 ? `2px solid ${ACCENT}` : '1px solid',
+                                                borderColor: idx === 0 ? ACCENT : 'divider',
+                                            }}
+                                        >
+                                            <Box
+                                                component="img"
+                                                src={url}
+                                                alt={`Material image ${idx + 1}`}
+                                                sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                            />
+                                            {idx === 0 && (
+                                                <Box sx={{
+                                                    position: 'absolute', bottom: 0, left: 0, right: 0,
+                                                    bgcolor: 'rgba(0,105,92,0.85)', color: '#fff',
+                                                    fontSize: '0.6rem', textAlign: 'center', py: 0.2,
+                                                    fontWeight: 600, letterSpacing: 0.5,
+                                                }}>
+                                                    PRIMARY
+                                                </Box>
+                                            )}
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => removeImage(idx)}
+                                                sx={{
+                                                    position: 'absolute', top: 2, right: 2,
+                                                    bgcolor: 'rgba(0,0,0,0.55)', color: '#fff',
+                                                    width: 20, height: 20,
+                                                    '&:hover': { bgcolor: 'error.main' },
+                                                }}
+                                            >
+                                                <CloseIcon sx={{ fontSize: 14 }} />
+                                            </IconButton>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            )}
+                            {form.images.length === 0 && (
+                                <Box sx={{ textAlign: 'center', py: 2 }}>
+                                    <PhotoCameraIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 0.5 }} />
+                                    <Typography variant="body2" color="text.disabled">
+                                        No images yet
+                                    </Typography>
+                                </Box>
+                            )}
                             <Stack direction="row" spacing={1} justifyContent="center">
-                                <Button component="label" size="small" variant="outlined" disabled={uploading}>
-                                    {uploading ? 'Uploading…' : form.image ? 'Change' : 'Upload'}
+                                <Button
+                                    component="label"
+                                    size="small"
+                                    variant="outlined"
+                                    startIcon={<AddIcon />}
+                                    disabled={uploading || form.images.length >= MAX_IMAGES}
+                                >
+                                    {uploading ? 'Uploading…' : 'Add Image'}
                                     <input hidden type="file" accept="image/*" onChange={handleUploadImage} />
                                 </Button>
-                                {form.image && !uploading && (
-                                    <Button size="small" color="error" onClick={() => setForm(prev => ({ ...prev, image: '' }))}>
-                                        Remove
+                                {form.images.length > 0 && !uploading && (
+                                    <Button
+                                        size="small"
+                                        color="error"
+                                        onClick={() => setForm(prev => ({ ...prev, images: [] }))}
+                                    >
+                                        Remove All
                                     </Button>
                                 )}
                             </Stack>

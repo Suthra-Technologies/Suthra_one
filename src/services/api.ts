@@ -915,9 +915,9 @@ export const providerPortalAPI = {
     api.patch(`/provider-portal/orders/${tenantSlug}/${id}/status`, data),
   // Catalog — what restaurants pick from when ordering. Items are addressed by
   // their position in the provider's materials list.
-  addMaterial: (data: { name: string; unit?: string; defaultUnitPrice?: number }) =>
+  addMaterial: (data: { name: string; unit?: string; defaultUnitPrice?: number; image?: string; images?: string[] }) =>
     api.post('/provider-portal/materials', data),
-  updateMaterial: (index: number, data: { name: string; unit?: string; defaultUnitPrice?: number }) =>
+  updateMaterial: (index: number, data: { name: string; unit?: string; defaultUnitPrice?: number; image?: string; images?: string[] }) =>
     api.patch(`/provider-portal/materials/${index}`, data),
   removeMaterial: (index: number) => api.delete(`/provider-portal/materials/${index}`),
 };
