@@ -326,16 +326,27 @@ const ExpensesPage: React.FC = () => {
     return (
         <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1600, mx: 'auto' }}>
             {/* Header */}
-            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="center" spacing={2} mb={4}>
+            <Stack 
+                direction={{ xs: 'column', sm: 'row' }} 
+                justifyContent="space-between" 
+                alignItems={{ xs: 'flex-start', sm: 'center' }} 
+                spacing={{ xs: 1.5, sm: 2 }} 
+                mb={{ xs: 2.5, sm: 4 }}
+            >
                 <Box>
-                    <Typography variant="h4" fontWeight={900}>Expense Management</Typography>
-                    <Typography variant="body2" color="text.secondary">Track and manage your operational expenditures</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.45rem' } }}>
+                        Expense Management
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.78rem', sm: '0.85rem' } }}>
+                        Track and manage your operational expenditures
+                    </Typography>
                 </Box>
                 <Button
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={() => navigate('create')}
-                    sx={{ borderRadius: 3, px: 4, py: 1.5, fontWeight: 'bold' }}
+                    size={isMobile ? "small" : "medium"}
+                    sx={{ borderRadius: 2.5, px: { xs: 2.5, sm: 4 }, py: { xs: 1, sm: 1.5 }, fontWeight: 'bold', width: { xs: '100%', sm: 'auto' } }}
                 >
                     Record Expense
                 </Button>
@@ -515,14 +526,14 @@ const ExpensesPage: React.FC = () => {
             {/* Filters */}
             <Paper
                 sx={{
-                    p: 2,
-                    mb: 4,
+                    p: { xs: 1.5, sm: 2 },
+                    mb: { xs: 2.5, sm: 4 },
                     borderRadius: 3,
                     bgcolor: 'background.paper',
                     border: '1px solid',
                     borderColor: 'divider',
                     display: 'flex',
-                    gap: 2,
+                    gap: 1.5,
                     flexWrap: 'wrap'
                 }}
             >
@@ -532,7 +543,7 @@ const ExpensesPage: React.FC = () => {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     sx={{
-                        minWidth: 280,
+                        flex: { xs: '1 1 100%', sm: '1 1 240px' },
                         bgcolor: 'background.default',
                         borderRadius: 1
                     }}
@@ -547,7 +558,7 @@ const ExpensesPage: React.FC = () => {
                         setShowDeleted(e.target.value === 'deleted');
                         setPage(1);
                     }}
-                    sx={{ minWidth: 150 }}
+                    sx={{ flex: { xs: '1 1 calc(50% - 6px)', sm: '0 0 130px' } }}
                 >
                     <MenuItem value="active">Active</MenuItem>
                     <MenuItem value="deleted">Deleted</MenuItem>
@@ -558,7 +569,7 @@ const ExpensesPage: React.FC = () => {
                     label="Type"
                     value={filters.type}
                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                    sx={{ minWidth: 150 }}
+                    sx={{ flex: { xs: '1 1 calc(50% - 6px)', sm: '0 0 130px' } }}
                 >
                     <MenuItem value="">All Types</MenuItem>
                     <MenuItem value="one_time">One-Time</MenuItem>
@@ -570,7 +581,7 @@ const ExpensesPage: React.FC = () => {
                     label="Status"
                     value={filters.status}
                     onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                    sx={{ minWidth: 150 }}
+                    sx={{ flex: { xs: '1 1 100%', sm: '0 0 130px' } }}
                 >
                     <MenuItem value="">All Status</MenuItem>
                     <MenuItem value="pending">Pending</MenuItem>
@@ -583,12 +594,143 @@ const ExpensesPage: React.FC = () => {
             {loading ? (
                 <TableSkeleton rows={8} columns={7} />
             ) : expenses.length === 0 ? (
-                <Paper sx={{ p: 10, textAlign: 'center', borderRadius: 4 }}>
-                    <ExpenseIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary">
+                <Paper sx={{ p: { xs: 6, sm: 10 }, textAlign: 'center', borderRadius: 4 }}>
+                    <ExpenseIcon sx={{ fontSize: { xs: 48, sm: 60 }, color: 'text.disabled', mb: 2 }} />
+                    <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '0.95rem', sm: '1.15rem' } }}>
                         {showDeleted ? 'No deleted expenses found' : 'No expenses found'}
                     </Typography>
                 </Paper>
+            ) : isMobile ? (
+                <Grid container spacing={1.5}>
+                    {expenses.map((exp) => {
+                        const statusStyle = getStatusStyles(exp.status);
+                        return (
+                            <Grid item xs={12} key={exp._id}>
+                                <Paper
+                                    sx={{
+                                        p: 1.75,
+                                        borderRadius: 3,
+                                        border: '1px solid',
+                                        borderColor: 'divider',
+                                        bgcolor: 'background.paper',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 1.25,
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                                    }}
+                                >
+                                    {/* Header Row: #Number + Category + Status */}
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Typography variant="body2" fontWeight={800} sx={{ color: 'text.primary', fontSize: '0.88rem' }}>
+                                                #{exp.expenseNumber}
+                                            </Typography>
+                                            <Chip
+                                                label={exp.category}
+                                                size="small"
+                                                variant="outlined"
+                                                sx={{ fontSize: '0.7rem', height: 22, textTransform: 'capitalize', fontWeight: 600 }}
+                                            />
+                                        </Box>
+                                        <Chip 
+                                            label={statusStyle.label} 
+                                            size="small" 
+                                            sx={{ bgcolor: statusStyle.bg, color: statusStyle.color, fontWeight: 700, fontSize: '0.7rem', height: 22 }} 
+                                        />
+                                    </Box>
+
+                                    {/* Payee Info & Type */}
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Stack direction="row" spacing={1} alignItems="center">
+                                            <Avatar sx={{ width: 28, height: 28, bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main }}>
+                                                {exp.isCateringCommission ? <RestaurantMenuOutlinedIcon sx={{ fontSize: 16 }} /> : (exp.payee.type === 'organization' ? <OrgIcon sx={{ fontSize: 16 }} /> : <PersonIcon sx={{ fontSize: 16 }} />)}
+                                            </Avatar>
+                                            <Box>
+                                                <Typography variant="body2" fontWeight={700} sx={{ fontSize: '0.85rem' }}>
+                                                    {exp.payee.name}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.72rem' }}>
+                                                    {new Date(exp.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                                                </Typography>
+                                            </Box>
+                                        </Stack>
+                                        <Box sx={{ textAlign: 'right' }}>
+                                            <Chip
+                                                icon={getTypeIcon(exp.type)}
+                                                label={exp.type.replace('_', ' ')?.toUpperCase()}
+                                                size="small"
+                                                variant="outlined"
+                                                sx={{ fontWeight: 600, fontSize: '0.65rem', height: 20 }}
+                                            />
+                                            {exp.type === 'recurring' && (
+                                                <Typography variant="caption" display="block" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                                                    {exp.frequency}
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    </Box>
+
+                                    {exp.isDeleted && (
+                                        <Typography variant="caption" color="warning.main" sx={{ fontWeight: 600 }}>
+                                            Deleted {exp.deletedAt ? new Date(exp.deletedAt).toLocaleDateString() : ''}
+                                        </Typography>
+                                    )}
+
+                                    {exp.status === 'pending' && exp.dueDate && (
+                                        <Typography variant="caption" color="error" sx={{ fontWeight: 600, fontSize: '0.72rem' }}>
+                                            Due: {new Date(exp.dueDate).toLocaleDateString()}
+                                        </Typography>
+                                    )}
+
+                                    <Divider sx={{ my: 0.25, borderStyle: 'dashed' }} />
+
+                                    {/* Footer Row: Amount + Action Buttons */}
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.68rem', fontWeight: 600 }}>
+                                                Amount
+                                            </Typography>
+                                            <Typography variant="h6" fontWeight={800} color="primary.main" sx={{ fontSize: '1.05rem', lineHeight: 1.2 }}>
+                                                {formatCurrency ? formatCurrency(exp.amount) : `$${exp.amount.toFixed(2)}`}
+                                            </Typography>
+                                        </Box>
+                                        <Box>
+                                            {exp.isDeleted ? (
+                                                <Button 
+                                                    size="small" 
+                                                    variant="outlined" 
+                                                    color="success" 
+                                                    startIcon={<RestoreIcon />} 
+                                                    onClick={() => handleRestore(exp._id)}
+                                                    sx={{ borderRadius: 2, fontWeight: 700, fontSize: '0.72rem' }}
+                                                >
+                                                    Restore
+                                                </Button>
+                                            ) : exp.isCateringCommission ? (
+                                                <Typography variant="caption" color="text.disabled">—</Typography>
+                                            ) : (
+                                                <Stack direction="row" spacing={0.5}>
+                                                    <IconButton size="small" onClick={() => navigate(`${exp._id}`)} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.08) }}>
+                                                        <ViewIcon color="primary" sx={{ fontSize: 18 }} />
+                                                    </IconButton>
+                                                    <IconButton size="small" onClick={() => navigate(`${exp._id}#history`)} sx={{ bgcolor: alpha(theme.palette.info.main, 0.08) }}>
+                                                        <HistoryIcon color="info" sx={{ fontSize: 18 }} />
+                                                    </IconButton>
+                                                    <IconButton size="small" onClick={() => navigate(`edit/${exp._id}`)} sx={{ bgcolor: alpha(theme.palette.secondary.main, 0.08) }}>
+                                                        <EditIcon color="secondary" sx={{ fontSize: 18 }} />
+                                                    </IconButton>
+                                                    <IconButton size="small" onClick={() => handleDelete(exp)} sx={{ bgcolor: alpha(theme.palette.error.main, 0.08) }}>
+                                                        <DeleteIcon color="error" sx={{ fontSize: 18 }} />
+                                                    </IconButton>
+                                                </Stack>
+                                            )}
+                                        </Box>
+                                    </Box>
+                                </Paper>
+                            </Grid>
+                        );
+                    })}
+                </Grid>
             ) : (
                 <TableContainer component={Paper} sx={{ borderRadius: 4 }}>
                     <Table>

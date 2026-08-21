@@ -40,6 +40,7 @@ interface OrderDetailsSectionProps {
     setCouponCode: (val: string) => void;
     handleValidateCoupon: (silent?: boolean, explicitCode?: string) => void;
     availableCoupons?: any[];
+    customerCoupons?: any[];
     serviceChargeAmount: number;
     tip: number;
     setTip: (val: number) => void;
@@ -66,6 +67,7 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
     setCouponCode,
     handleValidateCoupon,
     availableCoupons = [],
+    customerCoupons = [],
     serviceChargeAmount,
     tip,
     setTip,
@@ -198,28 +200,50 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
 
                 {/* Quick-pick coupons — only suggest ones the cart already qualifies for */}
                 {couponDiscount === 0 && cartTotal > 0 && (() => {
-                    const eligibleCoupons = availableCoupons.filter(
-                        (c: any) => !c.minBillAmount || cartTotal >= Number(c.minBillAmount),
+                    const eligibleCustomerCoupons = customerCoupons.filter(
+                        (c: any) => !c.used && (!c.minPrice || cartTotal >= Number(c.minPrice))
                     );
-                    if (eligibleCoupons.length === 0) return null;
+                    const eligibleAvailableCoupons = availableCoupons.filter(
+                        (c: any) => !c.minBillAmount || cartTotal >= Number(c.minBillAmount)
+                    );
+
+                    if (eligibleCustomerCoupons.length === 0 && eligibleAvailableCoupons.length === 0) return null;
+
                     return (
-                    <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {eligibleCoupons.slice(0, 5).map((c: any) => (
-                            <Tooltip key={c._id} title={`${c.discountType === 'percentage' ? c.discountValue + '% off' : '$' + Number(c.discountValue || 0).toFixed(2) + ' off'}${c.minBillAmount ? ` (min $${Number(c.minBillAmount || 0).toFixed(2)})` : ''}`}>
-                                <Chip
-                                    label={c.code}
-                                    size="small"
-                                    variant="outlined"
-                                    color="primary"
-                                    icon={<CouponIcon />}
-                                    onClick={() => {
-                                        setCouponCode(c.code);
-                                    }}
-                                    sx={{ cursor: 'pointer', fontSize: '0.65rem' }}
-                                />
-                            </Tooltip>
-                        ))}
-                    </Box>
+                        <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {/* Customer Coupons first */}
+                            {eligibleCustomerCoupons.map((c: any) => (
+                                <Tooltip key={c.code} title={`${c.discount}% off${c.minPrice ? ` (min $${Number(c.minPrice || 0).toFixed(2)})` : ''}`}>
+                                    <Chip
+                                        label={c.code}
+                                        size="small"
+                                        variant="filled"
+                                        color="success"
+                                        icon={<CouponIcon />}
+                                        onClick={() => {
+                                            setCouponCode(c.code);
+                                        }}
+                                        sx={{ cursor: 'pointer', fontSize: '0.65rem', fontWeight: 'bold' }}
+                                    />
+                                </Tooltip>
+                            ))}
+                            {/* Global Available Coupons */}
+                            {eligibleAvailableCoupons.slice(0, 5).map((c: any) => (
+                                <Tooltip key={c._id} title={`${c.discountType === 'percentage' ? c.discountValue + '% off' : '$' + Number(c.discountValue || 0).toFixed(2) + ' off'}${c.minBillAmount ? ` (min $${Number(c.minBillAmount || 0).toFixed(2)})` : ''}`}>
+                                    <Chip
+                                        label={c.code}
+                                        size="small"
+                                        variant="outlined"
+                                        color="primary"
+                                        icon={<CouponIcon />}
+                                        onClick={() => {
+                                            setCouponCode(c.code);
+                                        }}
+                                        sx={{ cursor: 'pointer', fontSize: '0.65rem' }}
+                                    />
+                                </Tooltip>
+                            ))}
+                        </Box>
                     );
                 })()}
             </Box>
@@ -238,7 +262,7 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                 )}
                 {couponDiscount > 0 && (
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, color: 'success.main' }}>
-                        <Typography variant="body2">Coupon</Typography>
+                        <Typography variant="body2">Coupon {couponCode ? `(${couponCode})` : ''}</Typography>
                         <Typography variant="body2">-{formatSmartPrice(couponDiscount)}</Typography>
                     </Box>
                 )}

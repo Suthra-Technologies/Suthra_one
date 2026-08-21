@@ -27,8 +27,8 @@ import {
 import React, { useEffect } from 'react';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import PhoneInput from '../../../components/PhoneInput';
-import { formatPhoneDisplay, validateEmail, validatePhone } from '../../../utils/validation';
 import { getActivePaymentMethods } from '../../../utils/orderWorkflows';
+import { formatPhoneDisplay, validateEmail, validatePhone } from '../../../utils/validation';
 import { getMaxGuests, getMergedGroup } from '../utils/tableCapacity';
 
 interface CustomerInfoSectionProps {
@@ -94,6 +94,8 @@ interface CustomerInfoSectionProps {
     customerConflict: boolean;
     maxUsablePoints?: number;
     isApplyingCoupon?: boolean;
+    customerCoupons?: any[];
+    onApplyCouponCode?: (code: string) => void;
     /** Add-items mode: the order already exists, so only new cart items may change. */
     readOnly?: boolean;
 }
@@ -161,9 +163,45 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     customerConflict,
     maxUsablePoints = 0,
     isApplyingCoupon = false,
+    customerCoupons = [],
+    onApplyCouponCode,
     readOnly = false,
 }) => {
     const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
+
+    // Local states for inputs to prevent keypress lag by debouncing parent updates
+    const [localName, setLocalName] = React.useState(customerName);
+    const [localPhone, setLocalPhone] = React.useState(customerPhone);
+    const [localEmail, setLocalEmail] = React.useState(customerEmail);
+
+    useEffect(() => {
+        setLocalName(customerName);
+    }, [customerName]);
+
+    useEffect(() => {
+        setLocalPhone(customerPhone);
+    }, [customerPhone]);
+
+    useEffect(() => {
+        setLocalEmail(customerEmail);
+    }, [customerEmail]);
+
+    const debounceTimers = React.useRef<Record<string, any>>({});
+
+    const debounceUpdate = (key: string, fn: (val: any) => void, val: any, delay = 400) => {
+        if (debounceTimers.current[key]) {
+            clearTimeout(debounceTimers.current[key]);
+        }
+        debounceTimers.current[key] = setTimeout(() => {
+            fn(val);
+        }, delay);
+    };
+
+    useEffect(() => {
+        return () => {
+            Object.values(debounceTimers.current).forEach(clearTimeout);
+        };
+    }, []);
 
     // Set default payment method for dine-in orders
     useEffect(() => {
@@ -241,17 +279,22 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         label="Customer Name"
                         size="small"
                         fullWidth
-                        value={customerName}
+                        value={localName}
                         onChange={(e) => {
                             const value = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 30);
-                            setCustomerName(value);
+                            setLocalName(value);
+                            debounceUpdate('name', setCustomerName, value, 400);
                             if (customerNameTouched && value.trim()) {
                                 setCustomerNameError('');
                             }
                         }}
                         onBlur={() => {
                             setCustomerNameTouched(true);
-                            const trimmedName = customerName.trim();
+                            if (debounceTimers.current['name']) {
+                                clearTimeout(debounceTimers.current['name']);
+                            }
+                            setCustomerName(localName);
+                            const trimmedName = localName.trim();
                             if (!trimmedName) {
                                 setCustomerNameError('Customer name is required');
                             } else if (trimmedName.length < 3) {
@@ -282,12 +325,13 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         label="Phone"
                         size="small"
                         fullWidth
-                        value={customerPhone}
+                        value={localPhone}
                         onChange={(value) => {
                             const cleaned = String(value || '').replace(/\D/g, '');
                             const isUS = customerDialCode === '1' || customerDialCode === '+1';
                             const final = (isUS && cleaned.length > 10) ? cleaned.slice(0, 10) : cleaned;
-                            setCustomerPhone(final);
+                            setLocalPhone(final);
+                            debounceUpdate('phone', setCustomerPhone, final, 400);
                             if (customerPhoneTouched) {
                                 if (final && final.trim().length > 0) {
                                     const validation = validatePhone(final, customerDialCode);
@@ -299,15 +343,34 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         }}
                         onBlur={() => {
                             setCustomerPhoneTouched(true);
-                            if (customerPhone && customerPhone.trim().length > 0) {
-                                const validation = validatePhone(customerPhone, customerDialCode);
+                            if (debounceTimers.current['phone']) {
+                                clearTimeout(debounceTimers.current['phone']);
+                            }
+                            setCustomerPhone(localPhone);
+                            if (localPhone && localPhone.trim().length > 0) {
+                                const validation = validatePhone(localPhone, customerDialCode);
                                 setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
                             } else {
                                 setCustomerPhoneError('');
                             }
                         }}
                         error={customerPhoneTouched && !!customerPhoneError}
-                        helperText={customerPhoneTouched && customerPhoneError}
+                        helperText={suggestedPhone ? (
+                            <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                                <Typography variant="caption" color="primary">Previously used: {suggestedPhone}</Typography>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{ height: 20, px: 1, minWidth: 0, textTransform: 'none', fontSize: '0.65rem' }}
+                                    onClick={() => {
+                                        const clean = suggestedPhone.replace(/\D/g, '').slice(-10);
+                                        setCustomerPhone(clean);
+                                    }}
+                                >
+                                    Use this
+                                </Button>
+                            </Box>
+                        ) : (customerPhoneTouched && customerPhoneError)}
                         disabled={readOnly || user?.role === 'customer'}
                         dialCode={customerDialCode}
                         onDialCodeChange={setCustomerDialCode}
@@ -342,10 +405,11 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         size="small"
                         fullWidth
                         type="email"
-                        value={customerEmail}
+                        value={localEmail}
                         onChange={(e) => {
                             const val = e.target.value?.toLowerCase().slice(0, 50);
-                            setCustomerEmail(val);
+                            setLocalEmail(val);
+                            debounceUpdate('email', setCustomerEmail, val, 400);
                             if (customerEmailTouched) {
                                 // Email is optional on POS orders, so only validate a non-empty value.
                                 const validation = validateEmail(val);
@@ -354,8 +418,12 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         }}
                         onBlur={() => {
                             setCustomerEmailTouched(true);
-                            const validation = validateEmail(customerEmail);
-                            setCustomerEmailError(customerEmail && !validation.isValid ? (validation.message || '') : '');
+                            if (debounceTimers.current['email']) {
+                                clearTimeout(debounceTimers.current['email']);
+                            }
+                            setCustomerEmail(localEmail);
+                            const validation = validateEmail(localEmail);
+                            setCustomerEmailError(localEmail && !validation.isValid ? (validation.message || '') : '');
                         }}
                         error={customerEmailTouched && !!customerEmailError}
                         helperText={customerEmailTouched && customerEmailError}
@@ -365,6 +433,47 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                     />
                 </Grid>
             </Grid>
+
+            {/* Customer Coupons Section
+            {customerCoupons && customerCoupons.length > 0 && (
+                <Box sx={{
+                    mb: 2,
+                    p: 2,
+                    bgcolor: 'rgba(76, 175, 80, 0.04)',
+                    borderRadius: 1,
+                    border: '1px dashed',
+                    borderColor: 'success.main',
+                    transition: 'all 0.3s ease'
+                }}>
+                    <Typography variant="subtitle2" color="success.main" fontWeight="bold" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        🎟️ Customer Coupons
+                    </Typography>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
+                        {customerCoupons.map((c: any) => (
+                            <Tooltip
+                                key={c.code}
+                                title={`${c.discount}% off${c.minPrice ? ` (min spend $${c.minPrice})` : ''}${c.used ? ' - Already Used' : ''}${c.expiryDate ? ` - Expires ${new Date(c.expiryDate).toLocaleDateString()}` : ''}`}
+                            >
+                                <span>
+                                    <Chip
+                                        label={`${c.code} (${c.discount}%)`}
+                                        size="small"
+                                        color={c.used ? "default" : "success"}
+                                        variant={c.used ? "outlined" : "filled"}
+                                        onClick={() => {
+                                            if (!c.used && onApplyCouponCode) {
+                                                onApplyCouponCode(c.code);
+                                            }
+                                        }}
+                                        disabled={c.used}
+                                        sx={{ cursor: c.used ? 'default' : 'pointer', fontWeight: 'bold' }}
+                                    />
+                                </span>
+                            </Tooltip>
+                        ))}
+                    </Stack>
+                </Box>
+            )} */}
 
             {/* Rewards Section */}
             {(rewardPointsInfo || isFetchingRewards) && (
@@ -423,8 +532,8 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                             <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <span>{pointsToRedeem > 0 ? `-$${(pointsToRedeem * (rewardPointsInfo.settings?.pointValue || 0)).toFixed(2)} discount` : `Max usable: ${maxUsablePoints} pts`}</span>
                                                 {pointsToRedeem > 0 && (
-                                                    <span 
-                                                        onClick={(e) => { e.preventDefault(); setPointsToRedeem(0); }} 
+                                                    <span
+                                                        onClick={(e) => { e.preventDefault(); setPointsToRedeem(0); }}
                                                         style={{ color: '#d32f2f', cursor: 'pointer', fontWeight: 'bold' }}
                                                     >
                                                         Clear
@@ -491,17 +600,17 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                     width: '100%',
                                     '& .MuiFormControlLabel-root': {
                                         mr: { xs: 0, sm: 2 }
-                                     },
+                                    },
                                     opacity: finalTotal === 0 ? 0.5 : 1,
                                     pointerEvents: finalTotal === 0 ? 'none' : 'auto'
                                 }}
                             >
                                 {getActivePaymentMethods(settings).map(pm => (
-                                    <FormControlLabel 
-                                        key={pm.val} 
-                                        value={pm.val} 
-                                        control={<Radio size="small" />} 
-                                        label={<span>{pm.label}</span>} 
+                                    <FormControlLabel
+                                        key={pm.val}
+                                        value={pm.val}
+                                        control={<Radio size="small" />}
+                                        label={<span>{pm.label}</span>}
                                     />
                                 ))}
                             </RadioGroup>
@@ -511,18 +620,18 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                     {/* Card type — Credit / Debit (shown when Card is selected) */}
                     {paymentMethod === 'card' && setCardType &&
                         ((settings.system?.posPaymentMethods?.creditCard ?? true) || (settings.system?.posPaymentMethods?.debitCard ?? true)) && (
-                        <Box sx={{ mt: 1, pl: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Card Type</Typography>
-                            <RadioGroup row value={cardType} onChange={(e) => setCardType(e.target.value as 'credit' | 'debit')}>
-                                {(settings.system?.posPaymentMethods?.creditCard ?? true) && (
-                                    <FormControlLabel value="credit" control={<Radio size="small" />} label="Credit Card" />
-                                )}
-                                {(settings.system?.posPaymentMethods?.debitCard ?? true) && (
-                                    <FormControlLabel value="debit" control={<Radio size="small" />} label="Debit Card" />
-                                )}
-                            </RadioGroup>
-                        </Box>
-                    )}
+                            <Box sx={{ mt: 1, pl: 1 }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Card Type</Typography>
+                                <RadioGroup row value={cardType} onChange={(e) => setCardType(e.target.value as 'credit' | 'debit')}>
+                                    {(settings.system?.posPaymentMethods?.creditCard ?? true) && (
+                                        <FormControlLabel value="credit" control={<Radio size="small" />} label="Credit Card" />
+                                    )}
+                                    {(settings.system?.posPaymentMethods?.debitCard ?? true) && (
+                                        <FormControlLabel value="debit" control={<Radio size="small" />} label="Debit Card" />
+                                    )}
+                                </RadioGroup>
+                            </Box>
+                        )}
 
                     {/* Dine-in Payment Method - Only Card and Cash */}
 

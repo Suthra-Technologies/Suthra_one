@@ -781,7 +781,7 @@ const CreatePOPage: React.FC = () => {
         }}>
             <Box sx={{
                 p: { xs: 1.5, md: 4 },
-                pb: { xs: 12, md: 14 },
+                pb: { xs: 24, md: 14 },
                 maxWidth: 1400,
                 mx: 'auto',
             }}>
@@ -1120,7 +1120,7 @@ const CreatePOPage: React.FC = () => {
                                                 '&:hover': { borderColor: TOKENS.accent, borderStyle: 'dashed', bgcolor: alpha(TOKENS.accent, 0.06) }
                                             }}
                                         >
-                                            + Add item
+                                            Add item
                                         </Button>
                                     </Box>
                                 </Box>
@@ -1175,43 +1175,50 @@ const CreatePOPage: React.FC = () => {
                                                             )}
                                                         </Box>
 
-                                                        {/* QTY / Unit / Price row */}
-                                                        <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                                                            <TextField
-                                                                type="number" size="small" label={isSalary ? "Amount" : "Qty"}
-                                                                value={isSalary ? item.unitPrice : item.quantity}
-                                                                onChange={(e) => handleNumberInput(index, isSalary ? 'unitPrice' : 'quantity', e.target.value)}
-                                                                sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
-                                                            />
-
-                                                            {!isSalary && (
-                                                                <TextField
-                                                                    size="small" label="Unit"
-                                                                    value={item.unit || ''}
-                                                                    onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
-                                                                    sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
-                                                                />
-                                                            )}
-
-                                                            {!isSalary && (
-                                                                <TextField
-                                                                    type="number" size="small" label="Price"
-                                                                    value={item.unitPrice}
-                                                                    onChange={(e) => handleNumberInput(index, 'unitPrice', e.target.value)}
-                                                                    sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
-                                                                    InputProps={{ startAdornment: <InputAdornment position="start" sx={{ '& p': { fontSize: '0.75rem' } }}>$</InputAdornment> }}
-                                                                />
-                                                            )}
-                                                        </Box>
-
-                                                        {!isSalary && (
+                                                        {/* QTY / Unit / Price / Tax Grid */}
+                                                        {isSalary ? (
                                                             <Box sx={{ mb: 1 }}>
                                                                 <TextField
-                                                                    type="number" size="small" label="Tax %"
-                                                                    value={item.taxRate ?? 0}
-                                                                    onChange={(e) => handleNumberInput(index, 'taxRate', e.target.value)}
-                                                                    sx={{ width: '50%', '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                    type="number" size="small" label="Amount" fullWidth
+                                                                    value={item.unitPrice}
+                                                                    onChange={(e) => handleNumberInput(index, 'unitPrice', e.target.value)}
+                                                                    sx={{ '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                    InputProps={{ startAdornment: <InputAdornment position="start" sx={{ '& p': { fontSize: '0.75rem' } }}>$</InputAdornment> }}
                                                                 />
+                                                            </Box>
+                                                        ) : (
+                                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 1.25 }}>
+                                                                {/* Row 1: Qty & Unit */}
+                                                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                                                    <TextField
+                                                                        type="number" size="small" label="Qty"
+                                                                        value={item.quantity}
+                                                                        onChange={(e) => handleNumberInput(index, 'quantity', e.target.value)}
+                                                                        sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                    />
+                                                                    <TextField
+                                                                        size="small" label="Unit"
+                                                                        value={item.unit || ''}
+                                                                        onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
+                                                                        sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                    />
+                                                                </Box>
+                                                                {/* Row 2: Price & Tax % */}
+                                                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                                                    <TextField
+                                                                        type="number" size="small" label="Price"
+                                                                        value={item.unitPrice}
+                                                                        onChange={(e) => handleNumberInput(index, 'unitPrice', e.target.value)}
+                                                                        sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                        InputProps={{ startAdornment: <InputAdornment position="start" sx={{ '& p': { fontSize: '0.75rem' } }}>$</InputAdornment> }}
+                                                                    />
+                                                                    <TextField
+                                                                        type="number" size="small" label="Tax %"
+                                                                        value={item.taxRate ?? 0}
+                                                                        onChange={(e) => handleNumberInput(index, 'taxRate', e.target.value)}
+                                                                        sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                    />
+                                                                </Box>
                                                             </Box>
                                                         )}
 
@@ -1407,7 +1414,7 @@ const CreatePOPage: React.FC = () => {
                 </Grid>
             </Box>
 
-            {/* Sticky bottom action bar */}
+            {/* Sticky bottom action bar with safe area */}
             <Box sx={{
                 position: 'fixed',
                 bottom: 0,
@@ -1416,69 +1423,129 @@ const CreatePOPage: React.FC = () => {
                 bgcolor: TOKENS.surface,
                 borderTop: `1px solid ${TOKENS.border}`,
                 px: { xs: 2, md: 4 },
-                py: { xs: 1.5, md: 2 },
+                pt: { xs: 1.25, md: 2 },
+                pb: { xs: 'calc(env(safe-area-inset-bottom, 0px) + 20px)', md: 2 },
                 display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
+                flexDirection: { xs: 'column-reverse', sm: 'row' },
                 justifyContent: 'flex-end',
                 alignItems: 'center',
-                gap: 1.5,
-                zIndex: 1200
+                gap: { xs: 1, sm: 1.5 },
+                zIndex: 1200,
+                boxShadow: '0 -4px 16px rgba(0,0,0,0.06)'
             }}>
-                <Button
-                    variant="text"
-                    fullWidth={isMobile}
-                    onClick={() => navigate(getRelativePath('/purchase-orders'))}
-                    sx={{
-                        borderRadius: 2,
-                        px: 3,
-                        py: 1.25,
-                        fontWeight: 600,
-                        textTransform: 'none',
-                        color: TOKENS.muted,
-                        '&:hover': { bgcolor: alpha(TOKENS.ink, 0.04) }
-                    }}
-                >
-                    Cancel
-                </Button>
-                <Button
-                    variant="contained"
-                    fullWidth={isMobile}
-                    onClick={() => handleSubmit('draft')}
-                    disabled={loading}
-                    sx={{
-                        borderRadius: 2,
-                        px: 3,
-                        py: 1.25,
-                        fontWeight: 600,
-                        textTransform: 'none',
-                        bgcolor: TOKENS.borderLight,
-                        color: TOKENS.ink,
-                        boxShadow: 'none',
-                        '&:hover': { bgcolor: TOKENS.border, boxShadow: 'none' }
-                    }}
-                >
-                    Save as draft
-                </Button>
-                <Button
-                    variant="contained"
-                    fullWidth={isMobile}
-                    onClick={() => handleSubmit('pending')}
-                    disabled={loading}
-                    startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
-                    sx={{
-                        borderRadius: 2,
-                        px: 4,
-                        py: 1.25,
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        bgcolor: TOKENS.accent,
-                        color: '#fff',
-                        boxShadow: 'none',
-                        '&:hover': { bgcolor: '#96391f', boxShadow: 'none' }
-                    }}
-                >
-                    {loading ? 'Saving...' : (id ? 'Update entry' : 'Save entry')}
-                </Button>
+                {isMobile ? (
+                    <>
+                        <Box sx={{ display: 'flex', width: '100%', gap: 1 }}>
+                            <Button
+                                variant="text"
+                                fullWidth
+                                onClick={() => navigate(getRelativePath('/purchase-orders'))}
+                                sx={{
+                                    borderRadius: 2,
+                                    py: 1,
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    color: TOKENS.muted,
+                                    '&:hover': { bgcolor: alpha(TOKENS.ink, 0.04) }
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="contained"
+                                fullWidth
+                                onClick={() => handleSubmit('draft')}
+                                disabled={loading}
+                                sx={{
+                                    borderRadius: 2,
+                                    py: 1,
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    bgcolor: TOKENS.borderLight,
+                                    color: TOKENS.ink,
+                                    boxShadow: 'none',
+                                    '&:hover': { bgcolor: TOKENS.border, boxShadow: 'none' }
+                                }}
+                            >
+                                Save as draft
+                            </Button>
+                        </Box>
+                        <Button
+                            variant="contained"
+                            fullWidth
+                            onClick={() => handleSubmit('pending')}
+                            disabled={loading}
+                            startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
+                            sx={{
+                                borderRadius: 2,
+                                py: 1.2,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                bgcolor: TOKENS.accent,
+                                color: '#fff',
+                                boxShadow: 'none',
+                                '&:hover': { bgcolor: '#96391f', boxShadow: 'none' }
+                            }}
+                        >
+                            {loading ? 'Saving...' : (id ? 'Update entry' : 'Save entry')}
+                        </Button>
+                    </>
+                ) : (
+                    <>
+                        <Button
+                            variant="text"
+                            onClick={() => navigate(getRelativePath('/purchase-orders'))}
+                            sx={{
+                                borderRadius: 2,
+                                px: 3,
+                                py: 1.25,
+                                fontWeight: 600,
+                                textTransform: 'none',
+                                color: TOKENS.muted,
+                                '&:hover': { bgcolor: alpha(TOKENS.ink, 0.04) }
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="contained"
+                            onClick={() => handleSubmit('draft')}
+                            disabled={loading}
+                            sx={{
+                                borderRadius: 2,
+                                px: 3,
+                                py: 1.25,
+                                fontWeight: 600,
+                                textTransform: 'none',
+                                bgcolor: TOKENS.borderLight,
+                                color: TOKENS.ink,
+                                boxShadow: 'none',
+                                '&:hover': { bgcolor: TOKENS.border, boxShadow: 'none' }
+                            }}
+                        >
+                            Save as draft
+                        </Button>
+                        <Button
+                            variant="contained"
+                            onClick={() => handleSubmit('pending')}
+                            disabled={loading}
+                            startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
+                            sx={{
+                                borderRadius: 2,
+                                px: 4,
+                                py: 1.25,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                bgcolor: TOKENS.accent,
+                                color: '#fff',
+                                boxShadow: 'none',
+                                '&:hover': { bgcolor: '#96391f', boxShadow: 'none' }
+                            }}
+                        >
+                            {loading ? 'Saving...' : (id ? 'Update entry' : 'Save entry')}
+                        </Button>
+                    </>
+                )}
             </Box>
         </Box>
     );

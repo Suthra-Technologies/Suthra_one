@@ -7,6 +7,7 @@ import type { ValidationResult } from '../utils/validation';
 import { sanitizeName } from '../utils/inputSanitizers';
 import { useAuth } from '../context/AuthContext';
 import PhoneInput from '../components/PhoneInput';
+import { splitPlanFeatures, planFeatureLabel } from '../utils/planFeatures';
 
 interface RestaurantRegisterForm {
   restaurantName: string;
@@ -34,6 +35,7 @@ interface Plan {
   maxTables?: number;
   maxOrders?: number;
   maxSms?: number;
+  baseplanId?: string | null;
 }
 
 const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
@@ -55,10 +57,17 @@ const RestaurantRegisterPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState<RestaurantRegisterForm>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlPlanId = params.get('planId') || undefined;
+
     try {
       const saved = localStorage.getItem('pending_registration_form');
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (urlPlanId) {
+          parsed.planId = urlPlanId;
+        }
+        return parsed;
       }
     } catch (e) {
       console.error('Failed to parse saved registration form:', e);
@@ -74,7 +83,7 @@ const RestaurantRegisterPage: React.FC = () => {
       dialCode: '1',
       password: '',
       confirmPassword: '',
-      planId: undefined,
+      planId: urlPlanId,
       ein: '',
     };
   });
@@ -645,12 +654,14 @@ const RestaurantRegisterPage: React.FC = () => {
                   }}
                 >
                   {plans.map((plan) => {
-                    const planFeatures = [];
-                    if (plan.maxUsers) planFeatures.push(`Up to ${plan.maxUsers} Users`);
-                    if (plan.maxTables) planFeatures.push(`Manage ${plan.maxTables} Tables`);
-                    if (plan.maxOrders) planFeatures.push(`${plan.maxOrders} Orders / month`);
-                    if (plan.maxSms) planFeatures.push(`${plan.maxSms} SMS Credits`);
-                    if (plan.features && plan.features.length > 0) planFeatures.push(...plan.features);
+                    const { basePlan, extra } = splitPlanFeatures(plan, plans);
+                    const limitItems = [
+                      plan.maxUsers ? `Up to ${plan.maxUsers} Users` : null,
+                      plan.maxTables ? `Manage ${plan.maxTables} Tables` : null,
+                      plan.maxOrders ? `${plan.maxOrders} Orders / month` : null,
+                      plan.maxSms ? `${plan.maxSms} SMS Credits` : null,
+                    ].filter(Boolean) as string[];
+                    const featureItems = extra.map(planFeatureLabel);
 
                     return (
                       <Box key={plan._id} sx={{ scrollSnapAlign: 'start', flexShrink: 0, width: { xs: 280, md: 300 } }}>
@@ -691,8 +702,38 @@ const RestaurantRegisterPage: React.FC = () => {
                           <Typography variant="body2" color="text.secondary" sx={{ mb: 3, minHeight: 40 }}>
                             {plan.description || 'Get started with our basic features to manage your restaurant efficiently.'}
                           </Typography>
+                          {/* Limit/system items list */}
+                          {limitItems.length > 0 && (
+                            <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 1.5, mb: basePlan ? 1.5 : 3 }}>
+                              {limitItems.map((feature, idx) => (
+                                <Box component="li" key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                                  <Box sx={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    width: 20, height: 20, borderRadius: '50%',
+                                    backgroundColor: form.planId === plan._id ? 'primary.main' : 'rgba(0,0,0,0.08)',
+                                    color: form.planId === plan._id ? 'white' : 'text.secondary',
+                                    flexShrink: 0,
+                                  }}>
+                                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}>✓</Typography>
+                                  </Box>
+                                  <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4 }}>{feature}</Typography>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+
+                          {/* Base Plan Header */}
+                          {basePlan && (
+                            <Box sx={{ mb: 1.5, px: 0.5 }}>
+                              <Typography variant="body2" fontWeight="bold" color="text.primary" sx={{ fontSize: '0.82rem', fontStyle: 'italic' }}>
+                                Everything in {basePlan.name}, plus:
+                              </Typography>
+                            </Box>
+                          )}
+
+                          {/* Incremental features list */}
                           <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 1.5, flexGrow: 1, mb: 3 }}>
-                            {planFeatures.slice(0, 6).map((feature, idx) => (
+                            {featureItems.map((feature, idx) => (
                               <Box component="li" key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
                                 <Box sx={{
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',

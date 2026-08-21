@@ -2160,7 +2160,7 @@ const HomePage: React.FC = () => {
                           },
                         }}
                         onClick={() => {
-                          document.getElementById("demo-form")?.scrollIntoView({ behavior: "smooth" });
+                          navigate(`/register?planId=${plan._id}`);
                         }}
                       >
                         CHOOSE THIS PLAN

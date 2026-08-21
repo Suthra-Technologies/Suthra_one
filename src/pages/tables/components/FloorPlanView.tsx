@@ -896,10 +896,10 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
     return (
         <Box sx={{ width: '100%', pb: 3 }}>
-            {/* ── UNIFIED COMPACT CONTROL BAR ── */}
-            <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5 }}>
-                {/* LEFT: ROOM SELECTION TABS & ADD BUTTONS */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflowX: 'auto', pb: 0.5 }}>
+            {/* ── ROW 1: ROOM SELECTION TABS & ADD TABLE ── */}
+            <Box sx={{ mb: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
+                {/* LEFT: ROOM SELECTION TABS */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflowX: 'auto', flex: 1, minWidth: 0, pb: 0.5, '::-webkit-scrollbar': { height: 4 } }}>
                     {sections.map(section => {
                         const isActive = activeSection === section;
                         const count = tables.filter(t => !t.isDeleted && t.isActive !== false && canonicalizeRoomKey(getEffectiveRoom(t)) === canonicalizeRoomKey(section)).length;
@@ -917,23 +917,74 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                             </Box>
                         );
                     })}
-                    {onOpenAddTable && !isCustomerMode && (
-                        <Box onClick={() => onOpenAddTable && onOpenAddTable(activeSection)} sx={{
-                            px: 1.5, py: 0.6, borderRadius: 2.5, cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem',
-                            bgcolor: 'primary.main', color: '#FFFFFF',
-                            border: '1.5px solid', borderColor: 'primary.main',
-                            boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)',
-                            transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0,
-                            '&:hover': { bgcolor: 'primary.dark' },
-                        }}>
-                            <AddIcon sx={{ fontSize: 16 }} />
-                            <span>Add Table</span>
-                        </Box>
-                    )}
                 </Box>
+                {onOpenAddTable && !isCustomerMode && (
+                    <Box onClick={() => onOpenAddTable && onOpenAddTable(activeSection)} sx={{
+                        px: 1.5, py: 0.6, borderRadius: 2.5, cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem',
+                        bgcolor: 'primary.main', color: '#FFFFFF',
+                        border: '1.5px solid', borderColor: 'primary.main',
+                        boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)',
+                        transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0,
+                        '&:hover': { bgcolor: 'primary.dark' },
+                    }}>
+                        <AddIcon sx={{ fontSize: 16 }} />
+                        <span>Add Table</span>
+                    </Box>
+                )}
+            </Box>
+
+            {/* ── ROW 2: STATUS FILTER PILLS (LEFT) & ACTION TOOLS (RIGHT) ── */}
+            <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5 }}>
+                {/* LEFT: STATUS FILTER PILLS */}
+                {!isCustomerMode && currentSectionTables.length > 0 ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, overflowX: 'auto', pb: 0.25 }}>
+                        <Chip
+                            label={`All (${filterCounts.all})`}
+                            size="small"
+                            color={canvasFilter === 'all' ? 'primary' : 'default'}
+                            variant={canvasFilter === 'all' ? 'filled' : 'outlined'}
+                            onClick={() => setCanvasFilter('all')}
+                            sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
+                        />
+                        <Chip
+                            label={`🟢 Available (${filterCounts.available})`}
+                            size="small"
+                            color={canvasFilter === 'available' ? 'success' : 'default'}
+                            variant={canvasFilter === 'available' ? 'filled' : 'outlined'}
+                            onClick={() => setCanvasFilter('available')}
+                            sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
+                        />
+                        <Chip
+                            label={`🟣 Occupied (${filterCounts.occupied})`}
+                            size="small"
+                            color={canvasFilter === 'occupied' ? 'primary' : 'default'}
+                            variant={canvasFilter === 'occupied' ? 'filled' : 'outlined'}
+                            onClick={() => setCanvasFilter('occupied')}
+                            sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
+                        />
+                        <Chip
+                            label={`🔵 Cleaning (${filterCounts.cleaning})`}
+                            size="small"
+                            color={canvasFilter === 'cleaning' ? 'info' : 'default'}
+                            variant={canvasFilter === 'cleaning' ? 'filled' : 'outlined'}
+                            onClick={() => setCanvasFilter('cleaning')}
+                            sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
+                        />
+                        {filterCounts.longSeating > 0 && (
+                            <Chip
+                                label={`⚡ Long Seating >90m (${filterCounts.longSeating})`}
+                                size="small"
+                                color={canvasFilter === 'long_seating' ? 'error' : 'default'}
+                                variant={canvasFilter === 'long_seating' ? 'filled' : 'outlined'}
+                                onClick={() => setCanvasFilter('long_seating')}
+                                sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
+                            />
+                        )}
+                    </Box>
+                ) : <Box />}
 
                 {/* RIGHT: VIEW TOGGLE, SEARCH & MOVE CONTROLS */}
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                <Stack direction="row" spacing={1} alignItems="center">
                     <Tooltip title={is3DMode ? 'Switch to 2D View' : 'Switch to 3D View'}>
                         <Button
                             size="small"
@@ -1000,54 +1051,6 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                     )}
                 </Stack>
             </Box>
-
-                {/* STATUS FILTER PILLS */}
-                {!isCustomerMode && currentSectionTables.length > 0 && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, overflowX: 'auto', pb: 0.5 }}>
-                        <Chip
-                            label={`All (${filterCounts.all})`}
-                            size="small"
-                            color={canvasFilter === 'all' ? 'primary' : 'default'}
-                            variant={canvasFilter === 'all' ? 'filled' : 'outlined'}
-                            onClick={() => setCanvasFilter('all')}
-                            sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
-                        />
-                        <Chip
-                            label={`🟢 Available (${filterCounts.available})`}
-                            size="small"
-                            color={canvasFilter === 'available' ? 'success' : 'default'}
-                            variant={canvasFilter === 'available' ? 'filled' : 'outlined'}
-                            onClick={() => setCanvasFilter('available')}
-                            sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
-                        />
-                        <Chip
-                            label={`🟣 Occupied (${filterCounts.occupied})`}
-                            size="small"
-                            color={canvasFilter === 'occupied' ? 'primary' : 'default'}
-                            variant={canvasFilter === 'occupied' ? 'filled' : 'outlined'}
-                            onClick={() => setCanvasFilter('occupied')}
-                            sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
-                        />
-                        <Chip
-                            label={`🔵 Cleaning (${filterCounts.cleaning})`}
-                            size="small"
-                            color={canvasFilter === 'cleaning' ? 'info' : 'default'}
-                            variant={canvasFilter === 'cleaning' ? 'filled' : 'outlined'}
-                            onClick={() => setCanvasFilter('cleaning')}
-                            sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
-                        />
-                        {filterCounts.longSeating > 0 && (
-                            <Chip
-                                label={`⚡ Long Seating >90m (${filterCounts.longSeating})`}
-                                size="small"
-                                color={canvasFilter === 'long_seating' ? 'error' : 'default'}
-                                variant={canvasFilter === 'long_seating' ? 'filled' : 'outlined'}
-                                onClick={() => setCanvasFilter('long_seating')}
-                                sx={{ fontWeight: 800, fontSize: '0.7rem', height: 26, cursor: 'pointer' }}
-                            />
-                        )}
-                    </Box>
-                )}
 
             {/* ── 3D FLOOR CANVAS ── */}
             <Paper

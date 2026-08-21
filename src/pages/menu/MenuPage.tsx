@@ -104,7 +104,7 @@ import { SortableCategoryItem } from './SortableCategoryItem';
 const MenuPage: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+    const headingFontSize = { xs: '1.05rem', sm: '1.25rem', md: '1.45rem' };
     const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
     const navigate = useNavigate();
     const { formatCurrency } = useSettings();
@@ -1227,10 +1227,10 @@ const MenuPage: React.FC = () => {
                 display: 'flex', 
                 flexDirection: { xs: 'column', sm: 'row' }, 
                 justifyContent: 'space-between', 
-                alignItems: 'center', 
-                mb: { xs: 1, sm: 4 }, 
+                alignItems: { xs: 'flex-start', sm: 'center' }, 
+                mb: { xs: 1.5, sm: 3 }, 
                 gap: { xs: 1, sm: 2 },
-                px: { xs: 1, sm: 0 },
+                px: { xs: 0.5, sm: 0 },
                 mt: { xs: 0.5, sm: 0 }
             }}>
                 <Typography 
@@ -1238,9 +1238,9 @@ const MenuPage: React.FC = () => {
                     sx={{ 
                         fontWeight: 800,
                         fontSize: headingFontSize,
-                        color: { xs: '#000', sm: 'text.primary' },
-                        textAlign: { xs: 'center', sm: 'left' },
-                        width: { xs: '100%', sm: 'auto' }
+                        color: 'text.primary',
+                        textAlign: 'left',
+                        width: 'auto'
                     }}
                 >
                     Menu Management
@@ -1279,66 +1279,107 @@ const MenuPage: React.FC = () => {
                 <Box>
                     {/* Actions Bar */}
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
-                        <TextField
-                            placeholder="Search menu items..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            size="small"
-                            fullWidth
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: 'background.paper' } }}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <SearchIcon color="action" fontSize="small" />
-                                    </InputAdornment>
-                                ),
-                                endAdornment: searchQuery ? (
-                                    <InputAdornment position="end">
-                                        <IconButton size="small" onClick={() => setSearchQuery('')}>
-                                            <CloseIcon fontSize="small" />
-                                        </IconButton>
-                                    </InputAdornment>
-                                ) : null
-                            }}
-                        />
-                        
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                            <Chip
-                                label="All"
-                                onClick={() => setSelectedCategory('all')}
-                                color={selectedCategory === 'all' ? 'primary' : 'default'}
-                                variant={selectedCategory === 'all' ? 'filled' : 'outlined'}
+                        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.5, alignItems: 'center' }}>
+                            <TextField
+                                placeholder="Search menu items..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                                 size="small"
-                                sx={{ fontWeight: 600 }}
+                                fullWidth
+                                sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: 'background.paper' } }}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon color="action" fontSize="small" />
+                                        </InputAdornment>
+                                    ),
+                                    endAdornment: searchQuery ? (
+                                        <InputAdornment position="end">
+                                            <IconButton size="small" onClick={() => setSearchQuery('')}>
+                                                <CloseIcon fontSize="small" />
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ) : null
+                                }}
                             />
-                            {categories.map(cat => (
-                                <Chip
-                                    key={cat._id}
-                                    label={cat.name}
-                                    onClick={() => setSelectedCategory(cat._id)}
-                                    color={selectedCategory === cat._id ? 'primary' : 'default'}
-                                    variant={selectedCategory === cat._id ? 'filled' : 'outlined'}
-                                    size="small"
-                                    sx={{ fontWeight: 600 }}
-                                />
-                            ))}
+                            
+                            <FormControl 
+                                size="small" 
+                                sx={{ 
+                                    minWidth: { xs: '100%', sm: 220 }, 
+                                    maxWidth: { xs: '100%', sm: 280 },
+                                    '& .MuiOutlinedInput-root': { 
+                                        borderRadius: '12px', 
+                                        bgcolor: 'background.paper',
+                                        fontSize: bodyFontSize 
+                                    } 
+                                }}
+                            >
+                                <Select
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    displayEmpty
+                                    MenuProps={{
+                                        PaperProps: {
+                                            sx: {
+                                                maxHeight: 320,
+                                                borderRadius: '12px',
+                                                boxShadow: '0 8px 24px rgba(0,0,0,0.12)'
+                                            }
+                                        }
+                                    }}
+                                    renderValue={(val) => {
+                                        if (val === 'all') return 'All Categories';
+                                        const matched = categories.find(cat => cat._id === val);
+                                        return matched ? matched.name : 'All Categories';
+                                    }}
+                                >
+                                    <MenuItem value="all" sx={{ fontSize: bodyFontSize, fontWeight: selectedCategory === 'all' ? 700 : 500 }}>
+                                        All Categories ({categories.length})
+                                    </MenuItem>
+                                    {categories.map(cat => (
+                                        <MenuItem 
+                                            key={cat._id} 
+                                            value={cat._id}
+                                            sx={{ fontSize: bodyFontSize, fontWeight: selectedCategory === cat._id ? 700 : 500 }}
+                                        >
+                                            {cat.name}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
                         </Box>
                         
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            flexDirection: { xs: 'column', sm: 'row' }, 
+                            justifyContent: 'space-between', 
+                            alignItems: { xs: 'flex-start', sm: 'center' },
+                            gap: { xs: 1.25, sm: 1 },
+                            width: '100%'
+                        }}>
                             <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: bodyFontSize }}>
                                 {filteredMenuItems.length} Items Found
                             </Typography>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Box sx={{ 
+                                display: 'flex', 
+                                flexWrap: 'wrap',
+                                gap: { xs: 0.75, sm: 1 },
+                                width: { xs: '100%', sm: 'auto' },
+                                justifyContent: { xs: 'flex-start', sm: 'flex-end' }
+                            }}>
                                 <Button
                                     variant="outlined"
                                     size={isMobile ? "small" : "medium"}
-                                    startIcon={isExporting ? <CircularProgress size={16} color="inherit" /> : <CloudDownloadIcon sx={{ fontSize: isMobile ? '0.9rem !important' : 'inherit' }} />}
+                                    startIcon={isExporting ? <CircularProgress size={14} color="inherit" /> : <CloudDownloadIcon sx={{ fontSize: isMobile ? '0.85rem !important' : 'inherit' }} />}
                                     onClick={handleExportExcel}
                                     disabled={isExporting}
                                     sx={{ 
-                                        width: 'auto',
-                                        fontSize: isMobile ? '0.7rem' : '0.85rem',
-                                        px: isMobile ? 1.5 : 2,
+                                        flex: { xs: '1 1 auto', sm: 'none' },
+                                        minWidth: { xs: 'auto', sm: '100px' },
+                                        fontSize: isMobile ? '0.72rem' : '0.85rem',
+                                        px: isMobile ? 1 : 2,
+                                        py: isMobile ? 0.6 : undefined,
                                         fontWeight: 700,
                                         whiteSpace: 'nowrap',
                                         color: theme.palette.success.main,
@@ -1349,17 +1390,19 @@ const MenuPage: React.FC = () => {
                                         }
                                     }}
                                 >
-                                    Export Menu
+                                    {isMobile ? 'Export' : 'Export Menu'}
                                 </Button>
                                 <Button
                                     variant="outlined"
                                     size={isMobile ? "small" : "medium"}
-                                    startIcon={<CloudUploadIcon sx={{ fontSize: isMobile ? '0.9rem !important' : 'inherit' }} />}
+                                    startIcon={<CloudUploadIcon sx={{ fontSize: isMobile ? '0.85rem !important' : 'inherit' }} />}
                                     onClick={handleOpenBulkDialog}
                                     sx={{ 
-                                        width: 'auto',
-                                        fontSize: isMobile ? '0.7rem' : '0.85rem',
-                                        px: isMobile ? 1.5 : 2,
+                                        flex: { xs: '1 1 auto', sm: 'none' },
+                                        minWidth: { xs: 'auto', sm: '100px' },
+                                        fontSize: isMobile ? '0.72rem' : '0.85rem',
+                                        px: isMobile ? 1 : 2,
+                                        py: isMobile ? 0.6 : undefined,
                                         fontWeight: 700,
                                         whiteSpace: 'nowrap'
                                     }}
@@ -1369,21 +1412,23 @@ const MenuPage: React.FC = () => {
                                 <Button
                                     variant="contained"
                                     size={isMobile ? "small" : "medium"}
-                                    startIcon={<AddIcon sx={{ fontSize: isMobile ? '0.9rem !important' : 'inherit' }} />}
+                                    startIcon={<AddIcon sx={{ fontSize: isMobile ? '0.85rem !important' : 'inherit' }} />}
                                     onClick={() => handleOpenMenuItemDialog()}
                                     sx={{ 
-                                        width: 'auto',
-                                        fontSize: isMobile ? '0.7rem' : '0.85rem',
-                                        px: isMobile ? 1.5 : 2,
+                                        flex: { xs: '1 1 auto', sm: 'none' },
+                                        minWidth: { xs: 'auto', sm: '120px' },
+                                        fontSize: isMobile ? '0.72rem' : '0.85rem',
+                                        px: isMobile ? 1 : 2,
+                                        py: isMobile ? 0.6 : undefined,
                                         fontWeight: 700,
                                         whiteSpace: 'nowrap'
                                     }}
                                 >
-                                    Add Menu Item
+                                    {isMobile ? 'Add Item' : 'Add Menu Item'}
                                 </Button>
+                            </Box>
                         </Box>
                     </Box>
-                </Box>
 
                     {/* Menu Items Grid */}
                     {loading ? (
