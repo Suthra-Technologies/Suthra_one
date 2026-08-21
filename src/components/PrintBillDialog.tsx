@@ -1,6 +1,5 @@
 import {
     Close as CloseIcon,
-    Download as DownloadIcon,
     Print as PrintIcon,
 } from '@mui/icons-material';
 import {
@@ -388,34 +387,6 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
         }
     };
 
-    const handleDownloadPDF = async () => {
-        try {
-            setLoading(true);
-            const { ordersAPI } = await import('../services/api');
-            const response = await ordersAPI.downloadPDF(order._id);
-
-            // Create a blob from the response data
-            const blob = new Blob([response.data], { type: 'application/pdf' });
-            const url = window.URL.createObjectURL(blob);
-
-            // Create a temporary link element and trigger download
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `Bill-${billData?.orderNumber || order._id.slice(-8)?.toUpperCase()}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-
-            // Clean up
-            link.parentNode?.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error('Error downloading PDF:', error);
-            alert('Failed to download PDF. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     if (!order) return null;
 
     return (
@@ -699,14 +670,6 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
 
             <DialogActions>
                 <Button onClick={onClose}>Close</Button>
-                <Button
-                    startIcon={<DownloadIcon />}
-                    onClick={handleDownloadPDF}
-                    variant="outlined"
-                    disabled={loading || !billData}
-                >
-                    Download PDF
-                </Button>
                 <Button
                     startIcon={<PrintIcon />}
                     onClick={handlePrint}

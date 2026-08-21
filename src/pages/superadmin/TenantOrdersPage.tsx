@@ -29,18 +29,23 @@ const TenantOrdersPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('all');
   const [search, setSearch] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
-  const fetch = useCallback(async (p: number, rpp: number, s: string, q: string) => {
+  const fetch = useCallback(async (p: number, rpp: number, s: string, q: string, sd: string, ed: string) => {
     if (!tenantId) return;
     setLoading(true);
     try {
-      const res = await superAdminPaymentsAPI.getTenantOrders(tenantId, { 
-        page: p + 1, 
+      const res = await superAdminPaymentsAPI.getTenantOrders(tenantId, {
+        page: p + 1,
         limit: rpp,
         status: s,
-        search: q
+        search: q,
+        startDate: sd || undefined,
+        // include the whole end day
+        endDate: ed ? `${ed}T23:59:59.999` : undefined,
       });
       setRows(res.data.orders || []);
       setTotal(res.data.total || 0);
@@ -54,10 +59,10 @@ const TenantOrdersPage: React.FC = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetch(page, rowsPerPage, status, search);
+      fetch(page, rowsPerPage, status, search, startDate, endDate);
     }, 500);
     return () => clearTimeout(timer);
-  }, [page, rowsPerPage, status, search, fetch]);
+  }, [page, rowsPerPage, status, search, startDate, endDate, fetch]);
 
   const fmt = (n: any) => `$${(Number(n) || 0).toFixed(2)}`;
   const fmtDate = (d: string) => d ? new Date(d).toLocaleString() : '-';
@@ -118,6 +123,32 @@ const TenantOrdersPage: React.FC = () => {
               <MenuItem value="cancelled">Cancelled</MenuItem>
             </Select>
           </FormControl>
+          <TextField
+            label="From"
+            type="date"
+            size="small"
+            value={startDate}
+            onChange={(e) => { setPage(0); setStartDate(e.target.value); }}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 160 }}
+          />
+          <TextField
+            label="To"
+            type="date"
+            size="small"
+            value={endDate}
+            onChange={(e) => { setPage(0); setEndDate(e.target.value); }}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 160 }}
+          />
+          {(startDate || endDate) && (
+            <Chip
+              label="Clear dates"
+              size="small"
+              onClick={() => { setStartDate(''); setEndDate(''); setPage(0); }}
+              onDelete={() => { setStartDate(''); setEndDate(''); setPage(0); }}
+            />
+          )}
         </Stack>
       </Paper>
 
@@ -282,7 +313,7 @@ const TenantOrdersPage: React.FC = () => {
             setSelectedOrder(null);
           }}
           onUpdate={() => {
-            fetch(page, rowsPerPage, status, search);
+            fetch(page, rowsPerPage, status, search, startDate, endDate);
           }}
         />
       )}

@@ -54,6 +54,7 @@ import {
     isGlobalDineIn,
 } from '../utils/orderWorkflows';
 import { formatSpiceLevelLabel } from '../utils/spiceLevel';
+import { formatPhoneDisplay } from '../utils/validation';
 import PaymentCollectionDialog from './PaymentCollectionDialog';
 import DisputeInitiationDialog from './DisputeInitiationDialog';
 import MapComponent from './MapComponent';
@@ -359,7 +360,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                             )}
                             {order.customer?.phone && (
                                 <Typography variant="body2">
-                                    <strong>Phone:</strong> {order.customer?.phone}
+                                    <strong>Phone:</strong> {formatPhoneDisplay(order.customer.phone)}
                                 </Typography>
                             )}
                             {order.customer?.email && (
@@ -638,6 +639,17 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                                                             '100%': { transform: 'scale(0.95)', opacity: 0.8 }
                                                                         }
                                                                     }}
+                                                                />
+                                                            </Tooltip>
+                                                        )}
+                                                        {Number(item.disputedQuantity || 0) > 0 && (
+                                                            <Tooltip title={`${item.disputedQuantity} of ${item.quantity} under an active dispute`} arrow>
+                                                                <Chip
+                                                                    label={Number(item.disputedQuantity) >= Number(item.quantity) ? 'DISPUTED' : `${item.disputedQuantity} DISPUTED`}
+                                                                    size="small"
+                                                                    color="error"
+                                                                    variant="outlined"
+                                                                    sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }}
                                                                 />
                                                             </Tooltip>
                                                         )}
@@ -1050,20 +1062,28 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                         </Button>
                     )}
                     <Box sx={{ flex: 1 }} />
-                    {(user?.role === 'admin' || user?.role === 'manager') && (
-                        <Tooltip title={allItemsDisputed ? 'All items on this order already have an active dispute' : ''}>
-                            <span>
-                                <Button
-                                    startIcon={<DisputeIcon />}
-                                    onClick={() => setDisputeDialogOpen(true)}
-                                    color="error"
-                                    disabled={allItemsDisputed}
-                                >
-                                    Dispute Order
-                                </Button>
-                            </span>
-                        </Tooltip>
-                    )}
+                    {(user?.role === 'admin' || user?.role === 'manager') && (() => {
+                        const hasDisputableItems = (order.items || []).some((i: any) =>
+                            i.preparationStatus !== 'cancelled' &&
+                            Number(i.quantity || 0) - Number(i.disputedQuantity || 0) > 0
+                        );
+                        return (
+                            <>
+                                {order.isDisputed && (
+                                    <Chip label="DISPUTED" color="error" size="small" variant="outlined" />
+                                )}
+                                {(!order.isDisputed || hasDisputableItems) && (
+                                    <Button
+                                        startIcon={<DisputeIcon />}
+                                        onClick={() => setDisputeDialogOpen(true)}
+                                        color="error"
+                                    >
+                                        {order.isDisputed ? 'Dispute More Items' : 'Dispute Order'}
+                                    </Button>
+                                )}
+                            </>
+                        );
+                    })()}
                     <Button onClick={onClose}>Close</Button>
                 </DialogActions>
             </Dialog>

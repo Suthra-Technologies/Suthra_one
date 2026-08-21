@@ -47,6 +47,7 @@ import { toast } from 'react-hot-toast';
 import { useSearchParams } from "react-router-dom";
 import theme from 'src/theme/theme';
 import PaymentModal from '../../components/PaymentModal';
+import PhonePeQrModal from '../../components/PhonePeQrModal';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { autoPrintOrder } from '../../utils/autoPrintOrder';
@@ -120,19 +121,19 @@ const MemoizedMenuItemCard = React.memo(({
                     />
                 )}
                 <CardContent sx={{ flexGrow: 1, p: 1.5 }}>
-                    <Typography 
-                        variant="subtitle1" 
-                        fontWeight="bold" 
-                        noWrap 
+                    <Typography
+                        variant="subtitle1"
+                        fontWeight="bold"
+                        noWrap
                         gutterBottom
                         sx={{ fontSize: { xs: '0.95rem', md: '0.88rem' } }}
                     >
                         {item.name}
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography 
-                            variant="body1" 
-                            color="primary" 
+                        <Typography
+                            variant="body1"
+                            color="primary"
                             fontWeight="700"
                             sx={{ fontSize: { xs: '1rem', md: '0.9rem' } }}
                         >
@@ -164,6 +165,7 @@ const MemoizedMenuItemCard = React.memo(({
 const POSPage: React.FC = () => {
     const { user, getUserFullName, tenantSlug } = useAuth();
     const { formatCurrency, settings } = useSettings();
+    const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
     const headingFontSize = { xs: '1.1rem', sm: '1.35rem', md: '1.75rem' };
     const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
 
@@ -227,6 +229,7 @@ const POSPage: React.FC = () => {
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [manualPaymentDialogOpen, setManualPaymentDialogOpen] = useState(false);
     const [manualPaymentRefId, setManualPaymentRefId] = useState('');
+    const [phonePeQrOpen, setPhonePeQrOpen] = useState(false);
     const [selectedTable, setSelectedTable] = useState<any>(null);
     const [cardPrintReceipt, setCardPrintReceipt] = useState(false);
     const [cardSignInForApiCall, setCardSignInForApiCall] = useState(false);
@@ -414,7 +417,7 @@ const POSPage: React.FC = () => {
             const data = res.data;
             const fetchedItems: any[] = Array.isArray(data) ? data : (data?.items ?? []);
             if (requestId !== menuFetchRequestId.current) return; // Stale request
-            
+
             const newCursor = Array.isArray(data) ? null : (data?.nextCursor ?? null);
             const totalCount = Array.isArray(data) ? fetchedItems.length : (data?.totalCount ?? 0);
 
@@ -1366,6 +1369,13 @@ const POSPage: React.FC = () => {
                 return;
             }
 
+            // India: PhonePe/GPay/Paytm are collected through the real PhonePe UPI
+            // gateway (dynamic QR), not recorded as a manual marker.
+            if (isIndia && ['phonepe', 'gpay', 'paytm'].includes(paymentMethod)) {
+                setPhonePeQrOpen(true);
+                return;
+            }
+
             if (paymentMethod !== 'cash' && paymentMethod !== 'online' && paymentMethod !== 'card') {
                 setManualPaymentRefId('');
                 setManualPaymentDialogOpen(true);
@@ -1391,6 +1401,11 @@ const POSPage: React.FC = () => {
             const ref = refToUse ? `REF_${refToUse}` : `MANUAL_${methodToUse?.toUpperCase()}`;
             await submitOrder(ref);
         }
+    };
+
+    const handlePhonePeQrSuccess = async (merchantTransactionId: string) => {
+        setPhonePeQrOpen(false);
+        await submitOrder(merchantTransactionId);
     };
     const fetchTables = async () => {
         try {
@@ -1462,10 +1477,13 @@ const POSPage: React.FC = () => {
             const isVerifiedStripePayment =
                 (paymentMethod === 'card' || paymentMethod === 'online') &&
                 Boolean(paymentIntentId?.startsWith('pi_'));
+            // PhonePe UPI (India) order ids are minted as ORD_* and are only passed
+            // here after the QR modal confirmed COMPLETED status, so they are paid.
+            const isVerifiedPhonePePayment = Boolean(paymentIntentId?.startsWith('ORD_'));
 
             // For dine-in orders, dynamically replace card/online with alternative payment methods
             let finalPaymentMethod = paymentMethod;
-            let finalPaymentStatus = isManualCollectedPayment || isVerifiedStripePayment ? "paid" : "pending";
+            let finalPaymentStatus = isManualCollectedPayment || isVerifiedStripePayment || isVerifiedPhonePePayment ? "paid" : "pending";
             let finalPaymentIntentId = paymentIntentId?.startsWith('REF_')
                 ? paymentIntentId.replace(/^REF_/, '')
                 : paymentIntentId;
@@ -1659,7 +1677,7 @@ const POSPage: React.FC = () => {
             ...(item.modifierGroups || []),
             ...((item as any).linkedGroups || [])
         ];
-        
+
         if (allGroups.length > 0) {
             allGroups.forEach(g => {
                 // Safety check: ensure g is an object and has options array
@@ -1702,7 +1720,7 @@ const POSPage: React.FC = () => {
 
     const handleSelectCombo = async (coupon: any) => {
         let comboConfig = coupon.comboConfig || [];
-        
+
         // Fallback: if comboConfig is empty but applicableItems is not, treat it as a combo of those items (qty 1)
         if (!comboConfig.length && coupon.applicableItems?.length > 0) {
             comboConfig = coupon.applicableItems.map((id: string) => ({
@@ -1722,7 +1740,7 @@ const POSPage: React.FC = () => {
         for (const entry of comboConfig) {
             const itemId = entry.menuItem?._id || entry.menuItem;
             let item = menuItems.find(i => i._id === itemId);
-            
+
             // If item not in local state (e.g. paginated out), fetch it specifically
             if (!item) {
                 try {
@@ -1783,7 +1801,7 @@ const POSPage: React.FC = () => {
             setCouponCode(coupon.code);
             toast.success(`Combo "${coupon.name}" added to cart`);
         }
-        
+
         if (missingItems > 0) {
             toast.error(`${missingItems} item(s) in this combo are currently unavailable.`);
         }
@@ -1810,12 +1828,12 @@ const POSPage: React.FC = () => {
             ...(selectedItem.modifierGroups || []),
             ...((selectedItem as any).linkedGroups || [])
         ];
-        
+
         if (allGroups.length > 0) {
             for (const group of allGroups) {
                 // Safety check: skip invalid or unpopulated groups
                 if (!group || typeof group !== 'object' || !Array.isArray(group.options)) continue;
-                
+
                 const selected = tempModifiers[group.name] || [];
 
                 if (group.required && selected.length === 0) {
@@ -1863,7 +1881,7 @@ const POSPage: React.FC = () => {
             displayName += ` [${trayData?.name || 'Tray'}]`;
         }
         if (tempSelectedVariant) displayName += ` (${tempSelectedVariant.name})`;
-        if (tempSelectedSpiceLevel) displayName += ` 🌶️ ${tempSelectedSpiceLevel}`;
+        if (tempSelectedSpiceLevel) displayName += ` (${tempSelectedSpiceLevel})`;
 
         const trayData = tempSelectedTray ? trays.find(t => t._id === tempSelectedTray.tray) : null;
 
@@ -2330,20 +2348,20 @@ const POSPage: React.FC = () => {
                                                     </Box>
                                                 </Box>
                                                 <CardContent sx={{ p: 1, flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                                    <Typography 
-                                                        variant="subtitle2" 
-                                                        sx={{ fontWeight: 'bold', color: 'secondary.dark', fontSize: { xs: '0.875rem', md: '0.82rem' } }} 
+                                                    <Typography
+                                                        variant="subtitle2"
+                                                        sx={{ fontWeight: 'bold', color: 'secondary.dark', fontSize: { xs: '0.875rem', md: '0.82rem' } }}
                                                         noWrap
                                                     >
                                                         {combo.name}
                                                     </Typography>
-                                                    <Typography 
-                                                        variant="caption" 
-                                                        color="text.secondary" 
-                                                        sx={{ 
-                                                            display: '-webkit-box', 
-                                                            WebkitLineClamp: 2, 
-                                                            WebkitBoxOrient: 'vertical', 
+                                                    <Typography
+                                                        variant="caption"
+                                                        color="text.secondary"
+                                                        sx={{
+                                                            display: '-webkit-box',
+                                                            WebkitLineClamp: 2,
+                                                            WebkitBoxOrient: 'vertical',
                                                             overflow: 'hidden',
                                                             fontSize: { xs: '0.75rem', md: '0.7rem' }
                                                         }}
@@ -2578,16 +2596,16 @@ const POSPage: React.FC = () => {
                                                     {(() => {
                                                         return (
                                                             <>
-                                                                <Typography 
-                                                                    variant="subtitle2" 
-                                                                    sx={{ fontWeight: 'bold', fontSize: { xs: '0.9rem', md: '0.82rem' } }} 
+                                                                <Typography
+                                                                    variant="subtitle2"
+                                                                    sx={{ fontWeight: 'bold', fontSize: { xs: '0.9rem', md: '0.82rem' } }}
                                                                     noWrap
                                                                 >
                                                                     {item.name}
                                                                 </Typography>
-                                                                <Typography 
-                                                                    variant="body2" 
-                                                                    color="primary.main" 
+                                                                <Typography
+                                                                    variant="body2"
+                                                                    color="primary.main"
                                                                     sx={{ fontWeight: 'bold', fontSize: { xs: '1rem', md: '0.88rem' } }}
                                                                 >
                                                                     {formatSmartPrice(item.price)}
@@ -2893,7 +2911,7 @@ const POSPage: React.FC = () => {
                                         textTransform: 'uppercase',
                                         mb: { xs: 0.5, sm: 0.5 }
                                     }}>
-                                    {(selectedItem.variants?.length || 0) > 0 || (selectedItem.modifierGroups?.length || 0) > 0 || ((selectedItem as any).linkedGroups?.length || 0) > 0 ? 'Customize Your Item' : 'Choose Spice Level'}
+                                        {(selectedItem.variants?.length || 0) > 0 || (selectedItem.modifierGroups?.length || 0) > 0 || ((selectedItem as any).linkedGroups?.length || 0) > 0 ? 'Customize Your Item' : 'Choose Spice Level'}
                                     </Typography>
                                     <Typography variant="h4" sx={{ fontWeight: 900, fontSize: { xs: '1.25rem', sm: '1.75rem' }, color: 'text.primary', lineHeight: 1.2, mb: 0.5 }}>
                                         {selectedItem.name}
@@ -2956,7 +2974,7 @@ const POSPage: React.FC = () => {
                                 {((selectedItem.variants?.length || 0) > 0 || (selectedItem.modifierGroups?.length || 0) > 0 || ((selectedItem as any).linkedGroups?.length || 0) > 0) && (
                                     <Box sx={{ mb: 4 }}>
                                         <Divider sx={{ mb: 3, borderStyle: 'dashed' }} />
-                                        
+
                                         {/* Variants Section */}
                                         {selectedItem.variants && selectedItem.variants.length > 0 && (
                                             <Box sx={{ mb: 4 }}>
@@ -3009,88 +3027,88 @@ const POSPage: React.FC = () => {
                                         {[...(selectedItem.modifierGroups || []), ...((selectedItem as any).linkedGroups || [])]
                                             .filter(g => g && typeof g === 'object')
                                             .map((group, groupIdx) => (
-                                            <Box key={groupIdx} sx={{ mb: 4 }}>
-                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                        <Typography sx={{ color: 'primary.main', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.5px' }}>
-                                                            {group.name?.toUpperCase()}
+                                                <Box key={groupIdx} sx={{ mb: 4 }}>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                            <Typography sx={{ color: 'primary.main', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.5px' }}>
+                                                                {group.name?.toUpperCase()}
+                                                            </Typography>
+                                                            {group.required && (
+                                                                <Chip label="Required" size="small" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 900, bgcolor: 'error.main', color: 'white' }} />
+                                                            )}
+                                                        </Box>
+                                                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                            {group.selectionType === 'single' ? 'Choose 1' :
+                                                                group.minSelection ? `Choose at least ${group.minSelection}` :
+                                                                    group.required ? '' : 'Optional'}
                                                         </Typography>
-                                                        {group.required && (
-                                                            <Chip label="Required" size="small" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 900, bgcolor: 'error.main', color: 'white' }} />
-                                                        )}
                                                     </Box>
-                                                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                        {group.selectionType === 'single' ? 'Choose 1' : 
-                                                            group.minSelection ? `Choose at least ${group.minSelection}` : 
-                                                            group.required ? '' : 'Optional'}
-                                                    </Typography>
-                                                </Box>
 
-                                                <Grid container spacing={1}>
-                                                    {group.options.map((option: any, optIdx: number) => {
-                                                        const isSelected = (tempModifiers[group.name] || []).some(o => o.name === option.name);
-                                                        
-                                                        const toggleOption = () => {
-                                                            const current = [...(tempModifiers[group.name] || [])];
-                                                            if (group.selectionType === 'single') {
-                                                                setTempModifiers({ ...tempModifiers, [group.name]: [option] });
-                                                            } else {
-                                                                if (isSelected) {
-                                                                    setTempModifiers({
-                                                                        ...tempModifiers,
-                                                                        [group.name]: current.filter(o => o.name !== option.name)
-                                                                    });
+                                                    <Grid container spacing={1}>
+                                                        {group.options.map((option: any, optIdx: number) => {
+                                                            const isSelected = (tempModifiers[group.name] || []).some(o => o.name === option.name);
+
+                                                            const toggleOption = () => {
+                                                                const current = [...(tempModifiers[group.name] || [])];
+                                                                if (group.selectionType === 'single') {
+                                                                    setTempModifiers({ ...tempModifiers, [group.name]: [option] });
                                                                 } else {
-                                                                    if (!group.maxSelection || current.length < group.maxSelection) {
+                                                                    if (isSelected) {
                                                                         setTempModifiers({
                                                                             ...tempModifiers,
-                                                                            [group.name]: [...current, option]
+                                                                            [group.name]: current.filter(o => o.name !== option.name)
                                                                         });
                                                                     } else {
-                                                                        toast.error(`Maximum ${group.maxSelection} selections allowed for ${group.name}`);
+                                                                        if (!group.maxSelection || current.length < group.maxSelection) {
+                                                                            setTempModifiers({
+                                                                                ...tempModifiers,
+                                                                                [group.name]: [...current, option]
+                                                                            });
+                                                                        } else {
+                                                                            toast.error(`Maximum ${group.maxSelection} selections allowed for ${group.name}`);
+                                                                        }
                                                                     }
                                                                 }
-                                                            }
-                                                        };
+                                                            };
 
-                                                        return (
-                                                            <Grid item xs={12} key={optIdx}>
-                                                                <Paper
-                                                                    variant="outlined"
-                                                                    sx={{
-                                                                        p: 1.5,
-                                                                        borderRadius: '12px',
-                                                                        cursor: 'pointer',
-                                                                        borderColor: isSelected ? 'primary.main' : 'divider',
-                                                                        bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.05) : 'background.paper',
-                                                                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.02) }
-                                                                    }}
-                                                                    onClick={toggleOption}
-                                                                >
-                                                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                            {group.selectionType === 'single' ? (
-                                                                                <Radio size="small" checked={isSelected} sx={{ p: 0.5 }} />
-                                                                            ) : (
-                                                                                <Checkbox size="small" checked={isSelected} sx={{ p: 0.5 }} />
+                                                            return (
+                                                                <Grid item xs={12} key={optIdx}>
+                                                                    <Paper
+                                                                        variant="outlined"
+                                                                        sx={{
+                                                                            p: 1.5,
+                                                                            borderRadius: '12px',
+                                                                            cursor: 'pointer',
+                                                                            borderColor: isSelected ? 'primary.main' : 'divider',
+                                                                            bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.05) : 'background.paper',
+                                                                            '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.02) }
+                                                                        }}
+                                                                        onClick={toggleOption}
+                                                                    >
+                                                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                                {group.selectionType === 'single' ? (
+                                                                                    <Radio size="small" checked={isSelected} sx={{ p: 0.5 }} />
+                                                                                ) : (
+                                                                                    <Checkbox size="small" checked={isSelected} sx={{ p: 0.5 }} />
+                                                                                )}
+                                                                                <Typography sx={{ fontSize: '0.9rem', fontWeight: isSelected ? 700 : 500 }}>
+                                                                                    {option.name}
+                                                                                </Typography>
+                                                                            </Box>
+                                                                            {option.price > 0 && (
+                                                                                <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'text.secondary' }}>
+                                                                                    +{formatSmartPrice(option.price)}
+                                                                                </Typography>
                                                                             )}
-                                                                            <Typography sx={{ fontSize: '0.9rem', fontWeight: isSelected ? 700 : 500 }}>
-                                                                                {option.name}
-                                                                            </Typography>
                                                                         </Box>
-                                                                        {option.price > 0 && (
-                                                                            <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'text.secondary' }}>
-                                                                                +{formatSmartPrice(option.price)}
-                                                                            </Typography>
-                                                                        )}
-                                                                    </Box>
-                                                                </Paper>
-                                                            </Grid>
-                                                        );
-                                                    })}
-                                                </Grid>
-                                            </Box>
-                                        ))}
+                                                                    </Paper>
+                                                                </Grid>
+                                                            );
+                                                        })}
+                                                    </Grid>
+                                                </Box>
+                                            ))}
                                     </Box>
                                 )}
 
@@ -3163,11 +3181,6 @@ const POSPage: React.FC = () => {
                                                         '&:hover, &.Mui-active': {
                                                             boxShadow: (theme) => `0 0 0 8px ${alpha(theme.palette.primary.main, 0.16)}`,
                                                         },
-                                                        '&::after': {
-                                                            content: '"🌶️"',
-                                                            fontSize: '14px',
-                                                            position: 'absolute'
-                                                        }
                                                     },
                                                     '& .MuiSlider-mark': {
                                                         bgcolor: 'text.disabled',
@@ -3337,12 +3350,27 @@ const POSPage: React.FC = () => {
                 open={paymentModalOpen}
                 onClose={() => setPaymentModalOpen(false)}
                 amount={finalTotal}
+                // POS has no processing fee, so the whole POS payment goes to the
+                // tenant (food + tax + tip + service charge). We intentionally omit
+                // subtotal/tax: for Connect-routed tenants that makes the platform
+                // application fee just the Stripe cost (2.9%+$0.30), which the
+                // platform recovers — everything else is transferred to the tenant.
+                // (If a POS processing fee is added later, pass subtotal/tax so the
+                // platform keeps total − subtotal − tax = that fee.)
                 onSuccess={handlePaymentSuccess}
                 showTips={false}
             />
 
+            {/* PhonePe UPI QR (India) */}
+            <PhonePeQrModal
+                open={phonePeQrOpen}
+                onClose={() => setPhonePeQrOpen(false)}
+                amount={finalTotal}
+                onSuccess={handlePhonePeQrSuccess}
+            />
+
             {/* Manual Payment & QR Confirmation Dialog */}
-            <Dialog 
+            <Dialog
                 open={manualPaymentDialogOpen} 
                 onClose={() => setManualPaymentDialogOpen(false)}
                 maxWidth="xs"
