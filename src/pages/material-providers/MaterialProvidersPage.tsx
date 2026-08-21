@@ -39,6 +39,8 @@ import {
     Close as CloseIcon,
     Inventory2 as InventoryIcon,
     CloudUpload as CloudUploadIcon,
+    ChevronLeft as ChevronLeftIcon,
+    ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
 import { materialProvidersAPI, purchaseOrdersAPI, uploadAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
@@ -57,7 +59,7 @@ interface MaterialProvider {
     notes?: string;
     logo?: string;
     materialImage?: string;
-    materials?: { name: string; unit?: string; defaultUnitPrice?: number; image?: string }[];
+    materials?: { name: string; unit?: string; defaultUnitPrice?: number; image?: string; images?: string[] }[];
 }
 
 /**
@@ -75,6 +77,58 @@ const ORDER_STATUS_COLOR: Record<string, 'warning' | 'info' | 'primary' | 'succe
 
 /** An order can be received until it is already received or was cancelled. */
 const CAN_RECEIVE = ['placed', 'confirmed', 'sent'];
+
+/** Image slider used on catalog item cards in the order dialog; falls back to a single frame when there's only one photo (or none). */
+const MaterialImageSlider: React.FC<{ images: string[]; alt: string }> = ({ images, alt }) => {
+    const [index, setIndex] = useState(0);
+    const hasMultiple = images.length > 1;
+
+    const go = (delta: number) => {
+        setIndex(prev => (prev + delta + images.length) % images.length);
+    };
+
+    return (
+        <Box sx={{ position: 'relative', width: '100%', height: 160, bgcolor: 'grey.100', overflow: 'hidden' }}>
+            {images.length > 0 ? (
+                <Box component="img" src={images[index]} alt={alt} sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            ) : (
+                <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <InventoryIcon sx={{ color: 'text.disabled', fontSize: 48 }} />
+                </Box>
+            )}
+            {hasMultiple && (
+                <>
+                    <IconButton
+                        size="small"
+                        onClick={(e) => { e.stopPropagation(); go(-1); }}
+                        sx={{ position: 'absolute', top: '50%', left: 4, transform: 'translateY(-50%)', bgcolor: 'rgba(0,0,0,0.4)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' } }}
+                    >
+                        <ChevronLeftIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                        size="small"
+                        onClick={(e) => { e.stopPropagation(); go(1); }}
+                        sx={{ position: 'absolute', top: '50%', right: 4, transform: 'translateY(-50%)', bgcolor: 'rgba(0,0,0,0.4)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' } }}
+                    >
+                        <ChevronRightIcon fontSize="small" />
+                    </IconButton>
+                    <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)' }}>
+                        {images.map((_, i) => (
+                            <Box
+                                key={i}
+                                onClick={(e) => { e.stopPropagation(); setIndex(i); }}
+                                sx={{
+                                    width: 6, height: 6, borderRadius: '50%', cursor: 'pointer',
+                                    bgcolor: i === index ? '#fff' : 'rgba(255,255,255,0.5)',
+                                }}
+                            />
+                        ))}
+                    </Stack>
+                </>
+            )}
+        </Box>
+    );
+};
 
 const MaterialProvidersPage: React.FC = () => {
     const [providers, setProviders] = useState<MaterialProvider[]>([]);
@@ -473,13 +527,10 @@ const MaterialProvidersPage: React.FC = () => {
                                                                 display: 'flex', flexDirection: 'column',
                                                             }}
                                                         >
-                                                            <Box sx={{ width: '100%', height: 160, bgcolor: 'grey.100', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                {mat.image ? (
-                                                                    <Box component="img" src={mat.image} alt={mat.name} sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                                                                ) : (
-                                                                    <InventoryIcon sx={{ color: 'text.disabled', fontSize: 48 }} />
-                                                                )}
-                                                            </Box>
+                                                            <MaterialImageSlider
+                                                                images={(mat.images && mat.images.length > 0) ? mat.images : (mat.image ? [mat.image] : [])}
+                                                                alt={mat.name}
+                                                            />
                                                             <Box sx={{ p: 1.25, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                                                                 <Typography variant="body2" fontWeight={600} noWrap>{mat.name}</Typography>
                                                                 {mat.unit && (
