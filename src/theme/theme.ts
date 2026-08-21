@@ -1,8 +1,8 @@
 import { alpha, createTheme, type Theme } from '@mui/material/styles';
 import { BRAND_CONFIG } from '../config/brandConfig';
 
-const MOBILE_HEADING_SIZE = '1.25rem';
-const MOBILE_BODY_SIZE = '0.875rem';
+const MOBILE_HEADING_SIZE = '1.15rem';
+const MOBILE_BODY_SIZE = '0.82rem';
 
 const getPalette = (mode: 'light' | 'dark') => ({
     mode,
@@ -47,89 +47,101 @@ const getPalette = (mode: 'light' | 'dark') => ({
 
 export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
     palette: getPalette(mode),
+    breakpoints: {
+        values: {
+            xs: 0,
+            sm: 600,
+            md: 900,
+            lg: 1200,
+            xl: 1536,
+        },
+    },
     typography: {
         fontFamily: '"Outfit", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
         h1: { 
-            fontWeight: 800,
-            fontSize: '2.5rem',
+            fontWeight: 700,
+            fontSize: '1.85rem',
             lineHeight: 1.2,
-            '@media (max-width:600px)': {
-                fontSize: '1.25rem',
-                color: mode === 'light' ? '#111827' : '#F8FAFC',
-            }
+            '@media (max-width:1200px)': { fontSize: '1.65rem' },
+            '@media (max-width:900px)': { fontSize: '1.45rem' },
+            '@media (max-width:600px)': { fontSize: '1.25rem' },
         },
         h2: { 
-            fontWeight: 800,
-            fontSize: '2.25rem',
-            lineHeight: 1.2,
-            '@media (max-width:600px)': {
-                fontSize: '1.25rem',
-                color: mode === 'light' ? '#111827' : '#F8FAFC',
-            }
+            fontWeight: 700,
+            fontSize: '1.65rem',
+            lineHeight: 1.25,
+            '@media (max-width:1200px)': { fontSize: '1.5rem' },
+            '@media (max-width:900px)': { fontSize: '1.35rem' },
+            '@media (max-width:600px)': { fontSize: '1.15rem' },
         },
         h3: { 
             fontWeight: 700,
-            fontSize: '2rem',
-            lineHeight: 1.2,
-            '@media (max-width:600px)': {
-                fontSize: '1.25rem',
-                color: mode === 'light' ? '#111827' : '#F8FAFC',
-            }
+            fontSize: '1.45rem',
+            lineHeight: 1.25,
+            '@media (max-width:1200px)': { fontSize: '1.35rem' },
+            '@media (max-width:900px)': { fontSize: '1.2rem' },
+            '@media (max-width:600px)': { fontSize: '1.08rem' },
         },
         h4: { 
             fontWeight: 700,
-            fontSize: '2.125rem',
-            lineHeight: 1.2,
-            '@media (max-width:600px)': {
-                fontSize: '1.25rem',
-                color: mode === 'light' ? '#111827' : '#F8FAFC',
-            }
+            fontSize: '1.3rem',
+            lineHeight: 1.3,
+            '@media (max-width:1200px)': { fontSize: '1.2rem' },
+            '@media (max-width:900px)': { fontSize: '1.12rem' },
+            '@media (max-width:600px)': { fontSize: '1.02rem' },
         },
         h5: { 
             fontWeight: 700,
-            fontSize: '1.5rem',
-            lineHeight: 1.2,
-            '@media (max-width:600px)': {
-                fontSize: '1.25rem',
-                color: mode === 'light' ? '#111827' : '#F8FAFC',
-            }
+            fontSize: '1.15rem',
+            lineHeight: 1.3,
+            '@media (max-width:1200px)': { fontSize: '1.1rem' },
+            '@media (max-width:900px)': { fontSize: '1.02rem' },
+            '@media (max-width:600px)': { fontSize: '0.95rem' },
         },
         h6: { 
             fontWeight: 700,
-            fontSize: '1.25rem',
-            lineHeight: 1.2,
-            '@media (max-width:600px)': {
-                fontSize: '1.25rem',
-                color: mode === 'light' ? '#111827' : '#F8FAFC',
-            }
+            fontSize: '1.05rem',
+            lineHeight: 1.3,
+            '@media (max-width:1200px)': { fontSize: '1.0rem' },
+            '@media (max-width:900px)': { fontSize: '0.95rem' },
+            '@media (max-width:600px)': { fontSize: '0.90rem' },
         },
         body1: {
-            fontSize: '1rem',
-            '@media (max-width:600px)': {
-                fontSize: '0.925rem',
-            }
+            fontSize: '1.0rem',
+            lineHeight: 1.5,
+            '@media (max-width:900px)': { fontSize: '0.95rem' },
+            '@media (max-width:600px)': { fontSize: '0.90rem' },
         },
         body2: {
-            fontSize: '0.875rem',
-            '@media (max-width:600px)': {
-                fontSize: '0.85rem',
-            }
+            fontSize: '0.90rem',
+            lineHeight: 1.45,
+            '@media (max-width:900px)': { fontSize: '0.875rem' },
+            '@media (max-width:600px)': { fontSize: '0.84rem' },
         },
         subtitle1: { 
             fontWeight: 600,
-            fontSize: '1.1rem',
-            '@media (max-width:600px)': {
-                fontSize: '0.95rem',
-            }
+            fontSize: '1.0rem',
+            lineHeight: 1.45,
+            '@media (max-width:900px)': { fontSize: '0.95rem' },
+            '@media (max-width:600px)': { fontSize: '0.90rem' },
         },
         subtitle2: { 
             fontWeight: 600,
-            fontSize: '0.95rem'
+            fontSize: '0.90rem',
+            lineHeight: 1.4,
+            '@media (max-width:900px)': { fontSize: '0.875rem' },
+            '@media (max-width:600px)': { fontSize: '0.84rem' },
         },
         button: { 
             fontWeight: 600, 
             textTransform: 'none',
-            fontSize: '0.875rem'
+            fontSize: '0.875rem',
+            '@media (max-width:600px)': { fontSize: '0.84rem' },
+        },
+        caption: {
+            fontSize: '0.80rem',
+            lineHeight: 1.35,
+            '@media (max-width:600px)': { fontSize: '0.75rem' },
         },
     },
     shape: {
@@ -167,20 +179,44 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
                 },
             },
         },
-        MuiTypography: {
+        MuiContainer: {
             styleOverrides: {
                 root: {
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
                     '@media (max-width:600px)': {
-                        '&.MuiTypography-h1, &.MuiTypography-h2, &.MuiTypography-h3, &.MuiTypography-h4, &.MuiTypography-h5, &.MuiTypography-h6': {
-                            fontSize: `${MOBILE_HEADING_SIZE} !important`,
-                            color: `${mode === 'light' ? '#111827' : '#F8FAFC'} !important`,
-                            textAlign: 'center !important',
-                            width: '100%',
-                        },
-                        '&.MuiTypography-body1, &.MuiTypography-body2, &.MuiTypography-subtitle1, &.MuiTypography-subtitle2, &.MuiTypography-caption': {
-                            fontSize: `${MOBILE_BODY_SIZE} !important`,
-                        },
+                        paddingLeft: '12px !important',
+                        paddingRight: '12px !important',
                     },
+                },
+            },
+        },
+        MuiDialog: {
+            styleOverrides: {
+                container: {
+                    paddingTop: 'calc(var(--safe-area-inset-top, env(safe-area-inset-top, 24px)) + 8px)',
+                    paddingBottom: 'calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 24px)) + 8px)',
+                },
+                paper: {
+                    margin: '16px',
+                    borderRadius: '16px',
+                    maxHeight: 'calc(100vh - var(--safe-area-inset-top, env(safe-area-inset-top, 24px)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 24px)) - 32px)',
+                    '@media (max-width:600px)': {
+                        margin: '8px !important',
+                        width: 'calc(100% - 16px) !important',
+                        maxWidth: 'calc(100% - 16px) !important',
+                        maxHeight: 'calc(100vh - var(--safe-area-inset-top, env(safe-area-inset-top, 24px)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 24px)) - 24px) !important',
+                        borderRadius: '14px !important',
+                    },
+                },
+            },
+        },
+        MuiTableContainer: {
+            styleOverrides: {
+                root: {
+                    overflowX: 'auto',
+                    WebkitOverflowScrolling: 'touch',
+                    overscrollBehaviorX: 'contain',
                 },
             },
         },
@@ -188,8 +224,14 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
             styleOverrides: {
                 root: {
                     borderRadius: 8,
-                    padding: '8px 16px',
+                    padding: '8px 18px',
+                    minHeight: '40px',
                     transition: 'all 0.2s ease-in-out',
+                    '@media (max-width:600px)': {
+                        padding: '7px 14px',
+                        fontSize: '0.84rem',
+                        minHeight: '38px',
+                    },
                 },
                 containedPrimary: {
                     boxShadow: mode === 'light'
@@ -204,6 +246,29 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
                 },
             },
         },
+        MuiIconButton: {
+            styleOverrides: {
+                root: {
+                    padding: '8px',
+                    '@media (max-width:600px)': {
+                        padding: '7px',
+                    },
+                },
+            },
+        },
+        MuiChip: {
+            styleOverrides: {
+                root: {
+                    fontWeight: 600,
+                    height: '30px',
+                    fontSize: '0.82rem',
+                    '@media (max-width:600px)': {
+                        height: '26px',
+                        fontSize: '0.76rem',
+                    },
+                },
+            },
+        },
         MuiCard: {
             styleOverrides: {
                 root: {
@@ -213,6 +278,22 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
                         : '0 4px 6px -1px rgba(0, 0, 0, 0.4)',
                     border: mode === 'light' ? '1px solid rgba(0, 0, 0, 0.03)' : '1px solid rgba(255, 255, 255, 0.05)',
                     backgroundImage: 'none',
+                    '@media (max-width:600px)': {
+                        borderRadius: 12,
+                    },
+                },
+            },
+        },
+        MuiCardContent: {
+            styleOverrides: {
+                root: {
+                    padding: '24px',
+                    '@media (max-width:900px)': {
+                        padding: '18px !important',
+                    },
+                    '@media (max-width:600px)': {
+                        padding: '14px !important',
+                    },
                 },
             },
         },
@@ -223,6 +304,9 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
                 },
                 rounded: {
                     borderRadius: 12,
+                    '@media (max-width:600px)': {
+                        borderRadius: 10,
+                    },
                 },
             },
         },
@@ -242,6 +326,12 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
                             borderColor: BRAND_CONFIG.primaryColor,
                             borderWidth: 2,
                         },
+                        '@media (max-width:600px)': {
+                            fontSize: '0.88rem',
+                            '& input': {
+                                padding: '10px 14px',
+                            },
+                        },
                     },
                 },
             },
@@ -253,11 +343,21 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
                     backgroundColor: mode === 'light' ? '#F9FAFB' : alpha('#1E293B', 0.5),
                     color: mode === 'light' ? '#374151' : '#F8FAFC',
                     fontSize: '0.875rem',
+                    padding: '12px 16px',
                     borderBottom: mode === 'light' ? '1px solid #E5E7EB' : '1px solid rgba(255, 255, 255, 0.05)',
+                    '@media (max-width:600px)': {
+                        padding: '8px 10px',
+                        fontSize: '0.80rem',
+                    },
                 },
                 body: {
                     fontSize: '0.875rem',
+                    padding: '12px 16px',
                     borderBottom: mode === 'light' ? '1px solid #F3F4F6' : '1px solid rgba(255, 255, 255, 0.03)',
+                    '@media (max-width:600px)': {
+                        padding: '8px 10px',
+                        fontSize: '0.82rem',
+                    },
                 },
             },
         },
