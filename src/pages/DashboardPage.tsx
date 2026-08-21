@@ -21,6 +21,7 @@ import {
   Grid,
   IconButton,
   InputAdornment,
+  LinearProgress,
   Tooltip as MuiTooltip,
   Pagination,
   Stack,
@@ -363,12 +364,14 @@ const DashboardPage: React.FC = () => {
     cost: 0
   });
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (isSilent = false) => {
     if (timeRange === 'custom' && (!startDate || !endDate)) return;
     if (loading && fetchRequestId.current > 0) return; // Basic entry guard
     
     const requestId = ++fetchRequestId.current;
-    setLoading(true);
+    if (!isSilent) {
+      setLoading(true);
+    }
     try {
       const params: any = { range: timeRange };
       if (timeRange === 'custom' && startDate && endDate) {
@@ -465,7 +468,9 @@ const DashboardPage: React.FC = () => {
       toast.error('Failed to load dashboard data');
     } finally {
       if (requestId === fetchRequestId.current) {
-        setLoading(false);
+        if (!isSilent) {
+          setLoading(false);
+        }
       }
     }
   };
@@ -497,7 +502,7 @@ const DashboardPage: React.FC = () => {
       setCompletionDialog({ ...completionDialog, open: false });
 
       // Refresh both insights and current tab data
-      fetchDashboardData();
+      fetchDashboardData(true);
       const statuses = ['expired', 'expiring', 'service_due', 'upcoming_service'];
       fetchAssetTabData(statuses[assetTabValue], assetTabData.page);
     } catch (error) {
@@ -519,10 +524,10 @@ const DashboardPage: React.FC = () => {
 
   // Poll + realtime listeners: registered once on mount, not on every filter change.
   useEffect(() => {
-    const interval = setInterval(() => fetchDashboardDataRef.current(), 30000);
+    const interval = setInterval(() => fetchDashboardDataRef.current(true), 30000);
 
     const handleRealtimeUpdate = () => {
-      fetchDashboardDataRef.current();
+      fetchDashboardDataRef.current(true);
     };
 
     window.addEventListener('newOrder', handleRealtimeUpdate);
@@ -680,7 +685,7 @@ const DashboardPage: React.FC = () => {
       )
       : null;
 
-  if (loading) {
+  if (loading && !dashboardData) {
     return <DashboardSkeleton />;
   }
 
@@ -689,12 +694,30 @@ const DashboardPage: React.FC = () => {
   return (
     <Box
       sx={{
+        position: 'relative',
         maxWidth: 1600,
         mx: "auto",
         px: { xs: 1.5, sm: 2.5, md: 3, lg: 4 },
         py: { xs: 1.6, md: 3 }
       }}
     >
+      {loading && dashboardData && (
+        <LinearProgress 
+          sx={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            height: 3, 
+            bgcolor: 'transparent',
+            zIndex: 10,
+            '& .MuiLinearProgress-bar': {
+              bgcolor: 'primary.main'
+            }
+          }} 
+        />
+      )}
+
       {/* Pending actions (e.g. Stripe payout onboarding) — admins only */}
       <PendingActionsCard />
 
@@ -751,11 +774,19 @@ const DashboardPage: React.FC = () => {
               </ToggleButtonGroup>
 
               <IconButton
-                onClick={fetchDashboardData}
+                onClick={() => fetchDashboardData()}
                 color="primary"
                 disabled={loading}
               >
-                <Refresh />
+                <Refresh
+                  sx={{
+                    animation: loading ? 'spin 1s linear infinite' : 'none',
+                    '@keyframes spin': {
+                      '0%': { transform: 'rotate(0deg)' },
+                      '100%': { transform: 'rotate(360deg)' }
+                    }
+                  }}
+                />
               </IconButton>
             </Box>
 
