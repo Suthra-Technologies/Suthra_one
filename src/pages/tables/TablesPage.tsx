@@ -1069,7 +1069,19 @@ const TablesPage: React.FC = () => {
         fetchBookings();
         usersAPI.getUsers({ role: 'waiter', isActive: true })
             .then(res => {
-                const raw = res.data?.data || res.data?.users || res.data;
+                const payload = res.data;
+                let raw: any[] = [];
+                if (Array.isArray(payload)) {
+                    raw = payload;
+                } else if (payload && typeof payload === 'object') {
+                    if (Array.isArray((payload as any).data)) {
+                        raw = (payload as any).data;
+                    } else if (Array.isArray((payload as any).users)) {
+                        raw = (payload as any).users;
+                    } else if (Array.isArray((payload as any).data?.users)) {
+                        raw = (payload as any).data.users;
+                    }
+                }
                 setWaiters(Array.isArray(raw) ? raw : []);
             })
             .catch(err => console.error('Failed to load waiters', err));

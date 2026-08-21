@@ -16,11 +16,14 @@ export function usePullToRefresh(options?: {
     threshold?: number;
     onRefresh?: () => void;
 }) {
-    const threshold = options?.threshold ?? 80;
+    // Require an intentional hard pull (140px)
+    const threshold = options?.threshold ?? 140;
     const onRefresh = options?.onRefresh;
 
+    const startX = useRef(0);
     const startY = useRef(0);
     const pulling = useRef(false);
+    const isHardPullReady = useRef(false);
     const indicatorRef = useRef<HTMLDivElement | null>(null);
 
     const isNative = Capacitor.isNativePlatform();
@@ -41,16 +44,16 @@ export function usePullToRefresh(options?: {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             background: rgba(79, 70, 229, 0.95);
             box-shadow: 0 4px 20px rgba(79, 70, 229, 0.35);
             opacity: 0;
-            transition: opacity 0.15s ease;
+            transition: opacity 0.15s ease, transform 0.15s ease;
         `;
         // Spinner SVG
-        el.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="animation: ptr-spin 0.8s linear infinite;">
+        el.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="animation: ptr-spin 0.8s linear infinite;">
             <circle cx="12" cy="12" r="10" stroke="white" stroke-width="3" stroke-dasharray="40 60" stroke-linecap="round"/>
         </svg>`;
 
@@ -70,38 +73,78 @@ export function usePullToRefresh(options?: {
     useEffect(() => {
         if (!isNative) return;
 
-        const handleTouchStart = (e: TouchEvent) => {
-            // Only activate when scrolled to the very top
-            const scrollTop = window.scrollY || document.documentElement.scrollTop;
-            if (scrollTop <= 0) {
-                startY.current = e.touches[0].clientY;
-                pulling.current = true;
+        // Check if any scrollable parent is not at the top
+        const isScrollableAtTop = (target: EventTarget | null): boolean => {
+            let el = target as HTMLElement | null;
+            while (el && el !== document.body && el !== document.documentElement) {
+                if (el.scrollTop > 0) {
+                    return false;
+                }
+                el = el.parentElement;
             }
+            const winScroll = window.scrollY || document.documentElement.scrollTop;
+            return winScroll <= 0;
+        };
+
+        const handleTouchStart = (e: TouchEvent) => {
+            if (e.touches.length !== 1) {
+                pulling.current = false;
+                return;
+            }
+
+            if (!isScrollableAtTop(e.target)) {
+                pulling.current = false;
+                return;
+            }
+
+            startX.current = e.touches[0].clientX;
+            startY.current = e.touches[0].clientY;
+            pulling.current = true;
+            isHardPullReady.current = false;
         };
 
         const handleTouchMove = (e: TouchEvent) => {
-            if (!pulling.current) return;
+            if (!pulling.current || e.touches.length !== 1) return;
 
-            const currentY = e.touches[0].clientY;
-            const diff = currentY - startY.current;
-
-            // Only act on downward pull
-            if (diff <= 0) {
+            // If user scrolled down inside a container during move, cancel
+            if (!isScrollableAtTop(e.target)) {
+                pulling.current = false;
                 const indicator = getIndicator();
                 indicator.style.opacity = '0';
                 indicator.style.top = '0px';
                 return;
             }
 
-            // Apply a dampening factor so it feels natural
-            const pullDistance = Math.min(diff * 0.4, threshold + 30);
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const diffX = currentX - startX.current;
+            const diffY = currentY - startY.current;
+
+            // Only track strict vertical downward gesture (avoid diagonal swipes)
+            if (diffY <= 10 || Math.abs(diffY) < Math.abs(diffX) * 2.5) {
+                const indicator = getIndicator();
+                indicator.style.opacity = '0';
+                indicator.style.top = '0px';
+                return;
+            }
+
+            // Resistance curve: require deep downward pull
+            const pullDistance = Math.min((diffY - 10) * 0.35, threshold + 20);
             const indicator = getIndicator();
 
-            // Show indicator with progress
-            const progress = Math.min(pullDistance / threshold, 1);
+            // Only show indicator when pull is substantial (> 40px)
+            if (pullDistance < 35) {
+                indicator.style.opacity = '0';
+                indicator.style.top = '0px';
+                isHardPullReady.current = false;
+                return;
+            }
+
+            const progress = Math.min((pullDistance - 35) / (threshold - 35), 1);
             indicator.style.opacity = String(Math.min(progress, 1));
-            indicator.style.top = `${Math.max(pullDistance - 10, 8)}px`;
-            indicator.style.transform = `translateX(-50%) scale(${0.6 + progress * 0.4})`;
+            indicator.style.top = `${Math.max(pullDistance - 15, 12)}px`;
+            indicator.style.transform = `translateX(-50%) scale(${0.7 + progress * 0.3})`;
+            isHardPullReady.current = progress >= 0.95;
         };
 
         const handleTouchEnd = () => {
@@ -109,19 +152,16 @@ export function usePullToRefresh(options?: {
             pulling.current = false;
 
             const indicator = getIndicator();
-            const currentTop = parseFloat(indicator.style.top || '0');
 
-            // Check if user pulled past threshold
-            if (currentTop >= threshold * 0.4 - 10) {
-                // Show loading state briefly, then refresh
+            // Only refresh if hard pull reached the threshold
+            if (isHardPullReady.current) {
                 indicator.style.opacity = '1';
-                indicator.style.top = '16px';
+                indicator.style.top = '24px';
                 indicator.style.transform = 'translateX(-50%) scale(1)';
 
                 setTimeout(() => {
                     if (onRefresh) {
                         onRefresh();
-                        // Clean up indicator after custom refresh
                         setTimeout(() => {
                             indicator.style.opacity = '0';
                         }, 600);
@@ -130,10 +170,10 @@ export function usePullToRefresh(options?: {
                     }
                 }, 300);
             } else {
-                // Didn't pull far enough – reset
                 indicator.style.opacity = '0';
                 indicator.style.top = '0px';
             }
+            isHardPullReady.current = false;
         };
 
         document.addEventListener('touchstart', handleTouchStart, { passive: true });

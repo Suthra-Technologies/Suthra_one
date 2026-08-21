@@ -15,7 +15,13 @@ const getHealedUrl = (url: string) => {
   if (typeof window !== 'undefined' && window.location) {
     const host = window.location.hostname;
     const isLocal = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.localhost');
-    if (!isLocal && (url.includes('localhost') || url.includes('127.0.0.1'))) {
+    const isLanIp = /^192\.168\.|^10\.|^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host);
+
+    if (isLanIp && (url.includes('localhost:5006') || url.includes('127.0.0.1:5006') || url.includes(':5006'))) {
+      return `http://${host}:5006`;
+    }
+
+    if (!isLocal && !isLanIp && (url.includes('localhost') || url.includes('127.0.0.1'))) {
       return window.location.origin;
     }
   }
@@ -214,8 +220,10 @@ export const ordersAPI = {
   getPublicCoupons: (tenantSlug: string) =>
     api.get('/public/orders/coupons', { params: { tenantSlug } }),
 
-  validatePublicCoupon: (code: string, tenantSlug: string, orderType?: string) =>
-    api.post('/public/orders/validate-coupon', { code, orderType }, { params: { tenantSlug } }),
+  validatePublicCoupon: (code: string, tenantSlug: string, orderType?: string, purchaseAmount?: number, email?: string) =>
+    api.post('/public/orders/validate-coupon', { code, orderType, purchaseAmount, email }, { params: { tenantSlug } }),
+  getCustomerPublicCoupons: (email: string, tenantSlug: string) =>
+    api.post('/public/orders/customer-coupons', { email }, { params: { tenantSlug } }),
 
   getPublicSettings: (tenantSlug: string) =>
     api.get('/public/orders/settings', { params: { tenantSlug } }),
@@ -288,7 +296,8 @@ export const ordersAPI = {
   downloadPDF: (id: string) => api.get(`/orders/${id}/pdf`, { responseType: 'blob' }),
 
   // Coupon management
-  validateCoupon: (code: string) => api.post('/orders/validate-coupon', { code }),
+  validateCoupon: (code: string, purchaseAmount?: number, email?: string) => api.post('/orders/validate-coupon', { code, purchaseAmount, email }),
+  getCustomerCoupons: (email: string) => api.post('/orders/customer-coupons', { email }),
   getCoupons: () => api.get('/orders/coupons'),
   getMyOrders: () => api.get('/orders/my-orders'),
   createStripeCheckout: (orderId: string) => api.post(`/orders/${orderId}/checkout`),

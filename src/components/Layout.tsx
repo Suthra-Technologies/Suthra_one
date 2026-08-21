@@ -622,8 +622,8 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
             {getPageTitle()}
           </Typography> */}
           <Box sx={{ flexGrow: 1 }} />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.25, sm: 1 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
               <ShiftManager />
               {Capacitor.getPlatform() !== 'ios' && (
                 <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
@@ -633,9 +633,9 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
             </Box>
             {hasRole(['admin']) && activeRole !== 'customer' && <RestaurantStatusToggle />}
             <Tooltip title="Notifications">
-              <IconButton color="inherit" onClick={handleNotificationToggle}>
+              <IconButton color="inherit" onClick={handleNotificationToggle} size="small" sx={{ p: { xs: 0.5, sm: 1 } }}>
                 <Badge badgeContent={unreadCount} color="error">
-                  <NotificationsIcon />
+                  <NotificationsIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
                 </Badge>
               </IconButton>
             </Tooltip>
@@ -801,9 +801,10 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: MOBILE_DRAWER_WIDTH,
-              overflowY: 'hidden',
+              overflowY: 'auto',
               WebkitOverflowScrolling: 'touch',
               overscrollBehavior: 'contain',
+              pb: 'calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 24px)) + 24px)',
             },
           }}
         >
