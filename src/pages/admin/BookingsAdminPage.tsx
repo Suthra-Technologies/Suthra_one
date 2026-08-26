@@ -273,43 +273,37 @@ const BookingsAdminPage: React.FC = () => {
             }
         }
 
-        // 2. Direct assignedWaiter on bookingItem.table
-        const tableWaiter = bookingItem.table?.assignedWaiter;
-        if (tableWaiter) {
-            if (typeof tableWaiter === 'object' && (tableWaiter.firstName || tableWaiter.email)) {
-                return `${tableWaiter.firstName || ''} ${tableWaiter.lastName || ''}`.trim() || tableWaiter.email;
-            }
-            const foundInStaffList = staffList.find((s: any) => s._id === tableWaiter);
-            if (foundInStaffList) {
-                return `${foundInStaffList.firstName || ''} ${foundInStaffList.lastName || ''}`.trim() || foundInStaffList.email;
-            }
+        // Pending or cancelled bookings must never inherit a table waiter
+        if (bookingItem.status === 'pending' || bookingItem.status === 'cancelled') {
+            return '';
         }
 
-        // 3. Fallback to loaded tables list
-        const tableId = bookingItem.table?._id || (typeof bookingItem.table === 'string' ? bookingItem.table : null);
-        if (tableId) {
-            const matchingTable = tables.find((t: any) => t._id === tableId);
-            if (matchingTable?.assignedWaiter) {
-                const tw = matchingTable.assignedWaiter;
-                if (typeof tw === 'object' && (tw.firstName || tw.email)) {
-                    return `${tw.firstName || ''} ${tw.lastName || ''}`.trim() || tw.email;
+        // 2. Only if the booking is actively checked in or seated at the table, allow fallback to table's active waiter
+        if (bookingItem.checkedIn || bookingItem.status === 'checked_in' || bookingItem.status === 'partially_occupied') {
+            const tableWaiter = bookingItem.table?.assignedWaiter;
+            if (tableWaiter) {
+                if (typeof tableWaiter === 'object' && (tableWaiter.firstName || tableWaiter.email)) {
+                    return `${tableWaiter.firstName || ''} ${tableWaiter.lastName || ''}`.trim() || tableWaiter.email;
                 }
-                const foundInStaffList = staffList.find((s: any) => s._id === tw);
+                const foundInStaffList = staffList.find((s: any) => s._id === tableWaiter);
                 if (foundInStaffList) {
                     return `${foundInStaffList.firstName || ''} ${foundInStaffList.lastName || ''}`.trim() || foundInStaffList.email;
                 }
             }
-        }
 
-        // 4. Fallback to booking creator
-        const creator = bookingItem.createdBy;
-        if (creator) {
-            if (typeof creator === 'object' && (creator.firstName || creator.email)) {
-                return `${creator.firstName || ''} ${creator.lastName || ''}`.trim() || creator.email;
-            }
-            const foundInStaffList = staffList.find((s: any) => s._id === creator);
-            if (foundInStaffList) {
-                return `${foundInStaffList.firstName || ''} ${foundInStaffList.lastName || ''}`.trim() || foundInStaffList.email;
+            const tableId = bookingItem.table?._id || (typeof bookingItem.table === 'string' ? bookingItem.table : null);
+            if (tableId) {
+                const matchingTable = tables.find((t: any) => t._id === tableId);
+                if (matchingTable?.assignedWaiter) {
+                    const tw = matchingTable.assignedWaiter;
+                    if (typeof tw === 'object' && (tw.firstName || tw.email)) {
+                        return `${tw.firstName || ''} ${tw.lastName || ''}`.trim() || tw.email;
+                    }
+                    const foundInStaffList = staffList.find((s: any) => s._id === tw);
+                    if (foundInStaffList) {
+                        return `${foundInStaffList.firstName || ''} ${foundInStaffList.lastName || ''}`.trim() || foundInStaffList.email;
+                    }
+                }
             }
         }
 
