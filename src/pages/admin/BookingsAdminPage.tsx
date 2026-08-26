@@ -251,13 +251,70 @@ const BookingsAdminPage: React.FC = () => {
     }, [debouncedSearch, filterDateFrom, filterDateTo]);
 
     useEffect(() => {
-        usersAPI.getUsers({ role: 'waiter', isActive: true })
+        usersAPI.getUsers({ isActive: true })
             .then(res => {
                 const raw = res.data?.data || res.data?.users || res.data;
                 setStaffList(Array.isArray(raw) ? raw : []);
             })
             .catch(err => console.error('Failed to load staff list', err));
     }, []);
+
+    const getBookingStaffName = (bookingItem: any) => {
+        if (!bookingItem) return '';
+        // 1. Direct assignedStaff on booking
+        const staff = bookingItem.assignedStaff;
+        if (staff) {
+            if (typeof staff === 'object' && (staff.firstName || staff.email)) {
+                return `${staff.firstName || ''} ${staff.lastName || ''}`.trim() || staff.email;
+            }
+            const foundInStaffList = staffList.find((s: any) => s._id === staff);
+            if (foundInStaffList) {
+                return `${foundInStaffList.firstName || ''} ${foundInStaffList.lastName || ''}`.trim() || foundInStaffList.email;
+            }
+        }
+
+        // 2. Direct assignedWaiter on bookingItem.table
+        const tableWaiter = bookingItem.table?.assignedWaiter;
+        if (tableWaiter) {
+            if (typeof tableWaiter === 'object' && (tableWaiter.firstName || tableWaiter.email)) {
+                return `${tableWaiter.firstName || ''} ${tableWaiter.lastName || ''}`.trim() || tableWaiter.email;
+            }
+            const foundInStaffList = staffList.find((s: any) => s._id === tableWaiter);
+            if (foundInStaffList) {
+                return `${foundInStaffList.firstName || ''} ${foundInStaffList.lastName || ''}`.trim() || foundInStaffList.email;
+            }
+        }
+
+        // 3. Fallback to loaded tables list
+        const tableId = bookingItem.table?._id || (typeof bookingItem.table === 'string' ? bookingItem.table : null);
+        if (tableId) {
+            const matchingTable = tables.find((t: any) => t._id === tableId);
+            if (matchingTable?.assignedWaiter) {
+                const tw = matchingTable.assignedWaiter;
+                if (typeof tw === 'object' && (tw.firstName || tw.email)) {
+                    return `${tw.firstName || ''} ${tw.lastName || ''}`.trim() || tw.email;
+                }
+                const foundInStaffList = staffList.find((s: any) => s._id === tw);
+                if (foundInStaffList) {
+                    return `${foundInStaffList.firstName || ''} ${foundInStaffList.lastName || ''}`.trim() || foundInStaffList.email;
+                }
+            }
+        }
+
+        // 4. Fallback to booking creator
+        const creator = bookingItem.createdBy;
+        if (creator) {
+            if (typeof creator === 'object' && (creator.firstName || creator.email)) {
+                return `${creator.firstName || ''} ${creator.lastName || ''}`.trim() || creator.email;
+            }
+            const foundInStaffList = staffList.find((s: any) => s._id === creator);
+            if (foundInStaffList) {
+                return `${foundInStaffList.firstName || ''} ${foundInStaffList.lastName || ''}`.trim() || foundInStaffList.email;
+            }
+        }
+
+        return '';
+    };
 
     const handleChangePage = (event: unknown, newPage: number) => {
         setPage(newPage);
@@ -766,7 +823,7 @@ const BookingsAdminPage: React.FC = () => {
                                                         POS
                                                     </Button>
                                                 )}
-                                                {booking.checkedIn && booking.status !== 'completed' && (
+                                                {booking.checkedIn && booking.status !== 'completed' && booking.status !== 'cancelled' && (
                                                     <Button
                                                         size="small"
                                                         variant="contained"
@@ -863,8 +920,8 @@ const BookingsAdminPage: React.FC = () => {
                                                     {booking.table?.tableName || booking.table?.tableNumber || 'N/A'}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {booking.assignedStaff
-                                                        ? `${booking.assignedStaff.firstName || ''} ${booking.assignedStaff.lastName || ''}`.trim() || booking.assignedStaff.email
+                                                    {getBookingStaffName(booking)
+                                                        ? getBookingStaffName(booking)
                                                         : <Typography variant="body2" color="text.secondary">Unassigned</Typography>}
                                                 </TableCell>
                                                 <TableCell>{booking.guests}</TableCell>
@@ -895,7 +952,7 @@ const BookingsAdminPage: React.FC = () => {
                                                             </IconButton>
                                                         </Tooltip>
                                                     )}
-                                                    {booking.checkedIn && booking.status !== 'completed' && (
+                                                    {booking.checkedIn && booking.status !== 'completed' && booking.status !== 'cancelled' && (
                                                         <Tooltip title={booking.table?.currentOrder ? "Complete the order" : "Finalize booking"}>
                                                             <span onClick={(e) => e.stopPropagation()}>
                                                                 <Button
@@ -1374,9 +1431,7 @@ const BookingsAdminPage: React.FC = () => {
                                     <strong>Table:</strong> {selectedBooking.table?.tableName || selectedBooking.table?.tableNumber}
                                 </Typography>
                                 <Typography variant="subtitle1" gutterBottom>
-                                    <strong>Staff:</strong> {selectedBooking.assignedStaff
-                                        ? `${selectedBooking.assignedStaff.firstName || ''} ${selectedBooking.assignedStaff.lastName || ''}`.trim() || selectedBooking.assignedStaff.email
-                                        : 'Unassigned'}
+                                    <strong>Staff:</strong> {getBookingStaffName(selectedBooking) || 'Unassigned'}
                                 </Typography>
                                 <Typography variant="subtitle1" gutterBottom>
                                     <strong>Guests:</strong> {selectedBooking.guests}

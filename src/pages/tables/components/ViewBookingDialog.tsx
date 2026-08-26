@@ -170,7 +170,7 @@ const ViewBookingDialog: React.FC<ViewBookingDialogProps> = ({
                     </Button>
                 )}
 
-                {booking.checkedIn && booking.status !== 'completed' && hasActiveOrder && (
+                {booking.checkedIn && booking.status !== 'completed' && booking.status !== 'cancelled' && hasActiveOrder && (
                     <Button
                         variant="contained"
                         color="warning"

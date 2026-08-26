@@ -931,25 +931,76 @@ const MenuPage: React.FC = () => {
 
                 // Map data to CreateMenuDto
                 const items = await Promise.all(data.map(async (row: any) => {
-                    // Robust Dynamic Header Mapping
-                    const findValue = (keywords: string[]) => {
-                        const key = Object.keys(row).find(k => {
+                    // Robust Dynamic Header Mapping with Exact Match Priority and Exclusion Filtering
+                    const findValue = (keywords: string[], excludeKeywords: string[] = []) => {
+                        const rowKeys = Object.keys(row);
+                        
+                        // Phase 1: Try exact matches first
+                        const exactKey = rowKeys.find(k => {
                             const normalizedK = k?.toLowerCase().trim();
-                            return keywords.some(kw => normalizedK === kw || normalizedK.includes(kw));
+                            if (excludeKeywords.some(ex => normalizedK === ex || normalizedK.includes(ex))) {
+                                return false;
+                            }
+                            return keywords.some(kw => normalizedK === kw);
                         });
-                        return key ? row[key] : undefined;
+                        if (exactKey && row[exactKey] !== undefined && row[exactKey] !== null && String(row[exactKey]).trim() !== '') {
+                            return row[exactKey];
+                        }
+
+                        // Phase 2: Try partial matches (with strict exclusions)
+                        const partialKey = rowKeys.find(k => {
+                            const normalizedK = k?.toLowerCase().trim();
+                            if (excludeKeywords.some(ex => normalizedK === ex || normalizedK.includes(ex))) {
+                                return false;
+                            }
+                            return keywords.some(kw => normalizedK.includes(kw));
+                        });
+                        if (partialKey && row[partialKey] !== undefined && row[partialKey] !== null && String(row[partialKey]).trim() !== '') {
+                            return row[partialKey];
+                        }
+
+                        return undefined;
                     };
 
-                    const name = findValue(['name', 'item', 'product', 'title']);
-                    const price = findValue(['price', 'rate', 'cost', 'amount']);
-                    const category = findValue(['category', 'cat']);
-                    const subcategory = findValue(['subcategory', 'subcat', 'sub category']);
-                    const taxCode = findValue(['tax code', 'taxcode', 'tic', 'tax_code', 'tax', 'product tax code', 'product_tax_code']);
-                    const description = findValue(['description', 'desc', 'details']);
-                    const image = findValue(['image', 'photo', 'img', 'url', 'link']);
-                    const foodType = findValue(['food type', 'foodtype', 'veg', 'type']);
-                    const isAvailable = findValue(['available', 'isavailable', 'stock']);
-                    const isCateringAvailable = findValue(['catering', 'iscatering']);
+                    const name = findValue(
+                        ['item name', 'item_name', 'itemname', 'product name', 'product_name', 'productname', 'dish name', 'dish_name', 'dishname', 'menu item', 'menu item name', 'name', 'title', 'item title', 'dish', 'item', 'product'],
+                        ['id', '_id', 'code', 'sku', 'number', 'no', 'qty', 'quantity', 'price', 'cost', 'rate', 'tax']
+                    );
+                    const price = findValue(
+                        ['price', 'item price', 'item_price', 'unit price', 'unit_price', 'rate', 'cost', 'amount'],
+                        ['id', '_id', 'code', 'tax', 'discount', 'percent', 'qty', 'quantity', 'name']
+                    );
+                    const category = findValue(
+                        ['category', 'category name', 'category_name', 'cat', 'item category', 'menu category'],
+                        ['id', '_id', 'sub', 'subcategory', 'tax', 'price']
+                    );
+                    const subcategory = findValue(
+                        ['subcategory', 'sub category', 'sub_category', 'subcat', 'sub_cat', 'item subcategory'],
+                        ['id', '_id', 'tax', 'price']
+                    );
+                    const taxCode = findValue(
+                        ['tax code', 'taxcode', 'tic', 'tax_code', 'tax', 'product tax code', 'product_tax_code'],
+                        ['name', 'price']
+                    );
+                    const description = findValue(
+                        ['description', 'item description', 'desc', 'details', 'notes'],
+                        ['name', 'id']
+                    );
+                    const image = findValue(
+                        ['image', 'image url', 'image_url', 'photo', 'img', 'url', 'link', 'picture'],
+                        ['id', 'code']
+                    );
+                    const foodType = findValue(
+                        ['food type', 'foodtype', 'food_type', 'dietary', 'veg', 'type'],
+                        ['id', 'code']
+                    );
+                    const isAvailable = findValue(
+                        ['available', 'isavailable', 'is available', 'is_available', 'stock', 'in stock', 'instock'],
+                        ['catering']
+                    );
+                    const isCateringAvailable = findValue(
+                        ['catering', 'iscatering', 'is catering', 'is_catering', 'catering available', 'is catering available', 'is_catering_available']
+                    );
 
                     if (!name || (price === undefined && row['Price'] === undefined)) {
                         // invalid row

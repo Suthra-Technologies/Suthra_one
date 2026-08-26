@@ -105,6 +105,20 @@ const formatPhoneNumber = (phone?: string) => {
     return phone;
 };
 
+const getCateringTotalPaid = (order: any) => {
+    if (!order) return 0;
+    const paymentsSum = (order.payments || []).reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0);
+    return Math.max(Number(order.advanceReceived || 0), paymentsSum);
+};
+
+const getCateringBalanceDue = (order: any) => {
+    if (!order) return 0;
+    const total = Number(order.totalAmount || 0);
+    const paid = getCateringTotalPaid(order);
+    const remaining = parseFloat((total - paid).toFixed(2));
+    return remaining <= 0.01 ? 0 : remaining;
+};
+
 const CateringManagementPage = () => {
     const { formatCurrency, settings, refreshSettings } = useSettings();
     const availablePaymentMethods = useMemo(() => [
@@ -546,7 +560,16 @@ const CateringManagementPage = () => {
 
         setUpdating(true);
         try {
-            const response = await cateringAPI.update(selectedOrder._id, editData);
+            const advance = (editData.payments || []).reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0);
+            const dueAmount = Math.max(0, parseFloat(((editData.totalAmount || 0) - advance).toFixed(2)));
+            const updatePayload = {
+                ...editData,
+                advanceReceived: advance,
+                due: dueAmount,
+                dueAmount,
+            };
+
+            const response = await cateringAPI.update(selectedOrder._id, updatePayload);
             setSelectedOrder(response.data);
             setIsEditing(false);
             setEditData(null);
@@ -890,14 +913,14 @@ const CateringManagementPage = () => {
         if (updatingOrderId === id) return;
         setUpdatingOrderId(id);
         try {
-            await cateringAPI.updateStatus(id, newStatus);
+            const response = await cateringAPI.updateStatus(id, newStatus);
             toast.success(`Order marked as ${newStatus}`);
             fetchOrders();
             if (selectedOrder && selectedOrder._id === id) {
-                setSelectedOrder({ ...selectedOrder, status: newStatus });
+                setSelectedOrder(response.data || { ...selectedOrder, status: newStatus });
             }
-        } catch (error) {
-            toast.error('Failed to update status');
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to update status');
         } finally {
             setUpdatingOrderId(null);
         }
@@ -1486,6 +1509,8 @@ const CateringManagementPage = () => {
             // Use Dynamic Tax if available, otherwise fallback to static
             const taxAmount = (taxDetails?.tax?.amount_to_collect ?? taxDetails?.taxAmount ?? taxDetails?.amount_to_collect ?? taxDetails?.total_tax ?? (currentTaxable * defaultTaxRate / 100));
             const totalAmount = currentTaxable + taxAmount;
+            const advanceReceived = (newOrder.payments || []).reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0);
+            const dueAmount = Math.max(0, parseFloat((totalAmount - advanceReceived).toFixed(2)));
 
             const payload = {
                 ...newOrder,
@@ -1496,6 +1521,9 @@ const CateringManagementPage = () => {
                     breakdown: taxDetails?.details || taxDetails?.jurisdictions || null
                 },
                 totalAmount,
+                advanceReceived,
+                due: dueAmount,
+                dueAmount,
                 location: {
                     address: newOrder.address,
                     city: newOrder.city,
@@ -1944,20 +1972,20 @@ const CateringManagementPage = () => {
                                                             </IconButton>
                                                         </Tooltip>
                                                     )}
-                                                    {order.status === 'confirmed' && (
-                                                        <Tooltip title={Math.max(0, (order.totalAmount || 0) - (order.advanceReceived || 0)) > 0.01 ? "Payment not completed" : "Mark Complete"}>
-                                                            <span>
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={() => handleUpdateStatus(order._id, 'completed')}
-                                                                    disabled={updatingOrderId === order._id || Math.max(0, (order.totalAmount || 0) - (order.advanceReceived || 0)) > 0.01}
-                                                                    sx={{ color: '#3730a3', bgcolor: alpha('#3730a3', 0.08), '&:hover': { bgcolor: alpha('#3730a3', 0.18) }, borderRadius: 1.5 }}
-                                                                >
-                                                                    {updatingOrderId === order._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" />}
-                                                                </IconButton>
-                                                            </span>
-                                                        </Tooltip>
-                                                    )}
+                                                    {(order.status === 'confirmed' || order.status === 'ready' || order.status === 'preparing') && (
+                                                         <Tooltip title={getCateringBalanceDue(order) > 0 ? `Awaiting payment ($${getCateringBalanceDue(order).toFixed(2)})` : "Mark Complete"}>
+                                                             <span>
+                                                                 <IconButton
+                                                                     size="small"
+                                                                     onClick={() => handleUpdateStatus(order._id, 'completed')}
+                                                                     disabled={updatingOrderId === order._id || getCateringBalanceDue(order) > 0}
+                                                                     sx={{ color: '#3730a3', bgcolor: alpha('#3730a3', 0.08), '&:hover': { bgcolor: alpha('#3730a3', 0.18) }, borderRadius: 1.5 }}
+                                                                 >
+                                                                     {updatingOrderId === order._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" />}
+                                                                 </IconButton>
+                                                             </span>
+                                                         </Tooltip>
+                                                     )}
                                                     <Tooltip title="Inventory Estimation">
                                                         <IconButton
                                                             size="small"
@@ -2311,8 +2339,10 @@ const CateringManagementPage = () => {
                                                         )}
                                                         <Divider sx={{ width: '100%', my: 1 }} />
                                                         <Typography variant="subtitle1" fontWeight="bold">Total: {formatCurrency(selectedOrder.totalAmount || 0)}</Typography>
-                                                        <Typography variant="body2" color="success.main">Advance Paid: {formatCurrency(selectedOrder.advanceReceived || 0)}</Typography>
-                                                        <Typography variant="h6" color="error.main" fontWeight="bold">Balance Due: {formatCurrency(Math.max(0, (selectedOrder.totalAmount || 0) - (selectedOrder.advanceReceived || 0)))}</Typography>
+                                                        <Typography variant="body2" color="success.main">Advance Paid: {formatCurrency(getCateringTotalPaid(selectedOrder))}</Typography>
+                                                        <Typography variant="h6" color={getCateringBalanceDue(selectedOrder) > 0 ? "error.main" : "success.main"} fontWeight="bold">
+                                                            Balance Due: {formatCurrency(getCateringBalanceDue(selectedOrder))}
+                                                        </Typography>
                                                     </Box>
                                                 </Grid>
                                             </Grid>
@@ -4022,18 +4052,18 @@ const CateringManagementPage = () => {
                         <Typography variant="body2" fontWeight="600" sx={{ color: '#10b981' }}>Send Final Quote</Typography>
                     </MenuItem>
                 )}
-                {actionOrder?.status === 'confirmed' && (
+                {(actionOrder?.status === 'confirmed' || actionOrder?.status === 'ready' || actionOrder?.status === 'preparing') && (
                     <MenuItem 
                         onClick={() => { handleUpdateStatus(actionOrder._id, 'completed'); handleActionMenuClose(); }}
-                        disabled={updatingOrderId === actionOrder?._id || Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0.01}
+                        disabled={updatingOrderId === actionOrder?._id || getCateringBalanceDue(actionOrder) > 0}
                     >
                         <ListItemIcon>
-                            {updatingOrderId === actionOrder?._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" sx={{ color: Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0.01 ? 'text.disabled' : '#3730a3' }} />}
+                            {updatingOrderId === actionOrder?._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" sx={{ color: getCateringBalanceDue(actionOrder) > 0 ? 'text.disabled' : '#3730a3' }} />}
                         </ListItemIcon>
                         <Box>
-                            <Typography variant="body2" fontWeight="600" sx={{ color: Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0.01 ? 'text.disabled' : '#3730a3' }}>Mark Complete</Typography>
-                            {Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0.01 && (
-                                <Typography variant="caption" color="error.main" display="block">Awaiting full payment</Typography>
+                            <Typography variant="body2" fontWeight="600" sx={{ color: getCateringBalanceDue(actionOrder) > 0 ? 'text.disabled' : '#3730a3' }}>Mark Complete</Typography>
+                            {getCateringBalanceDue(actionOrder) > 0 && (
+                                <Typography variant="caption" color="error.main" display="block">Awaiting full payment ({formatCurrency(getCateringBalanceDue(actionOrder))})</Typography>
                             )}
                         </Box>
                     </MenuItem>

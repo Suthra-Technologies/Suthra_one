@@ -762,7 +762,7 @@ const TablesPage: React.FC = () => {
 
             tablesData = tablesData.map((t: any) => {
                 const linkedBooking = activeBookings.find((b: any) =>
-                    !['cancelled', 'no_show'].includes(b.status) &&
+                    !['cancelled', 'no_show', 'completed'].includes(b.status) &&
                     (b.table?._id === t._id || b.table === t._id || String(b.table?.tableNumber || b.tableNumber) === String(t.tableNumber))
                 );
                 if (linkedBooking) {
@@ -2125,7 +2125,7 @@ const TablesPage: React.FC = () => {
                                                                                 Check In
                                                                             </Button>
                                                                         )}
-                                                                        {booking.checkedIn && booking.status !== 'completed' && hasActiveOrder && (
+                                                                        {booking.checkedIn && booking.status !== 'completed' && booking.status !== 'cancelled' && hasActiveOrder && (
                                                                             <Button 
                                                                                 size="small" 
                                                                                 variant="contained" 
@@ -2275,7 +2275,7 @@ const TablesPage: React.FC = () => {
                                                                                     Check In
                                                                                 </Button>
                                                                             )}
-                                                                            {booking.checkedIn && booking.status !== 'completed' && hasActiveOrder && (
+                                                                            {booking.checkedIn && booking.status !== 'completed' && booking.status !== 'cancelled' && hasActiveOrder && (
                                                                                 <Tooltip title={hasActiveOrder ? "Go to POS to checkout" : "Finalize booking"}>
                                                                                     <span onClick={(e) => e.stopPropagation()}>
                                                                                         <Button
