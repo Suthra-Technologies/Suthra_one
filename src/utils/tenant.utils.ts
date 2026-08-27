@@ -1,48 +1,85 @@
 import { Capacitor } from '@capacitor/core';
 
 /**
+ * The platform's base domain, e.g. "nexzenpos.com". Every tenant is served from
+ * <slug>.<BASE_DOMAIN>, so this is the single source of truth for splitting a
+ * hostname into "tenant" and "platform" — no guessing from part counts and no
+ * ignore-list of system subdomain names (a tenant legitimately named "app" or
+ * "restaurant" used to be silently unresolvable).
+ *
+ * Set VITE_BASE_DOMAIN per environment. Falls back to nexzenpos.com so an
+ * unconfigured build still behaves correctly in production.
+ */
+export const BASE_DOMAIN = (
+  ((import.meta as any).env?.VITE_BASE_DOMAIN as string) || 'nexzenpos.com'
+)
+  .trim()
+  .replace(/^https?:\/\//, '')
+  .replace(/:\d+$/, '')
+  .replace(/^\.+|\.+$/g, '')
+  .toLowerCase();
+
+/**
+ * Hosts that serve the platform itself rather than any tenant, beyond the apex
+ * and www. Set VITE_RESERVED_SUBDOMAINS to a comma-separated list of labels
+ * (e.g. "restaurant,restaurents,help,helpguide") for marketing/relay/support
+ * hosts that live on the base domain and must never be read as a tenant slug.
+ *
+ * Keep this list minimal: every label here is a slug no tenant can ever use.
+ */
+const RESERVED_SUBDOMAINS = new Set(
+  (((import.meta as any).env?.VITE_RESERVED_SUBDOMAINS as string) || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
+);
+
+/** Hosts that serve the platform itself rather than any tenant. */
+const isPlatformHost = (host: string): boolean =>
+  host === BASE_DOMAIN || host === `www.${BASE_DOMAIN}`;
+
+/**
  * Extracts the tenant slug from the current window hostname.
  * Supports:
- * - slug.domain.com
- * - slug.localhost:port
- * - domain.com (returns null)
+ * - slug.nexzenpos.com  -> "slug"
+ * - slug.localhost:port -> "slug"
+ * - nexzenpos.com       -> null (platform host)
+ * - www.nexzenpos.com   -> null (platform host)
+ *
+ * Multi-label prefixes (a.b.nexzenpos.com) return the left-most label, so a
+ * staging host like mythri.staging.nexzenpos.com still resolves to "mythri"
+ * when VITE_BASE_DOMAIN is set to staging.nexzenpos.com.
  */
 export const getTenantSlugFromHostname = (): string | null => {
-  const hostname = window.location.hostname;
-  
-  // Ignore IP addresses
+  const hostname = window.location.hostname.toLowerCase();
+
+  // Ignore IP addresses — subdomains are not addressable there.
   if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
     return null;
   }
 
-  // Handle localhost (e.g., tenant1.localhost)
-  if (hostname.includes('localhost')) {
-    const parts = hostname.split('.');
-    if (parts.length > 1 && parts[parts.length - 1] === 'localhost') {
-        // tenant.localhost
-        return parts[0];
-    }
-    return null;
+  // Handle localhost (e.g. mythri.localhost)
+  if (hostname === 'localhost') return null;
+  if (hostname.endsWith('.localhost')) {
+    const prefix = hostname.slice(0, -'.localhost'.length);
+    return prefix.split('.').filter(Boolean)[0] || null;
   }
 
-  const parts = hostname.split('.');
-  
-  // Basic logic: skip all ignored system subdomains from the start
-  // e.g., test.restaurant.nexzenpos.com -> skips test and restaurant
-  const ignoredSubdomains = ['www', 'app', 'dev', 'staging', 'admin', 'test', 'restaurant'];
-  
-  // We need at least the base domain (2 parts e.g. nexzenpos.com) 
-  // plus the subdomain we are looking for (total 3+)
-  if (parts.length < 3) return null;
+  if (isPlatformHost(hostname)) return null;
 
-  // Search for the first part that is not an ignored system subdomain
-  for (let i = 0; i < parts.length - 2; i++) {
-    const part = parts[i]?.toLowerCase();
-    if (!ignoredSubdomains.includes(part)) {
-      return parts[i];
-    }
+  if (hostname.endsWith(`.${BASE_DOMAIN}`)) {
+    const prefix = hostname.slice(0, -(BASE_DOMAIN.length + 1));
+    const labels = prefix.split('.').filter(Boolean);
+    // Left-most label is the tenant; ignore a leading www. (www.mythri.…)
+    const slug = labels[0] === 'www' ? labels[1] : labels[0];
+    if (!slug) return null;
+    // A reserved platform host (help, the OAuth relay, marketing) is not a tenant.
+    if (RESERVED_SUBDOMAINS.has(slug)) return null;
+    return slug;
   }
 
+  // An unrecognised host (custom domain, preview URL) has no resolvable tenant
+  // subdomain; callers fall back to path-based routing.
   return null;
 };
 
@@ -63,73 +100,40 @@ export const isSubdomainAccess = (): boolean => {
  *              URL) so it stays out of the address bar, history, and server logs.
  */
 export const getTenantUrl = (slug: string, path: string = '', token?: string): string => {
-  const { hostname, host, protocol, origin } = window.location;
+  const { hostname, protocol, origin, port } = window.location;
 
   // Clean path to ensure it starts with /
-  let cleanPath = path.startsWith('/') ? path : `/${path}`;
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
 
   // NOTE: token handoff is handled by redirectToTenant() via a one-time server
   // code (?h=...), so the JWT is never placed in the URL. `token` is accepted
   // here only for backward-compatibility and is intentionally ignored.
   void token;
 
-  // Capacitor / native WebView serves the app from https://localhost (or similar).
-  // Subdomains like sample.localhost often fail or change origin — stay on same origin with path routing.
+  const portSuffix = port ? `:${port}` : '';
+
+  // Capacitor / native WebView serves the app from https://localhost, where a
+  // subdomain would change origin and lose localStorage. Path routing is the
+  // only thing that works here — not a fallback we can remove.
   if (Capacitor.isNativePlatform()) {
     return `${origin}/${slug}${cleanPath}`;
   }
 
-  // If accessed by IP, subdomains won't work - use path-based routing
+  // Accessed by raw IP: subdomains are not addressable, so path routing again.
   if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
     return `${origin}/${slug}${cleanPath}`;
   }
 
-  // Handle localhost
-  if (hostname.includes('localhost')) {
-    const parts = hostname.split('.');
-    let baseHost = host;
-    if (parts.length > 1 && parts[parts.length - 1] === 'localhost') {
-        // Strip existing subdomain (e.g. tenant.localhost:3000 -> localhost:3000)
-        baseHost = host.substring(parts[0].length + 1);
-    }
-    return `${protocol}//${slug}.${baseHost}${cleanPath}`;
+  // Local dev: always <slug>.localhost, mirroring production's shape.
+  if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
+    return `${protocol}//${slug}.localhost${portSuffix}${cleanPath}`;
   }
 
-  // Handle production domains
-  const parts = hostname.split('.');
-
-  // An apex domain (example.com) has no room for a tenant subdomain, and the
-  // subdomain would usually have neither DNS nor a TLS certificate. Route by
-  // path instead — App.tsx already serves tenants from /:slug whenever
-  // getTenantSlugFromHostname() returns null, which is exactly this case.
-  // Without this, login redirects to a dead <slug>.example.com origin, the
-  // per-origin localStorage (and with it tenantSlug) is lost, and RequireRole
-  // and the /login route redirect to each other forever.
-  if (parts.length < 3) {
-    return `${origin}/${slug}${cleanPath}`;
-  }
-
-  const ignoredSubdomains = ['www', 'app', 'dev', 'staging', 'admin', 'test', 'restaurant'];
-  
-  let baseParts = parts;
-  
-  // Find where the slug is in the hostname and remove it to get the base domain
-  for (let i = 0; i < parts.length - 2; i++) {
-    const part = parts[i]?.toLowerCase();
-    if (!ignoredSubdomains.includes(part)) {
-      // This part is the tenant slug - remove it to get the system base host
-      baseParts = parts.slice(0, i).concat(parts.slice(i + 1));
-      break;
-    }
-  }
-  
-  // Also strip www if it's the very first part (safety check)
-  if (baseParts[0] === 'www') {
-    baseParts = baseParts.slice(1);
-  }
-
-  const baseHost = baseParts.join('.') + (window.location.port ? `:${window.location.port}` : '');
-  return `${protocol}//${slug}.${baseHost}${cleanPath}`;
+  // Everything else (the platform host, a tenant host, or an unrecognised host)
+  // resolves to <slug>.<BASE_DOMAIN>. This is the single intended shape on the
+  // web, so it is produced unconditionally rather than being conditional on the
+  // host we happen to be standing on.
+  return `${protocol}//${slug}.${BASE_DOMAIN}${portSuffix}${cleanPath}`;
 };
 
 /**
