@@ -1,6 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
-import { SafeArea } from 'capacitor-plugin-safe-area';
 import { Box, Button, CircularProgress, CssBaseline, Paper, ThemeProvider, Typography, useMediaQuery } from '@mui/material';
+import { SafeArea } from 'capacitor-plugin-safe-area';
 import React, { useEffect, useMemo } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
 import PushNotificationInitializer from './components/PushNotificationInitializer';
@@ -10,12 +10,12 @@ import { SocketProvider } from './context/SocketContext';
 import LoginPage from './pages/auth/LoginPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import { TenantRoutes } from './routes/TenantRoutes';
-import { getTenantSlugFromHostname } from './utils/tenant.utils';
 import { planFeaturesOf, resolveLandingPath } from './utils/landingPath';
+import { getTenantSlugFromHostname } from './utils/tenant.utils';
 
+import GoogleAuthRelayPage from './pages/public/GoogleAuthRelayPage';
 import HomePage from './pages/public/HomePage';
 import PrivacyPolicyPage from './pages/public/PrivacyPolicyPage';
-import GoogleAuthRelayPage from './pages/public/GoogleAuthRelayPage';
 import RescheduleDemoPage from './pages/public/RescheduleDemoPage';
 import TermsConditionsPage from './pages/public/TermsConditionsPage';
 import RestaurantRegisterPage from './pages/RestaurantRegisterPage';
@@ -29,13 +29,14 @@ import { Unauthorized } from './pages/Unauthorized';
 // import UsersAdminPage from './pages/admin/UsersAdminPage';
 // import SettingsAdminPage from './pages/admin/SettingsAdminPage';
 import { Toaster } from 'react-hot-toast';
-import SuperAdminLayout from './components/SuperAdminLayout';
 import MaterialProviderLayout from './components/MaterialProviderLayout';
+import SuperAdminLayout from './components/SuperAdminLayout';
 import ProviderChangePasswordPage from './pages/provider/ProviderChangePasswordPage';
 import ProviderDashboardPage from './pages/provider/ProviderDashboardPage';
-import ProviderOrdersPage from './pages/provider/ProviderOrdersPage';
 import ProviderMaterialsPage from './pages/provider/ProviderMaterialsPage';
+import ProviderOrdersPage from './pages/provider/ProviderOrdersPage';
 import ProviderProfilePage from './pages/provider/ProviderProfilePage';
+import ActivityOverviewPage from './pages/superadmin/ActivityOverviewPage';
 import AdminLogsPage from './pages/superadmin/AdminLogsPage';
 import DeliveryReportsPage from './pages/superadmin/DeliveryReportsPage';
 import DemoRequestsLogPage from './pages/superadmin/DemoRequestsLogPage';
@@ -46,14 +47,13 @@ import InvoicesAdminPage from './pages/superadmin/InvoicesAdminPage';
 import MaterialProvidersPage from './pages/superadmin/MaterialProvidersPage';
 import PlansLogPage from './pages/superadmin/PlansLogPage';
 import PlansPage from './pages/superadmin/PlansPage';
-import SuperAdminProfilePage from './pages/superadmin/SuperAdminProfilePage';
 import SuperAdminSettingsPage from './pages/superadmin/SettingsPage';
 import SmsLogsDetailPage from './pages/superadmin/SmsLogsDetailPage';
 import SmsOverviewPage from './pages/superadmin/SmsOverviewPage';
 import StoresLogPage from './pages/superadmin/StoresLogPage';
 import SuperAdminPortal from './pages/superadmin/SuperAdminPortal';
+import SuperAdminProfilePage from './pages/superadmin/SuperAdminProfilePage';
 import SuperAdminTeamPage from './pages/superadmin/SuperAdminTeamPage';
-import ActivityOverviewPage from './pages/superadmin/ActivityOverviewPage';
 import TenantDetailsPage from './pages/superadmin/TenantDetailsPage';
 import TenantOrdersPage from './pages/superadmin/TenantOrdersPage';
 import TenantPaymentsPage from './pages/superadmin/TenantPaymentsPage';
@@ -246,6 +246,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/customer-register" element={<CustomerRegisterPage />} />
       <Route path="/registration-success" element={<SubscriptionSuccess />} />
       <Route path="/registration-failed" element={<SubscriptionCancel />} />
+      <Route path="/redirect" element={<RedirectPage />} />
 
       {/* ---- SUPERADMIN ROUTES ---- */}
       <Route element={<RequireRole allowedRoles={["superadmin"]} />}>
@@ -324,19 +325,19 @@ const App: React.FC = () => {
   const tenantSlug = getTenantSlugFromHostname() || undefined;
 
   useEffect(() => {
-    (async function() {
+    (async function () {
       try {
         if (!Capacitor.isNativePlatform()) return;
         if (Capacitor.getPlatform() === 'android') {
           await SafeArea.setImmersiveNavigationBar();
         }
         const safeAreaData = await SafeArea.getSafeAreaInsets();
-        const {insets} = safeAreaData;
+        const { insets } = safeAreaData;
         for (const [key, value] of Object.entries(insets)) {
-            document.documentElement.style.setProperty(
-                `--safe-area-inset-${key}`,
-                `${value}px`,
-            );
+          document.documentElement.style.setProperty(
+            `--safe-area-inset-${key}`,
+            `${value}px`,
+          );
         }
         await SafeArea.addListener('safeAreaChanged', data => {
           const { insets } = data;
@@ -397,6 +398,34 @@ const SubdomainRedirect: React.FC<{ contextSlug: string }> = ({ contextSlug }) =
   // Remove the slug from the path but preserve query parameters
   const newPath = (location.pathname.replace(`/${contextSlug}`, '') || '/') + location.search;
   return redirectContent(newPath);
+};
+
+const RedirectPage: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const targetUrl = params.get('url');
+    if (targetUrl) {
+      window.location.href = decodeURIComponent(targetUrl);
+    }
+  }, [location.search]);
+
+  return (
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100vh',
+      bgcolor: '#f8f9fa'
+    }}>
+      <CircularProgress size={40} sx={{ mb: 2, color: '#4F46E5' }} />
+      <Typography variant="body2" color="text.secondary" fontWeight="medium">
+        Redirecting to dashboard...
+      </Typography>
+    </Box>
+  );
 };
 
 export default App;
