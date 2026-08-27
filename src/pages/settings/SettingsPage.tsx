@@ -2155,7 +2155,7 @@ const SettingsPage: React.FC = () => {
                                         ))}
                                     </TextField>
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 6 }}>
+                                {/* <Grid size={{ xs: 12, md: 6 }}>
                                     <TextField
                                         fullWidth
                                         label="Default Phone Prefix (Dial Code)"
@@ -2169,7 +2169,7 @@ const SettingsPage: React.FC = () => {
                                         }}
                                         helperText="Default prefix for phone number fields across the app"
                                     />
-                                </Grid>
+                                </Grid> */}
                                 {/* <Grid size={{ xs: 12 }}>
                                     <AddressAutocomplete
                                         label="Restaurant Address *"
@@ -2185,20 +2185,20 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Grid>
 
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', bgcolor: alpha('#4F46E5', 0.02), borderStyle: 'dashed', borderRadius: 4 }}>
+                        <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                            <Paper variant="outlined" sx={{ p: 2.5, pt: 2, pb: 2, textAlign: 'center', width: '100%', mt: { md: '-8px' }, display: 'flex', flexDirection: 'column', justifyContent: 'center', bgcolor: alpha('#4F46E5', 0.02), borderStyle: 'dashed', borderRadius: 4 }}>
                                 <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>
                                     Storefront Preview
                                 </Typography>
-                                <Box sx={{ mt: 2, mb: 3, display: 'flex', justifyContent: 'center' }}>
+                                <Box sx={{ mt: 1, mb: 1.5, display: 'flex', justifyContent: 'center' }}>
                                     <Box
                                         component="label"
                                         sx={{
                                             cursor: 'pointer',
                                             position: 'relative',
                                             borderRadius: '50%',
-                                            width: 100,
-                                            height: 100,
+                                            width: 84,
+                                            height: 84,
                                             '&:hover .edit-overlay': {
                                                 opacity: 1
                                             }
@@ -2208,10 +2208,10 @@ const SettingsPage: React.FC = () => {
                                             <Avatar
                                                 src={settings.restaurant.logo || (user?.tenant as any)?.logo}
                                                 alt="Logo"
-                                                sx={{ width: 100, height: 100, boxShadow: '0 8px 16px rgba(0,0,0,0.1)', border: '4px solid #fff' }}
+                                                sx={{ width: 84, height: 84, boxShadow: '0 8px 16px rgba(0,0,0,0.1)', border: '4px solid #fff' }}
                                             />
                                         ) : (
-                                            <Avatar sx={{ width: 100, height: 100, bgcolor: 'primary.main', fontSize: '2rem' }}>
+                                            <Avatar sx={{ width: 84, height: 84, bgcolor: 'primary.main', fontSize: '1.8rem' }}>
                                                 {settings.restaurant.name?.charAt(0) || 'R'}
                                             </Avatar>
                                         )}
@@ -2232,7 +2232,7 @@ const SettingsPage: React.FC = () => {
                                                 transition: 'opacity 0.2s ease-in-out',
                                             }}
                                         >
-                                            <EditIcon sx={{ color: '#fff', fontSize: 28 }} />
+                                            <EditIcon sx={{ color: '#fff', fontSize: 24 }} />
                                         </Box>
                                         <input
                                             type="file"
@@ -2268,24 +2268,19 @@ const SettingsPage: React.FC = () => {
                                         />
                                     </Box>
                                 </Box>
-                                <Typography variant="h5" fontWeight="bold">
+                                <Typography variant="h6" fontWeight="bold">
                                     {settings.restaurant.name || 'Your Restaurant Name'}
                                 </Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                                     {settings.restaurant.email}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
                                     {settings.restaurant.phone}
                                 </Typography>
-                                {/* <Box sx={{ mt: 3 }}>
-                                    <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-                                        * Changes appear in Sidebar & Header
-                                    </Typography>
-                                </Box> */}
                             </Paper>
                         </Grid>
-                        <Grid size={{ xs: 12 }}>
-                            <Divider sx={{ my: 2 }} />
+                        <Grid size={{ xs: 12 }} sx={{ pt: 1 }}>
+                            <Divider sx={{ mb: 1.5 }} />
                             <Typography variant="subtitle2" gutterBottom>
                                 Address Details
                             </Typography>
