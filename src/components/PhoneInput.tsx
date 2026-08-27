@@ -275,7 +275,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
 
     const isInvalidLive = Boolean(value && String(value).trim().length > 0 && !liveValidation.isValid);
     const hasError = Boolean(error) || isInvalidLive;
-    const effectiveHelperText = helperText || (isInvalidLive ? liveValidation.message : '');
+    const effectiveHelperText = isInvalidLive ? liveValidation.message : (helperText || '');
 
     // Format phone numbers dynamically
     const formatPhone = (val: string, dCode: string) => {

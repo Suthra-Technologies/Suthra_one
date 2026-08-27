@@ -1035,7 +1035,7 @@ const MenuPage: React.FC = () => {
                 }
 
                 // Check for large uploads and warn user
-                const maxItems = 500;
+                const maxItems = 1000;
                 if (validItems.length > maxItems) {
                     toast.error(`Maximum ${maxItems} items allowed per upload. Found ${validItems.length} items. Please split your data into smaller batches.`);
                     return;
@@ -1155,7 +1155,7 @@ const MenuPage: React.FC = () => {
             }
 
             // Check for large uploads and warn user
-            const maxItems = 500;
+            const maxItems = 1000;
             if (validItems.length > maxItems) {
                 toast.error(`Maximum ${maxItems} items allowed per upload. Found ${validItems.length} items. Please split your data into smaller batches.`);
                 return;
@@ -2292,7 +2292,7 @@ const MenuPage: React.FC = () => {
                                     />
                                 </Button>
                                 <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 2 }}>
-                                    Maximum 500 items per batch
+                                    Maximum 1000 items per batch
                                 </Typography>
                             </Box>
 
