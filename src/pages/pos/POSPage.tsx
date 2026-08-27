@@ -1555,7 +1555,11 @@ const POSPage: React.FC = () => {
                     tableNumber: selectedTable?.isMerged
                         ? (tables.find(t => t._id === selectedTable.mergedWith)?.tableNumber || tableNumber.split(' + ')[0])
                         : tableNumber.split(' + ')[0],
-                    waiterName,
+                    waiter: (waiters.find(w => `${w.firstName || ''} ${w.lastName || ''}`.trim() === waiterName || w.email === waiterName)?._id)
+                        || selectedTable?.assignedWaiter
+                        || (user as any)?.userId
+                        || (user as any)?._id,
+                    waiterName: waiterName || getUserFullName?.() || (user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : ''),
                     guestCount,
                 }),
 
@@ -1614,10 +1618,9 @@ const POSPage: React.FC = () => {
                     toast.error("Failed to update table status");
                 }
 
-                // Record the walk-in on the Bookings page so staff see current table
-                // occupancy alongside reservations. Best-effort — a failure here
-                // shouldn't block or roll back an order that's already been placed.
-                if (!isEditMode && savedOrderId) {
+                // Record the walk-in on the Bookings page ONLY if table has no active reservation.
+                const isFromReservation = searchParams.get('bookingId') || searchParams.get('tableId') || selectedTable?.currentBooking;
+                if (!isEditMode && savedOrderId && !isFromReservation) {
                     bookingsAPI.createWalkIn({
                         tableId: selectedTable._id,
                         guests: guestCount,

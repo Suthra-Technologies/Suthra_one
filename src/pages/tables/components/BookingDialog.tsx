@@ -243,6 +243,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                     email: customerEmail || undefined
                 },
                 source: 'admin',
+                assignedStaff: undefined,
             };
 
             await bookingsAPI.create(payload);
