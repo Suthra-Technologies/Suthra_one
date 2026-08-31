@@ -583,7 +583,10 @@ const MenuPage: React.FC = () => {
             return;
         }
 
-        if (!categoryForm.taxCode || !categoryForm.taxCode.trim()) {
+        // Only top-level categories carry a tax code; subcategories inherit the
+        // parent's, so there's nothing to validate for them.
+        const isSubcategoryForm = editingCategory ? isSubcategory(editingCategory) : !!categoryForm.parentCategory;
+        if (!isSubcategoryForm && (!categoryForm.taxCode || !categoryForm.taxCode.trim())) {
             setCategoryTouched((prev) => ({ ...prev, taxCode: true }));
             toast.error('Tax Code (TIC) is required');
             return;
@@ -2174,13 +2177,17 @@ const MenuPage: React.FC = () => {
                                 required
                                 inputProps={{ maxLength: 50 }}
                             />
-                            <TaxCategorySelector
-                                value={categoryForm.taxCode}
-                                onChange={(val) => setCategoryForm({ ...categoryForm, taxCode: val })}
-                                error={categoryTouched.taxCode && !categoryForm.taxCode.trim()}
-                                helperText={categoryTouched.taxCode && !categoryForm.taxCode.trim() ? 'Tax Code (TIC) is required' : ''}
-                                required
-                            />
+                            {/* Subcategories inherit their parent's tax code, so the
+                                picker is only shown for top-level categories. */}
+                            {!(editingCategory ? isSubcategory(editingCategory) : !!categoryForm.parentCategory) && (
+                                <TaxCategorySelector
+                                    value={categoryForm.taxCode}
+                                    onChange={(val) => setCategoryForm({ ...categoryForm, taxCode: val })}
+                                    error={categoryTouched.taxCode && !categoryForm.taxCode.trim()}
+                                    helperText={categoryTouched.taxCode && !categoryForm.taxCode.trim() ? 'Tax Code (TIC) is required' : ''}
+                                    required
+                                />
+                            )}
                             <FormControl fullWidth>
                                 <InputLabel>Parent Category</InputLabel>
                                 <Select

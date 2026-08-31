@@ -113,7 +113,7 @@ const PurchaseOrdersPage: React.FC = () => {
         if (loading) return;
         try {
             await purchaseOrdersAPI.receive(id);
-            toast.success('Items received & stock updated');
+            toast.success('Items received, stock updated & marked paid');
             fetchPOs();
         } catch (error) {
             toast.error('Failed to receive items');
@@ -179,7 +179,7 @@ const PurchaseOrdersPage: React.FC = () => {
                         sx={{
                             mb: 0.5,
                             fontSize: headingFontSize,
-                            color: { xs: '#000', sm: 'text.primary' },
+                            color: 'text.primary',
                             textAlign: { xs: 'center', sm: 'left' },
                         }}
                     >
@@ -213,13 +213,14 @@ const PurchaseOrdersPage: React.FC = () => {
                 p: { xs: 0.8, md: 1 },
                 mb: { xs: 2, md: 4 },
                 borderRadius: { xs: 3, md: 4 },
-                bgcolor: '#111827',
+                bgcolor: 'background.paper',
+                border: `1px solid ${theme.palette.divider}`,
                 display: 'flex',
                 flexDirection: { xs: 'column', md: 'row' },
                 alignItems: { xs: 'stretch', md: 'center' },
                 gap: 1,
                 flexWrap: 'wrap',
-                boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+                boxShadow: '0 4px 15px rgba(0,0,0,0.06)'
             }}>
                 <TextField
                     placeholder="Search Order or Vendor..."
@@ -229,14 +230,14 @@ const PurchaseOrdersPage: React.FC = () => {
                     sx={{
                         minWidth: { xs: '100%', md: 280 },
                         '& .MuiOutlinedInput-root': {
-                            color: 'white',
+                            color: 'text.primary',
                             '& fieldset': { border: 'none' },
                             height: { xs: 40, md: 'auto' }
                         },
-                        bgcolor: alpha('#fff', 0.05), borderRadius: { xs: 2, md: 3 }, m: 0.5
+                        bgcolor: alpha(theme.palette.text.primary, 0.05), borderRadius: { xs: 2, md: 3 }, m: 0.5
                     }}
                     InputProps={{
-                        startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: alpha('#fff', 0.5), fontSize: { xs: 20, md: 24 } }} /></InputAdornment>,
+                        startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary', fontSize: { xs: 20, md: 24 } }} /></InputAdornment>,
                         sx: { fontSize: { xs: '0.875rem', md: '1rem' } }
                     }}
                 />
@@ -258,13 +259,13 @@ const PurchaseOrdersPage: React.FC = () => {
                                 minWidth: { xs: 'calc(33.33% - 6px)', sm: 150 },
                                 flexGrow: 1,
                                 '& .MuiOutlinedInput-root': {
-                                    color: 'white',
-                                    '& fieldset': { borderColor: alpha('#fff', 0.1) },
+                                    color: 'text.primary',
+                                    '& fieldset': { borderColor: theme.palette.divider },
                                     height: { xs: 36, md: 'auto' },
                                     borderRadius: 2
                                 },
-                                '& .MuiInputLabel-root': { color: alpha('#fff', 0.5), fontSize: { xs: '0.75rem', md: '0.875rem' } },
-                                '& .MuiSvgIcon-root': { color: 'white', fontSize: { xs: 18, md: 20 } },
+                                '& .MuiInputLabel-root': { color: 'text.secondary', fontSize: { xs: '0.75rem', md: '0.875rem' } },
+                                '& .MuiSvgIcon-root': { color: 'text.secondary', fontSize: { xs: 18, md: 20 } },
                                 m: 0.2
                             }}
                             SelectProps={{

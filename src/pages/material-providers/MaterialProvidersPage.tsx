@@ -209,6 +209,8 @@ const MaterialProvidersPage: React.FC = () => {
         providerPhone: p.phone || '',
         providerAddress: p.address || '',
         orderText: combinedOrderText,
+        // unitPrice is intentionally omitted: the server stamps it from the
+        // provider's catalog at order time, so the client can't influence price.
         items: filledOrderItems.map(it => ({ name: it.name.trim(), quantity: it.quantity || '1', unit: it.unit || '' })),
         needByDate: orderNeedDate || undefined,
         note: orderText.trim() || undefined,

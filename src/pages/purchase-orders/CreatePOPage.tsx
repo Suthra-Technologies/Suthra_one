@@ -44,7 +44,8 @@ import {
     InfoOutlined as InfoIcon,
     CheckCircle as CheckCircleIcon,
     AddCircleOutline as AddCircleIcon,
-    MoveToInbox as RestockIcon
+    MoveToInbox as RestockIcon,
+    Category as CategoryIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { purchaseOrdersAPI, uploadAPI, inventoryAPI, usersAPI, vendorsAPI } from '../../services/api';
@@ -86,6 +87,18 @@ const TOKENS = {
     fontSans: '"IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif',
     fontMono: '"IBM Plex Mono", ui-monospace, monospace',
 };
+
+// Expense categories. Must stay in sync with the `category` enum on the
+// purchase-order schema and the category filter on the list page.
+const PO_CATEGORIES = [
+    { value: 'raw_materials', label: 'Raw Materials' },
+    { value: 'salaries', label: 'Salaries' },
+    { value: 'rent', label: 'Rent' },
+    { value: 'utilities', label: 'Utilities' },
+    { value: 'maintenance', label: 'Maintenance' },
+    { value: 'supplies', label: 'Supplies' },
+    { value: 'other', label: 'Other' },
+];
 
 const CreatePOPage: React.FC = () => {
     const navigate = useNavigate();
@@ -861,6 +874,35 @@ const CreatePOPage: React.FC = () => {
                     {/* Left Column - Main Form */}
                     <Grid item xs={12} md={12}>
                         <Stack spacing={isMobile ? 2 : 3} alignItems={isMobile ? "center" : "stretch"}>
+                            {/* 1. Expense Category — drives the rest of the form and
+                                   the category filter on the purchase orders list. */}
+                            <Paper sx={cardSx}>
+                                <SectionHeader
+                                    icon={<CategoryIcon />}
+                                    title="Expense Category"
+                                />
+                                <Grid container spacing={isMobile ? 1.5 : 3}>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            size={isMobile ? "small" : "medium"}
+                                            label="Category"
+                                            value={formData.category}
+                                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                            helperText="Applies to manually entered and AI auto-filled invoices"
+                                            sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
+                                        >
+                                            {PO_CATEGORIES.map((c) => (
+                                                <MenuItem key={c.value} value={c.value} sx={{ fontSize: isMobile ? '0.85rem' : '1rem' }}>
+                                                    {c.label}
+                                                </MenuItem>
+                                            ))}
+                                        </TextField>
+                                    </Grid>
+                                </Grid>
+                            </Paper>
+
                             {/* 2. Specialized Entity Selection */}
                             <Paper sx={cardSx}>
                                 <SectionHeader

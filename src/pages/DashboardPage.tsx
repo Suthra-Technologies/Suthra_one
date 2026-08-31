@@ -364,6 +364,7 @@ const DashboardPage: React.FC = () => {
     (item: any) => item?.lowStockAlert?.level === 'critical',
   ).length;
   const [assetInsights, setAssetInsights] = useState<any>(null);
+  const [assetAlertsExpanded, setAssetAlertsExpanded] = useState(false);
   const fetchRequestId = React.useRef(0);
   const [assetTabValue, setAssetTabValue] = useState(0);
   const [assetTabData, setAssetTabData] = useState<any>({ data: [], total: 0, page: 1, loading: false });
@@ -537,7 +538,7 @@ const DashboardPage: React.FC = () => {
 
       // Refresh both insights and current tab data
       fetchDashboardData(true);
-      const statuses = ['expired', 'expiring', 'service_due', 'upcoming_service'];
+      const statuses = ['expired', 'expiring', 'service_due', 'upcoming_service', 'renewal_due'];
       fetchAssetTabData(statuses[assetTabValue], assetTabData.page);
     } catch (error) {
       toast.error('Failed to record completion');
@@ -583,7 +584,7 @@ const DashboardPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const statuses = ['expired', 'expiring', 'service_due', 'upcoming_service'];
+    const statuses = ['expired', 'expiring', 'service_due', 'upcoming_service', 'renewal_due'];
     fetchAssetTabData(statuses[assetTabValue], 1);
   }, [assetTabValue]);
 
@@ -1127,6 +1128,104 @@ const DashboardPage: React.FC = () => {
                   </Box>
                 );
               })}
+            </Stack>
+          </Collapse>
+        </Alert>
+      )}
+
+      {/* Standing asset/document expiry warning. Mirrors the low-stock alert
+          above so expired licenses/insurance/documents and overdue renewals
+          are seen immediately instead of only in the Asset Lifecycle section
+          further down the page. */}
+      {canSeeStockAlerts && ((assetInsights?.summary?.expired || 0) + (assetInsights?.summary?.renewalDue || 0)) > 0 && (
+        <Alert
+          severity="error"
+          icon={<ReportProblemOutlinedIcon />}
+          sx={{
+            mb: { xs: 2, sm: 3 },
+            borderRadius: 2,
+            alignItems: 'flex-start',
+            '& .MuiAlert-message': { flex: 1, minWidth: 0 },
+          }}
+          action={
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Button
+                size="small"
+                color="inherit"
+                onClick={() => navTo('/assets')}
+                sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}
+              >
+                Review
+              </Button>
+              <IconButton
+                size="small"
+                color="inherit"
+                onClick={() => setAssetAlertsExpanded((prev) => !prev)}
+                aria-label={assetAlertsExpanded ? 'Hide details' : 'Show details'}
+              >
+                {assetAlertsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            </Stack>
+          }
+        >
+          <Box
+            role="button"
+            tabIndex={0}
+            aria-expanded={assetAlertsExpanded}
+            onClick={() => setAssetAlertsExpanded((prev) => !prev)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setAssetAlertsExpanded((prev) => !prev);
+              }
+            }}
+            sx={{ cursor: 'pointer', userSelect: 'none' }}
+          >
+            <AlertTitle sx={{ fontWeight: 700, mb: 0.5 }}>
+              {(assetInsights?.summary?.expired || 0) > 0
+                ? `${assetInsights.summary.expired} document${assetInsights.summary.expired === 1 ? '' : 's'}/asset${assetInsights.summary.expired === 1 ? '' : 's'} expired`
+                : `${assetInsights?.summary?.renewalDue || 0} renewal${assetInsights?.summary?.renewalDue === 1 ? '' : 's'} overdue`}
+            </AlertTitle>
+            <Typography variant="body2" sx={{ mb: assetAlertsExpanded ? 1 : 0 }}>
+              {(assetInsights?.summary?.renewalDue || 0) > 0 && (assetInsights?.summary?.expired || 0) > 0
+                ? `Also ${assetInsights.summary.renewalDue} renewal${assetInsights.summary.renewalDue === 1 ? '' : 's'} overdue. `
+                : ''}
+              This warning stays until the item is renewed or its expiry is updated.
+            </Typography>
+          </Box>
+
+          <Collapse in={assetAlertsExpanded}>
+            <Stack spacing={0.75} sx={{ mt: 1 }}>
+              {(assetTabData?.data || [])
+                .filter((asset: any) => assetTabValue === 0)
+                .slice(0, 5)
+                .map((asset: any) => (
+                  <Box
+                    key={asset._id}
+                    sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}
+                  >
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {asset.name}
+                      <Typography component="span" variant="caption" sx={{ ml: 1, opacity: 0.75 }}>
+                        {asset.type}
+                      </Typography>
+                    </Typography>
+                    <Chip
+                      size="small"
+                      color="error"
+                      variant={asset.lifecycle?.renewalRequired ? 'filled' : 'outlined'}
+                      label={
+                        asset.lifecycle?.renewalRequired
+                          ? 'Renewal needed'
+                          : `Expired ${asset.lifecycle?.expiryDate ? new Date(asset.lifecycle.expiryDate).toLocaleDateString() : ''}`
+                      }
+                      sx={{ fontWeight: 600 }}
+                    />
+                  </Box>
+                ))}
+              <Typography variant="caption" color="text.secondary">
+                See the full list in Asset Lifecycle Management below, or open the Asset Module.
+              </Typography>
             </Stack>
           </Collapse>
         </Alert>
@@ -1693,6 +1792,28 @@ const DashboardPage: React.FC = () => {
               <Typography variant="h4" fontWeight="800" color="success.main" sx={{ fontSize: { xs: '1.4rem', sm: '2.125rem' } }}>{assetInsights?.summary?.upcomingServices || 0}</Typography>
             </Card>
           </Grid>
+          <Grid item xs={6} sm={3}>
+            <Card
+              onClick={() => setAssetTabValue(4)}
+              sx={{
+                cursor: 'pointer',
+                p: { xs: 1.25, sm: 2 },
+                borderRadius: { xs: 6, sm: 3 },
+                bgcolor: alpha(theme.palette.warning.main, 0.05),
+                border: assetTabValue === 4 ? `2px solid ${theme.palette.warning.main}` : 'none',
+                transition: 'all 0.2s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                '&:hover': { transform: 'translateY(-4px)', boxShadow: theme.shadows[2] }
+              }}
+            >
+              <Typography variant="caption" color="warning.main" fontWeight="700" sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, lineHeight: 1.2, mb: 0.5 }}>RENEWAL DUE</Typography>
+              <Typography variant="h4" fontWeight="800" color="warning.main" sx={{ fontSize: { xs: '1.4rem', sm: '2.125rem' } }}>{assetInsights?.summary?.renewalDue || 0}</Typography>
+            </Card>
+          </Grid>
         </Grid>
 
         {/* Asset Table */}
@@ -1710,6 +1831,7 @@ const DashboardPage: React.FC = () => {
               <Tab label={`Expiring Soon (${assetInsights?.summary?.expiringSoon || 0})`} />
               <Tab label={`Service Due (${assetInsights?.summary?.maintenanceDue || 0})`} />
               <Tab label={`Upcoming Services (${assetInsights?.summary?.upcomingServices || 0})`} />
+              <Tab label={`Renewal Due (${assetInsights?.summary?.renewalDue || 0})`} />
             </Tabs>
           </Box>
           <CardContent sx={{ p: 0 }}>
@@ -1755,15 +1877,17 @@ const DashboardPage: React.FC = () => {
                               <TableCell>
                                 {assetTabValue < 2 ? (
                                   asset.lifecycle?.expiryDate ? new Date(asset.lifecycle.expiryDate).toLocaleDateString() : 'N/A'
+                                ) : assetTabValue === 4 ? (
+                                  asset.lifecycle?.nextRenewalDate ? new Date(asset.lifecycle.nextRenewalDate).toLocaleDateString() : 'N/A'
                                 ) : (
                                   asset.lifecycle?.nextServiceDate ? new Date(asset.lifecycle.nextServiceDate).toLocaleDateString() : 'N/A'
                                 )}
                               </TableCell>
                               <TableCell>
                                 <Chip
-                                  label={assetTabValue === 0 ? 'Expired' : assetTabValue === 2 ? 'Overdue' : 'Due Soon'}
+                                  label={assetTabValue === 0 ? 'Expired' : assetTabValue === 2 ? 'Overdue' : assetTabValue === 4 ? 'Renewal Overdue' : 'Due Soon'}
                                   size="small"
-                                  color={assetTabValue % 2 === 0 ? 'error' : 'warning'}
+                                  color={assetTabValue === 0 || assetTabValue === 2 ? 'error' : 'warning'}
                                   variant="outlined"
                                 />
                               </TableCell>
@@ -1843,9 +1967,9 @@ const DashboardPage: React.FC = () => {
                                 />
                               </Box>
                               <Chip
-                                label={assetTabValue === 0 ? 'Expired' : assetTabValue === 2 ? 'Overdue' : 'Due Soon'}
+                                label={assetTabValue === 0 ? 'Expired' : assetTabValue === 2 ? 'Overdue' : assetTabValue === 4 ? 'Renewal Overdue' : 'Due Soon'}
                                 size="small"
-                                color={assetTabValue % 2 === 0 ? 'error' : 'warning'}
+                                color={assetTabValue === 0 || assetTabValue === 2 ? 'error' : 'warning'}
                                 variant="outlined"
                               />
                             </Stack>
@@ -1856,6 +1980,8 @@ const DashboardPage: React.FC = () => {
                                 <Typography variant="body2" fontWeight="600">
                                   {assetTabValue < 2 ? (
                                     asset.lifecycle?.expiryDate ? new Date(asset.lifecycle.expiryDate).toLocaleDateString() : 'N/A'
+                                  ) : assetTabValue === 4 ? (
+                                    asset.lifecycle?.nextRenewalDate ? new Date(asset.lifecycle.nextRenewalDate).toLocaleDateString() : 'N/A'
                                   ) : (
                                     asset.lifecycle?.nextServiceDate ? new Date(asset.lifecycle.nextServiceDate).toLocaleDateString() : 'N/A'
                                   )}
@@ -1918,7 +2044,7 @@ const DashboardPage: React.FC = () => {
                       count={Math.ceil(assetTabData.total / 5)}
                       page={assetTabData.page}
                       onChange={(_, page) => {
-                        const statuses = ['expired', 'expiring', 'service_due', 'upcoming_service'];
+                        const statuses = ['expired', 'expiring', 'service_due', 'upcoming_service', 'renewal_due'];
                         fetchAssetTabData(statuses[assetTabValue], page);
                       }}
                       color="primary"

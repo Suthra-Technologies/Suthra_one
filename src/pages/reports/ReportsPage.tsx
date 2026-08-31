@@ -491,9 +491,10 @@ const ReportsPage: React.FC = () => {
 
             const totalCommission = commissionExpenses.reduce((sum: number, exp: any) => sum + exp.amount, 0);
             
-            // Combine with standard expenses (POs)
+            // Combine with standard expenses (purchase orders + standalone expenses,
+            // each already tagged with its own type by the backend)
             const integratedExpenses = [
-                ...(plData.expenses || []).map((e: any) => ({ ...e, type: 'Purchase Order' })),
+                ...(plData.expenses || []).map((e: any) => ({ ...e, type: e.type || 'Purchase Order' })),
                 ...commissionExpenses
             ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -501,7 +502,8 @@ const ReportsPage: React.FC = () => {
                 ...plData,
                 expenses: integratedExpenses,
                 cateringCommissionsTotal: totalCommission,
-                poExpensesTotal: plData.cogs || 0,
+                poExpensesTotal: plData.purchaseOrderTotal ?? plData.cogs ?? 0,
+                standaloneExpensesTotal: plData.expenseTotal || 0,
                 cogs: (plData.cogs || 0) + totalCommission, // Total COGS
                 grossProfit: (plData.revenue || 0) - ((plData.cogs || 0) + totalCommission),
                 margin: plData.revenue > 0 
@@ -4301,8 +4303,13 @@ const ReportsPage: React.FC = () => {
                     <Grid item xs={6} md={3}>
                         <Card sx={{ bgcolor: '#ffebee', borderRadius: 3 }}>
                             <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
-                                <Typography sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>Expenses (PO)</Typography>
+                                <Typography sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>Total Expenses</Typography>
                                 <Typography variant={isMobile ? "subtitle2" : "h4"} fontWeight={800}>{formatCurrency(profitLoss.cogs)}</Typography>
+                                <Typography sx={{ color: 'text.secondary', fontSize: '0.6rem', mt: 0.5 }}>
+                                    PO {formatCurrency(profitLoss.poExpensesTotal || 0)}
+                                    {' · '}Expenses {formatCurrency(profitLoss.standaloneExpensesTotal || 0)}
+                                    {(profitLoss.cateringCommissionsTotal || 0) > 0 && ` · Comm ${formatCurrency(profitLoss.cateringCommissionsTotal)}`}
+                                </Typography>
                             </CardContent>
                         </Card>
                     </Grid>
@@ -4326,7 +4333,7 @@ const ReportsPage: React.FC = () => {
                     {/* Breakdown Table */}
                     <Grid item xs={12}>
                         <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-                            Expense Breakdown (Purchase Orders)
+                            Expense Breakdown (Purchase Orders & Expenses)
                         </Typography>
                         <Box>
                             {/* Mobile Card View */}
@@ -4350,6 +4357,9 @@ const ReportsPage: React.FC = () => {
                                             </Box>
                                             <Box sx={{ mt: 1, pt: 0.5, borderTop: "1px dashed #e5e7eb" }}>
                                                 <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', fontSize: '0.6rem' }}>Vendor: {item.vendor || 'N/A'}</Typography>
+                                                <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', fontSize: '0.6rem' }}>
+                                                    {item.type || 'Purchase Order'}{item.category ? ` · ${String(item.category).replace(/_/g, ' ')}` : ''}
+                                                </Typography>
                                             </Box>
                                         </Paper>
                                     ))
@@ -4366,8 +4376,10 @@ const ReportsPage: React.FC = () => {
                                     <TableHead>
                                         <TableRow>
                                             <TableCell>Date</TableCell>
-                                            <TableCell>PO Number</TableCell>
-                                            <TableCell>Vendor</TableCell>
+                                            <TableCell>Reference</TableCell>
+                                            <TableCell>Source</TableCell>
+                                            <TableCell>Category</TableCell>
+                                            <TableCell>Vendor / Payee</TableCell>
                                             <TableCell align="right">Amount</TableCell>
                                         </TableRow>
                                     </TableHead>
@@ -4377,13 +4389,15 @@ const ReportsPage: React.FC = () => {
                                                 <TableRow key={index}>
                                                     <TableCell>{new Date(item.date).toLocaleDateString()}</TableCell>
                                                     <TableCell>{item.poNumber || '-'}</TableCell>
+                                                    <TableCell>{item.type || 'Purchase Order'}</TableCell>
+                                                    <TableCell>{item.category ? String(item.category).replace(/_/g, ' ') : '-'}</TableCell>
                                                     <TableCell>{item.vendor || 'Unknown'}</TableCell>
                                                     <TableCell align="right">{formatCurrency(item.amount)}</TableCell>
                                                 </TableRow>
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={4} align="center">No expenses recorded for this period</TableCell>
+                                                <TableCell colSpan={6} align="center">No expenses recorded for this period</TableCell>
                                             </TableRow>
                                         )}
                                     </TableBody>
