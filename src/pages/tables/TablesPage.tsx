@@ -424,6 +424,17 @@ const TablesPage: React.FC = () => {
 
     // Filter State
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [overdueModalOpen, setOverdueModalOpen] = useState<boolean>(false);
+    const [highlightedTableId, setHighlightedTableId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (highlightedTableId) {
+            const timer = setTimeout(() => {
+                setHighlightedTableId(null);
+            }, 8000);
+            return () => clearTimeout(timer);
+        }
+    }, [highlightedTableId]);
 
     // Bookings Filter State
     const [bookingDateFilter, setBookingDateFilter] = useState(() => {
@@ -1185,13 +1196,27 @@ const TablesPage: React.FC = () => {
         deleted: deletedTables.length,
     }), [activeTables, deletedTables]);
 
+    // Overdue tables (>90 mins seated duration)
+    const overdueTables = useMemo(() => {
+        return tables.filter((t: any) => {
+            if ((t.status !== 'occupied' && t.status !== 'partially_occupied') || !t.occupiedAt || t.isDeleted || t.isActive === false) return false;
+            const diffMins = Math.floor((Date.now() - new Date(t.occupiedAt).getTime()) / (1000 * 60));
+            return diffMins > 90;
+        }).sort((a: any, b: any) => {
+            const timeA = a.occupiedAt ? new Date(a.occupiedAt).getTime() : 0;
+            const timeB = b.occupiedAt ? new Date(b.occupiedAt).getTime() : 0;
+            return timeA - timeB; // longest seated first
+        });
+    }, [tables]);
+
     // Filter tables based on status
     const filteredTables = React.useMemo(() => {
         if (statusFilter === 'deleted') return deletedTables;
+        if (statusFilter === 'overdue') return overdueTables;
         return statusFilter === 'all'
             ? activeTables
             : activeTables.filter(t => t.status === statusFilter);
-    }, [activeTables, deletedTables, statusFilter]);
+    }, [activeTables, deletedTables, overdueTables, statusFilter]);
 
     // Filter bookings based on date, status, and search
     const filteredBookings = React.useMemo(() => bookings.filter(booking => {
@@ -1515,56 +1540,59 @@ const TablesPage: React.FC = () => {
             </Box>
 
             {/* Tabs */}
-            {(() => {
-                const overdueCount = tables.filter(t => {
-                    if ((t.status !== 'occupied' && t.status !== 'partially_occupied') || !t.occupiedAt) return false;
-                    const diffMins = Math.floor((Date.now() - new Date(t.occupiedAt).getTime()) / (1000 * 60));
-                    return diffMins > 90;
-                }).length;
-                return (
-                    <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: { xs: 1, sm: 2 } }} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
-                        <Tab
-                            label={
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Box sx={{ display: 'inline-flex', alignItems: 'center', mr: 1.5 }}>
-                                        <Badge badgeContent={statusCounts.all} color="primary" max={99}>
-                                            <Typography component="span" sx={{ pr: 1.5, fontWeight: 'bold' }}>Tables</Typography>
-                                        </Badge>
-                                    </Box>
-                                    {overdueCount > 0 && (
-                                        <Chip
-                                            label={`⚠️ ${overdueCount} overdue`}
-                                            size="small"
-                                            sx={{
-                                                height: 20,
-                                                fontSize: '0.65rem',
-                                                fontWeight: 900,
-                                                bgcolor: '#DC2626',
-                                                color: '#FFFFFF',
-                                                borderRadius: 1.5,
-                                                ml: 1,
-                                                boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)',
-                                                animation: 'overdueTabPulse 2s ease-in-out infinite',
-                                                '@keyframes overdueTabPulse': {
-                                                    '0%, 100%': { opacity: 1 },
-                                                    '50%': { opacity: 0.65 },
-                                                },
-                                            }}
-                                        />
-                                    )}
-                                </Box>
-                            }
-                        />
-                        <Tab
-                            label={
-                                <Badge badgeContent={filteredBookings.length} color="warning" max={99}>
-                                    <Box sx={{ pr: { xs: 1, sm: 2 } }}>Bookings</Box>
+            <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: { xs: 1, sm: 2 } }} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
+                <Tab
+                    label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ display: 'inline-flex', alignItems: 'center', mr: 1.5 }}>
+                                <Badge badgeContent={statusCounts.all} color="primary" max={99}>
+                                    <Typography component="span" sx={{ pr: 1.5, fontWeight: 'bold' }}>Tables</Typography>
                                 </Badge>
-                            }
-                        />
-                    </Tabs>
-                );
-            })()}
+                            </Box>
+                            {overdueTables.length > 0 && (
+                                <Tooltip title="Click to view all overdue dining tables (>90 mins)">
+                                    <Chip
+                                        label={`⚠️ ${overdueTables.length} overdue`}
+                                        size="small"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setOverdueModalOpen(true);
+                                        }}
+                                        sx={{
+                                            height: 22,
+                                            fontSize: '0.68rem',
+                                            fontWeight: 900,
+                                            bgcolor: '#DC2626',
+                                            color: '#FFFFFF',
+                                            borderRadius: 1.5,
+                                            ml: 1,
+                                            cursor: 'pointer',
+                                            boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)',
+                                            animation: 'overdueTabPulse 2s ease-in-out infinite',
+                                            transition: 'all 0.15s ease',
+                                            '&:hover': {
+                                                bgcolor: '#B91C1C',
+                                                transform: 'scale(1.05)',
+                                            },
+                                            '@keyframes overdueTabPulse': {
+                                                '0%, 100%': { opacity: 1 },
+                                                '50%': { opacity: 0.7 },
+                                            },
+                                        }}
+                                    />
+                                </Tooltip>
+                            )}
+                        </Box>
+                    }
+                />
+                <Tab
+                    label={
+                        <Badge badgeContent={filteredBookings.length} color="warning" max={99}>
+                            <Box sx={{ pr: { xs: 1, sm: 2 } }}>Bookings</Box>
+                        </Badge>
+                    }
+                />
+            </Tabs>
 
             {/* Tab Panel: Tables */}
             <TabPanel value={tabValue} index={0}>
@@ -1580,6 +1608,8 @@ const TablesPage: React.FC = () => {
                         canDeleteTables={canDeleteTables}
                         isMobile={isMobile}
                         hiddenSections={hiddenSections}
+                        highlightedTableId={highlightedTableId}
+                        onOpenOverdueModal={() => setOverdueModalOpen(true)}
                         onOpenBooking={handleOpenBooking}
                         onOpenAddTable={(room) => {
                             setSelectedRoomForAddTable(room || 'indoor');
@@ -1637,6 +1667,16 @@ const TablesPage: React.FC = () => {
                                 onClick={() => setStatusFilter('occupied')}
                                 size={isMobile ? "small" : "medium"}
                             />
+                            {overdueTables.length > 0 && (
+                                <Chip
+                                    label={`⚠️ Overdue (${overdueTables.length})`}
+                                    color={statusFilter === 'overdue' ? 'error' : 'default'}
+                                    variant={statusFilter === 'overdue' ? 'filled' : 'outlined'}
+                                    onClick={() => setStatusFilter('overdue')}
+                                    size={isMobile ? "small" : "medium"}
+                                    sx={{ fontWeight: 800 }}
+                                />
+                            )}
                             <Chip
                                 label={`Reserved (${statusCounts.reserved})`}
                                 color={statusFilter === 'reserved' ? 'primary' : 'default'}
@@ -3597,6 +3637,213 @@ const TablesPage: React.FC = () => {
                         disabled={isProcessing}
                     >
                         Confirm Delete Room
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* ── OVERDUE DINING TABLES EXPEDITER MODAL (INDUSTRY STANDARD) ── */}
+            <Dialog
+                open={overdueModalOpen}
+                onClose={() => setOverdueModalOpen(false)}
+                maxWidth="md"
+                fullWidth
+                PaperProps={{
+                    sx: { borderRadius: 3.5, p: 0.5, boxShadow: '0 16px 40px rgba(0,0,0,0.18)' }
+                }}
+            >
+                <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ width: 44, height: 44, borderRadius: 2.5, bgcolor: alpha('#DC2626', 0.12), color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <TimeIcon sx={{ fontSize: 26 }} />
+                        </Box>
+                        <Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="h6" fontWeight={900}>
+                                    Overdue Dining Tables
+                                </Typography>
+                                <Chip
+                                    label={`${overdueTables.length} Active`}
+                                    size="small"
+                                    sx={{ bgcolor: '#DC2626', color: '#FFFFFF', fontWeight: 900, fontSize: '0.7rem' }}
+                                />
+                            </Box>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                                Tables seated for over 90 minutes requiring attention, check presentation, or table reset
+                            </Typography>
+                        </Box>
+                    </Box>
+                    <IconButton onClick={() => setOverdueModalOpen(false)} size="small">
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+
+                <DialogContent dividers sx={{ py: 2.5 }}>
+                    {overdueTables.length === 0 ? (
+                        <Paper
+                            variant="outlined"
+                            sx={{
+                                p: 4,
+                                borderRadius: 3,
+                                textAlign: 'center',
+                                bgcolor: '#F0FDF4',
+                                borderColor: '#BBF7D0',
+                                color: '#166534',
+                                my: 1,
+                            }}
+                        >
+                            <Typography variant="h6" fontWeight={800} gutterBottom>
+                                ✨ All Clear!
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                                No tables are currently overdue. All dining guests are within standard turn time windows.
+                            </Typography>
+                        </Paper>
+                    ) : (
+                        <Grid container spacing={2}>
+                            {overdueTables.map((table: any) => {
+                                const diffMins = table.occupiedAt ? Math.max(0, Math.floor((Date.now() - new Date(table.occupiedAt).getTime()) / 60000)) : 0;
+                                const hrs = Math.floor(diffMins / 60);
+                                const mins = diffMins % 60;
+                                const durationStr = `${hrs}h ${mins}m`;
+                                const isCritical = diffMins >= 240;
+                                const isExtended = diffMins >= 180;
+                                const waiterName = table.assignedWaiter?.firstName
+                                    ? `${table.assignedWaiter.firstName} ${table.assignedWaiter.lastName || ''}`.trim()
+                                    : (typeof table.assignedWaiter === 'string' ? table.assignedWaiter : 'Unassigned');
+                                const roomName = (table.section || table.location || 'Indoor').toUpperCase();
+                                const orderTotal = table.currentOrder?.total || table.currentOrder?.totalAmount || 0;
+
+                                return (
+                                    <Grid size={{ xs: 12, sm: 6 }} key={table._id}>
+                                        <Paper
+                                            variant="outlined"
+                                            sx={{
+                                                p: 2,
+                                                borderRadius: 3,
+                                                borderColor: isCritical ? '#FECDD3' : '#FED7AA',
+                                                bgcolor: isCritical ? '#FFF1F2' : '#FFFBEB',
+                                                transition: 'all 0.2s ease',
+                                                '&:hover': {
+                                                    boxShadow: '0 6px 18px rgba(0,0,0,0.08)',
+                                                    borderColor: isCritical ? '#F43F5E' : '#F59E0B',
+                                                },
+                                            }}
+                                        >
+                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <Box sx={{ width: 34, height: 34, borderRadius: 2, bgcolor: isCritical ? '#DC2626' : '#D97706', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.85rem' }}>
+                                                        {table.tableNumber}
+                                                    </Box>
+                                                    <Box>
+                                                        <Typography variant="subtitle2" fontWeight={900}>
+                                                            Table {table.tableNumber} {table.tableName ? `(${table.tableName})` : ''}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                                                            📍 {roomName} • {table.capacity} Seats
+                                                        </Typography>
+                                                    </Box>
+                                                </Box>
+                                                <Chip
+                                                    icon={<TimeIcon sx={{ fontSize: '14px !important' }} />}
+                                                    label={durationStr}
+                                                    size="small"
+                                                    sx={{
+                                                        bgcolor: isCritical ? '#DC2626' : (isExtended ? '#D97706' : '#B45309'),
+                                                        color: '#FFFFFF',
+                                                        fontWeight: 900,
+                                                        fontSize: '0.75rem',
+                                                    }}
+                                                />
+                                            </Box>
+
+                                            <Divider sx={{ my: 1, borderColor: alpha('#000000', 0.06) }} />
+
+                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, px: 0.5 }}>
+                                                <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                                                    👤 Server: <strong>{waiterName}</strong>
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                                                    🧾 Bill: <strong>{orderTotal > 0 ? `$${orderTotal.toFixed(2)}` : (table.currentOrder ? 'Active' : 'No Bill')}</strong>
+                                                </Typography>
+                                            </Box>
+
+                                            {/* Action Buttons */}
+                                            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                                                <Button
+                                                    fullWidth
+                                                    size="small"
+                                                    variant="contained"
+                                                    color="primary"
+                                                    startIcon={<FloorPlanIcon sx={{ fontSize: 16 }} />}
+                                                    onClick={() => {
+                                                        setOverdueModalOpen(false);
+                                                        setTableViewMode('floor');
+                                                        setHighlightedTableId(table._id);
+                                                        toast.success(`Spotlight on Table ${table.tableNumber} in ${roomName}`);
+                                                    }}
+                                                    sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 2, fontSize: '0.75rem' }}
+                                                >
+                                                    Locate on Map
+                                                </Button>
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    color="inherit"
+                                                    onClick={() => {
+                                                        if (table.currentOrder?._id) {
+                                                            navigate(`/orders?orderId=${table.currentOrder._id}`);
+                                                        } else {
+                                                            navigate(`/pos?table=${table.tableNumber}&tableId=${table._id}`);
+                                                        }
+                                                        setOverdueModalOpen(false);
+                                                    }}
+                                                    sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 2, fontSize: '0.75rem', whiteSpace: 'nowrap', bgcolor: '#FFFFFF' }}
+                                                >
+                                                    Open POS
+                                                </Button>
+                                                <Tooltip title="Reset table to Available if guests have left">
+                                                    <Button
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="success"
+                                                        onClick={() => {
+                                                            handleQuickStatusChange(table._id, 'available');
+                                                            toast.success(`Table ${table.tableNumber} cleared & marked Available`);
+                                                        }}
+                                                        sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 2, fontSize: '0.75rem', whiteSpace: 'nowrap', bgcolor: '#FFFFFF' }}
+                                                    >
+                                                        Clear
+                                                    </Button>
+                                                </Tooltip>
+                                            </Stack>
+                                        </Paper>
+                                    </Grid>
+                                );
+                            })}
+                        </Grid>
+                    )}
+                </DialogContent>
+
+                <DialogActions sx={{ px: 2.5, py: 1.5, display: 'flex', justifyContent: 'space-between' }}>
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        color="secondary"
+                        onClick={() => {
+                            setOverdueModalOpen(false);
+                            setTableViewMode('grid');
+                            setStatusFilter('overdue');
+                        }}
+                        sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 2 }}
+                    >
+                        View in Grid Directory
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={() => setOverdueModalOpen(false)}
+                        sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 2, px: 3 }}
+                    >
+                        Close
                     </Button>
                 </DialogActions>
             </Dialog>

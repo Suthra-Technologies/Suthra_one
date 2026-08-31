@@ -807,7 +807,7 @@ const HomePage: React.FC = () => {
     const apiUrl = (import.meta as any).env.VITE_API_URL || "http://localhost:5006";
     fetch(`${apiUrl}/api/superadmin/plans/public`)
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setPlans(data.filter((p: any) => p.isActive !== false)); })
+      .then(data => { if (Array.isArray(data)) setPlans(data.filter((p: any) => p.isActive !== false && p.interval !== 'trial')); })
       .catch(() => { })
       .finally(() => setPlansLoading(false));
   }, []);

@@ -135,6 +135,8 @@ interface FloorPlanViewProps {
     onOpenHistory?: (tableId: string, title: string) => void;
     onSaveTableCoordinates?: (updatedTables: { _id: string; coordinates: { x: number; y: number } }[]) => Promise<void>;
     onAddFloorElement?: (element: Omit<FloorElementItem, '_id'>) => Promise<void>;
+    highlightedTableId?: string | null;
+    onOpenOverdueModal?: () => void;
 }
 
 const formatSectionName = (key: string): string => {
@@ -475,6 +477,8 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     onOpenHistory,
     onSaveTableCoordinates,
     onAddFloorElement,
+    highlightedTableId,
+    onOpenOverdueModal,
 }) => {
     const theme = useTheme();
     const navigate = useNavigate();
@@ -530,6 +534,19 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     }, [tables, customLocations, hiddenSections, isCustomizeMode]);
 
     const [activeSection, setActiveSection]       = useState<string>(() => sections.length > 0 ? sections[0] : 'indoor');
+
+    useEffect(() => {
+        if (highlightedTableId) {
+            const target = tables.find(t => t._id === highlightedTableId);
+            if (target) {
+                const eff = getEffectiveRoom(target);
+                if (eff) {
+                    setActiveSection(eff);
+                }
+            }
+        }
+    }, [highlightedTableId, tables]);
+
     const [searchQuery, setSearchQuery]           = useState<string>('');
     const [canvasFilter, setCanvasFilter]         = useState<'all' | 'available' | 'occupied' | 'cleaning' | 'long_seating'>('all');
     const [legendOpen, setLegendOpen]             = useState<boolean>(false);
@@ -1207,6 +1224,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
                             // Industry-standard: pulsing red border for overdue (>90min) tables
                             const isOverdue = !isCustomerMode && isOccupied && timerInfo?.isAlert === true;
+                            const isHighlighted = highlightedTableId === table._id;
                             const guestCount = table.currentOrder?.guestCount || (table as any).currentBooking?.guests || (table as any).currentBooking?.guestCount || (table as any).guestCount || (isOccupied ? 1 : 0);
                             const isCommunalRoom = ['bar', 'poolside', 'counter', 'communal'].includes(canonicalizeRoomKey(activeSection));
                             const isCommunalTable = table.seatingMode === 'communal' || isCommunalRoom;
@@ -1223,7 +1241,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                         top: pos.y,
                                         width: w,
                                         height: h,
-                                        zIndex: isDragging || isSelectedByCustomer ? 100 : 2,
+                                        zIndex: isHighlighted ? 150 : (isDragging || isSelectedByCustomer ? 100 : 2),
                                         willChange: 'transform',
                                         transition: isDragging ? 'none' : 'transform 0.15s ease',
                                         opacity: !isMatchingFilter(table) ? 0.25 : (isCustomerMode && (isOccupied || isCleaning || isDeleted) ? 0.45 : 1),
@@ -1233,8 +1251,18 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                         '&:hover': {
                                             transform: isCustomizeMode ? 'none' : (is3DMode ? 'translateY(-3px) scale(1.02)' : 'translateY(-2px)'),
                                         },
+                                        // Highlight spotlight animation
+                                        ...(isHighlighted && {
+                                            borderRadius: isRound ? '50%' : 2,
+                                            animation: 'highlightSpotlight 1.5s ease-in-out infinite',
+                                            '@keyframes highlightSpotlight': {
+                                                '0%':   { boxShadow: '0 0 0 0 rgba(245,158,11,0.0)' },
+                                                '50%':  { boxShadow: '0 0 0 8px rgba(245,158,11,0.5), 0 0 25px rgba(245,158,11,0.8)' },
+                                                '100%': { boxShadow: '0 0 0 0 rgba(245,158,11,0.0)' },
+                                            },
+                                        }),
                                         // Industry-standard overdue pulse (like Toast POS)
-                                        ...(isOverdue && {
+                                        ...(isOverdue && !isHighlighted && {
                                             borderRadius: isRound ? '50%' : 2,
                                             animation: 'overdueTablePulse 2s ease-in-out infinite',
                                             '@keyframes overdueTablePulse': {
@@ -1266,13 +1294,15 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                             width: '100%',
                                             height: '100%',
                                             borderRadius: isRound ? '50%' : 2.5,
-                                            // Overdue: thicker dark-red border (industry standard visual cue)
-                                            border: isOverdue
-                                                ? `2.5px solid #DC2626`
-                                                : `2px solid ${statusColor}`,
+                                            // Overdue / Highlight border
+                                            border: isHighlighted
+                                                ? `3px solid #F59E0B`
+                                                : isOverdue
+                                                    ? `2.5px solid #DC2626`
+                                                    : `2px solid ${statusColor}`,
                                             background: is3DMode
-                                                ? `linear-gradient(145deg, #FFFFFF 30%, ${alpha(isOverdue ? '#DC2626' : statusColor, 0.06)} 100%)`
-                                                : (isOverdue ? '#FFF5F5' : '#FFFFFF'),
+                                                ? `linear-gradient(145deg, #FFFFFF 30%, ${alpha(isHighlighted ? '#F59E0B' : (isOverdue ? '#DC2626' : statusColor), 0.06)} 100%)`
+                                                : (isHighlighted ? '#FFFBEB' : (isOverdue ? '#FFF5F5' : '#FFFFFF')),
                                             boxShadow: isDragging
                                                 ? `${depth3D + 4}px ${depth3D + 8}px 28px rgba(0,0,0,0.28)`
                                                 : (isOverdue ? `${depth3D}px ${depth3D + 2}px 0 rgba(220,38,38,0.3), ${depth3D + 4}px ${depth3D + 8}px 18px rgba(220,38,38,0.15)` : boxShadow3D),

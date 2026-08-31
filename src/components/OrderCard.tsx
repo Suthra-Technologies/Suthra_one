@@ -143,10 +143,6 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const [removeQuantity, setRemoveQuantity] = useState<number>(1);
     const [expanded, setExpanded] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [refundDialogOpen, setRefundDialogOpen] = useState(false);
-    const [refundTargetIndex, setRefundTargetIndex] = useState<number | null>(null);
-    const [refundMethod, setRefundMethod] = useState<'original' | 'cash'>('original');
-    const [isRefunding, setIsRefunding] = useState(false);
     // In-house delivery state
     const [inHouseRiders, setInHouseRiders] = useState<any[]>([]);
     const [ridersLoaded, setRidersLoaded] = useState(false);
@@ -269,28 +265,6 @@ const OrderCard: React.FC<OrderCardProps> = ({
             toast.error('Failed to cancel order');
         } finally {
             setIsProcessing(false);
-        }
-    };
-
-    const openRefundDialog = (e: React.MouseEvent, realIndex: number) => {
-        e.stopPropagation();
-        setRefundTargetIndex(realIndex);
-        setRefundMethod('original');
-        setRefundDialogOpen(true);
-    };
-
-    const handleRefundItem = async () => {
-        if (refundTargetIndex === null || isRefunding) return;
-        setIsRefunding(true);
-        try {
-            await ordersAPI.refundItem(order._id, refundTargetIndex, refundMethod);
-            toast.success('Refund processed successfully');
-            setRefundDialogOpen(false);
-            if (onRefresh) onRefresh();
-        } catch (error: any) {
-            toast.error(error?.response?.data?.message || 'Failed to process refund');
-        } finally {
-            setIsRefunding(false);
         }
     };
 
@@ -676,7 +650,6 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         const cancelledItems = allItems.map((item: any, i: number) => ({ item, realIndex: i })).filter(({ item }) => item.preparationStatus === 'cancelled');
                         const visibleActive = expanded ? activeItems : activeItems.slice(0, 3);
                         const hiddenCount = activeItems.length - 3;
-                        const canRefund = order.paymentStatus === 'paid' && order.paymentIntentId;
                         return (
                             <>
                                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', mb: 0.5, display: 'block' }}>
@@ -861,24 +834,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                                         <Typography variant="body2" sx={{ textDecoration: 'line-through', color: 'text.disabled' }}>
                                                             {formatCurrency(item.total || item.price * item.quantity)}
                                                         </Typography>
-                                                        {canManage && Number(item.disputedQuantity || 0) >= Number(item.quantity || 0) ? (
-                                                            <Tooltip title="This item is under an active dispute — resolve the dispute to process its refund">
+                                                        {canManage && (
+                                                            <Tooltip title="Refunds are handled via a dispute — raise or resolve a dispute for this order to refund it">
                                                                 <span>
                                                                     <IconButton size="small" color="warning" disabled sx={{ padding: '2px' }}>
                                                                         <RefundIcon sx={{ fontSize: 16 }} />
                                                                     </IconButton>
                                                                 </span>
-                                                            </Tooltip>
-                                                        ) : canManage && (
-                                                            <Tooltip title={canRefund ? 'Process Refund' : 'Mark as refunded (cash)'}>
-                                                                <IconButton
-                                                                    size="small"
-                                                                    color="warning"
-                                                                    onClick={(e) => openRefundDialog(e, realIndex)}
-                                                                    sx={{ padding: '2px' }}
-                                                                >
-                                                                    <RefundIcon sx={{ fontSize: 16 }} />
-                                                                </IconButton>
                                                             </Tooltip>
                                                         )}
                                                     </Box>
@@ -1742,55 +1704,6 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 </Box>
             </Dialog>
 
-            {/* Refund Item Dialog */}
-            <Dialog
-                open={refundDialogOpen}
-                onClose={() => !isRefunding && setRefundDialogOpen(false)}
-                onClick={(e) => e.stopPropagation()}
-                maxWidth="xs"
-                fullWidth
-            >
-                <DialogTitle sx={{ pb: 1 }}>Process Refund</DialogTitle>
-                <DialogContent>
-                    {refundTargetIndex !== null && order.items?.[refundTargetIndex] && (
-                        <Box sx={{ mb: 2 }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                Item: <strong>{order.items[refundTargetIndex].name || order.items[refundTargetIndex].menuItem?.name}</strong>
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Amount: <strong>{formatCurrency(order.items[refundTargetIndex]?.total || ((order.items[refundTargetIndex]?.price ?? 0) * (order.items[refundTargetIndex]?.quantity ?? 1)))}</strong> (+ proportional tax)
-                            </Typography>
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Refund Method</InputLabel>
-                                <Select
-                                    value={refundMethod}
-                                    label="Refund Method"
-                                    onChange={(e) => setRefundMethod(e.target.value as 'original' | 'cash')}
-                                >
-                                    <MenuItem value="original" disabled={!order.paymentIntentId}>
-                                        Original Payment {!order.paymentIntentId ? '(no card payment)' : ''}
-                                    </MenuItem>
-                                    <MenuItem value="cash">Cash</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Box>
-                    )}
-                </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button onClick={() => setRefundDialogOpen(false)} disabled={isRefunding} color="inherit">
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={handleRefundItem}
-                        variant="contained"
-                        color="warning"
-                        disabled={isRefunding}
-                        startIcon={isRefunding ? <CircularProgress size={16} color="inherit" /> : <RefundIcon />}
-                    >
-                        {isRefunding ? 'Processing...' : 'Confirm Refund'}
-                    </Button>
-                </DialogActions>
-            </Dialog>
             </Box>
         </Card>
 
