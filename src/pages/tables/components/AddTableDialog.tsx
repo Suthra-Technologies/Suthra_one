@@ -56,6 +56,8 @@ const AddTableDialog: React.FC<AddTableDialogProps> = ({
     const [newTableCapacity, setNewTableCapacity] = useState(0);
     const [newTableLocation, setNewTableLocation] = useState(initialLocation || 'indoor');
     const [newTableStatus, setNewTableStatus] = useState('available');
+    const [newTableShape, setNewTableShape] = useState('rectangle');
+    const [newTableRotation, setNewTableRotation] = useState(0);
     const [isProcessing, setIsProcessing] = useState(false);
 
     const [fetchedTables, setFetchedTables] = useState<any[]>([]);
@@ -229,6 +231,8 @@ const AddTableDialog: React.FC<AddTableDialogProps> = ({
                 capacity: newTableCapacity,
                 location: newTableLocation,
                 status: newTableStatus,
+                shape: newTableShape || 'rectangle',
+                rotation: newTableRotation ?? 0,
             };
             await tablesAPI.create(payload);
             toast.success('Table added successfully');
@@ -249,6 +253,8 @@ const AddTableDialog: React.FC<AddTableDialogProps> = ({
         setNewTableCapacity(0);
         setNewTableLocation('indoor');
         setNewTableStatus('available');
+        setNewTableShape('rectangle');
+        setNewTableRotation(0);
         setTouched({
             tableName: false,
             tableNumber: false,
@@ -375,6 +381,36 @@ const AddTableDialog: React.FC<AddTableDialogProps> = ({
                         </Select>
                         {touched.capacity && errors.capacity && <FormHelperText>{errors.capacity}</FormHelperText>}
                     </FormControl>
+
+                    <Stack direction="row" spacing={2}>
+                        <FormControl fullWidth>
+                            <InputLabel>Table Shape</InputLabel>
+                            <Select
+                                value={newTableShape}
+                                label="Table Shape"
+                                onChange={e => setNewTableShape(e.target.value)}
+                            >
+                                <MenuItem value="rectangle">Rectangle</MenuItem>
+                                <MenuItem value="square">Square</MenuItem>
+                                <MenuItem value="round">Round / Circle</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        <FormControl fullWidth>
+                            <InputLabel>Orientation / Rotation</InputLabel>
+                            <Select
+                                value={newTableRotation}
+                                label="Orientation / Rotation"
+                                onChange={e => setNewTableRotation(Number(e.target.value))}
+                            >
+                                <MenuItem value={0}>Horizontal (0°)</MenuItem>
+                                <MenuItem value={90}>Vertical (90°)</MenuItem>
+                                <MenuItem value={180}>Horizontal Reversed (180°)</MenuItem>
+                                <MenuItem value={270}>Vertical Reversed (270°)</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Stack>
+
                     <Stack direction="row" sx={{ width: '100%' }}>
                         <FormControl fullWidth sx={{ '& .MuiOutlinedInput-root': { borderTopRightRadius: 0, borderBottomRightRadius: 0 } }}>
                             <InputLabel>Location</InputLabel>

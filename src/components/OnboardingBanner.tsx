@@ -13,6 +13,17 @@ const OnboardingBanner: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const getCachedProfileStatus = (): boolean | null => {
+    if ((user?.tenant as any)?.isProfileComplete === true) return true;
+    const tenantKey = slug || (user?.tenant as any)?._id || (user?.tenant as any)?.slug;
+    if (tenantKey) {
+      const cached = localStorage.getItem(`has_profile_${tenantKey}`);
+      if (cached === 'true') return true;
+      if (cached === 'false') return false;
+    }
+    return null;
+  };
+
   const getCachedMenuStatus = (): boolean | null => {
     if ((user?.tenant as any)?.hasMenu === true) return true;
     const tenantKey = slug || (user?.tenant as any)?._id || (user?.tenant as any)?.slug;
@@ -57,40 +68,23 @@ const OnboardingBanner: React.FC = () => {
     };
   }, [activeRole, slug, user?.tenant]);
 
-  // Robust check combining settings, user.tenant, and isProfileComplete flag
-  const isProfileCompleteFlag = (user?.tenant as any)?.isProfileComplete === true;
-  const hasAddress = Boolean(settings?.restaurant?.address?.trim() || (user?.tenant as any)?.address?.trim());
-  const hasLogo = Boolean(settings?.restaurant?.logo?.trim() || (user?.tenant as any)?.logo?.trim());
-
-  const isSettingsIncomplete = !isProfileCompleteFlag && (!hasAddress || !hasLogo);
-  const isMenuIncomplete = hasMenu === false;
+  // Robust check combining settings, user.tenant, cached profile state, and name presence
+  const isProfileCompleteFlag =
+    (user?.tenant as any)?.isProfileComplete === true ||
+    getCachedProfileStatus() === true ||
+    Boolean(settings?.restaurant?.name?.trim() || (user?.tenant as any)?.name?.trim());
 
   useEffect(() => {
-    if (activeRole !== 'admin') return;
-    // Guard against redirect loops during loading, unverified fetches, or network errors
-    if (loading || !isFetched || fetchError || hasMenu === null) return;
-
-    const currentPath = location.pathname;
-    const settingsPath = getRelativePath('/settings');
-    const menuPath = getRelativePath('/menu');
-
-    if (isSettingsIncomplete && currentPath !== settingsPath) {
-      navigate(settingsPath, { replace: true });
-    } else if (!isSettingsIncomplete && isMenuIncomplete && currentPath !== menuPath) {
-      navigate(menuPath, { replace: true });
+    if (isProfileCompleteFlag) {
+      const tenantKey = slug || (user?.tenant as any)?._id || (user?.tenant as any)?.slug;
+      if (tenantKey) {
+        localStorage.setItem(`has_profile_${tenantKey}`, 'true');
+      }
     }
-  }, [
-    activeRole,
-    loading,
-    isFetched,
-    fetchError,
-    hasMenu,
-    isSettingsIncomplete,
-    isMenuIncomplete,
-    location.pathname,
-    navigate,
-    getRelativePath
-  ]);
+  }, [isProfileCompleteFlag, slug, user?.tenant]);
+
+  const isSettingsIncomplete = !isProfileCompleteFlag;
+  const isMenuIncomplete = hasMenu === false;
 
   if (activeRole !== 'admin') return null;
   if (loading || !isFetched || fetchError || hasMenu === null) return null; // Wait until data is fully loaded

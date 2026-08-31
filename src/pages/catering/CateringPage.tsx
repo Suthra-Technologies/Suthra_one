@@ -340,7 +340,7 @@ const CateringPage = () => {
         if ((zipCode.length === 4 || zipCode.length === 5) && !formData.city && !formData.state) {
             const timer = setTimeout(async () => {
                 try {
-                    if (!(window as any).google) return;
+                    if (!(window as any).google?.maps?.Geocoder) return;
                     const geocoder = new (window as any).google.maps.Geocoder();
                     geocoder.geocode({ address: zipCode }, (results: any, status: string) => {
                         if (status === 'OK' && results[0]) {

@@ -24,7 +24,7 @@ import {
     Tooltip,
     Typography
 } from '@mui/material';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface OrderDetailsSectionProps {
     cart: any[];
@@ -78,6 +78,12 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
     handlePlaceOrder,
     readOnly = false,
 }) => {
+    const [localCode, setLocalCode] = useState(couponCode || '');
+
+    useEffect(() => {
+        setLocalCode(couponCode || '');
+    }, [couponCode]);
+
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
@@ -161,9 +167,21 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                         size="small"
                         fullWidth
                         placeholder="Coupon code"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value?.toUpperCase())}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleValidateCoupon(false); }}
+                        value={localCode}
+                        onChange={(e) => setLocalCode(e.target.value?.toUpperCase())}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                const trimmed = localCode.trim();
+                                setCouponCode(trimmed);
+                                handleValidateCoupon(false, trimmed);
+                            }
+                        }}
+                        onBlur={() => {
+                            const trimmed = localCode.trim();
+                            if (trimmed !== couponCode) {
+                                setCouponCode(trimmed);
+                            }
+                        }}
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
@@ -186,10 +204,13 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                         sx={{ whiteSpace: 'nowrap', minWidth: 64 }}
                         onClick={() => {
                             if (couponDiscount > 0) {
+                                setLocalCode('');
                                 setCouponCode('');
                                 handleValidateCoupon(false, '');
                             } else {
-                                handleValidateCoupon(false);
+                                const trimmed = localCode.trim();
+                                setCouponCode(trimmed);
+                                handleValidateCoupon(false, trimmed);
                             }
                         }}
                     >
@@ -221,7 +242,9 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                                         color="success"
                                         icon={<CouponIcon />}
                                         onClick={() => {
+                                            setLocalCode(c.code);
                                             setCouponCode(c.code);
+                                            handleValidateCoupon(false, c.code);
                                         }}
                                         sx={{ cursor: 'pointer', fontSize: '0.65rem', fontWeight: 'bold' }}
                                     />
@@ -237,7 +260,9 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                                         color="primary"
                                         icon={<CouponIcon />}
                                         onClick={() => {
+                                            setLocalCode(c.code);
                                             setCouponCode(c.code);
+                                            handleValidateCoupon(false, c.code);
                                         }}
                                         sx={{ cursor: 'pointer', fontSize: '0.65rem' }}
                                     />

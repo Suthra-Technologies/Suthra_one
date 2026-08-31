@@ -1088,7 +1088,7 @@ const KitchenInterface: React.FC = () => {
                               </Box>
                             )}
 
-                            {!isCancelled && (
+                            {!isCancelled && order.status !== 'served' && order.status !== 'completed' && order.status !== 'delivered' && (
                               <Tooltip title="Cancel Item">
                                 <IconButton
                                   size="small"

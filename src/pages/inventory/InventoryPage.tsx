@@ -140,14 +140,12 @@ interface DailyReport {
 const MemoizedMaterialCard = React.memo(({
     material,
     onUsage,
-    onNotes,
     onEdit,
     onDelete,
     getStatus
 }: {
     material: RawMaterial;
     onUsage: (m: RawMaterial) => void;
-    onNotes: (m: RawMaterial) => void;
     onEdit: (m: RawMaterial) => void;
     onDelete: (m: RawMaterial) => void;
     getStatus: (m: RawMaterial) => { label: string; color: "error" | "warning" | "success" };
@@ -199,9 +197,6 @@ const MemoizedMaterialCard = React.memo(({
 
                 <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 1, borderTop: 1, borderColor: 'divider', pt: 2 }}>
                     <Button size="small" startIcon={<UsageIcon />} onClick={() => onUsage(material)}>Usage</Button>
-                    {material.supplier?.name && (
-                        <Button size="small" startIcon={<NotesIcon />} onClick={() => onNotes(material)} color="info">Notes</Button>
-                    )}
                     <IconButton size="small" color="primary" onClick={() => onEdit(material)}><EditIcon /></IconButton>
                     <IconButton size="small" color="error" onClick={() => onDelete(material)}><DeleteIcon /></IconButton>
                 </Stack>
@@ -671,8 +666,6 @@ const InventoryPage: React.FC = () => {
                                         key={material._id}
                                         material={material}
                                         onUsage={handleRecordUsage}
-                                        onNotes={handleVendorNotes}
-                                        // onItemNotes={handleItemNotes}
                                         onEdit={handleEditMaterial}
                                         onDelete={handleDeleteMaterial}
                                         getStatus={getStockStatus}

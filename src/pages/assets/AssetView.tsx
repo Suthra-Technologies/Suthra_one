@@ -96,6 +96,25 @@ const AssetView: React.FC = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
 
+  // Delete Dialog State
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAsset = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      await assetsAPI.delete(id);
+      toast.success('Asset deleted successfully');
+      setDeleteDialogOpen(false);
+      navigate(getRelativePath('/assets'));
+    } catch (error) {
+      toast.error('Failed to delete asset');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const getUserEmail = async (userId: string): Promise<string> => {
     // Return cached email if already fetched
     if (userEmails[userId]) {
@@ -240,34 +259,51 @@ const getStatusDisplay = (asset: any) => {
 
   return (
     <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 }, maxWidth: 1400, mx: 'auto' }}>
-      {/* Header */}
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={4}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <IconButton onClick={() => navigate(getRelativePath('/assets'))}>
+      {/* Header - Desktop Locked, Mobile Refined */}
+      <Stack 
+        direction={{ xs: 'column', sm: 'row' }} 
+        justifyContent="space-between" 
+        alignItems={{ xs: 'stretch', sm: 'flex-start' }} 
+        spacing={{ xs: 2, sm: 0 }}
+        mb={{ xs: 2.5, sm: 4 }}
+      >
+        <Stack direction="row" spacing={{ xs: 1.5, sm: 2 }} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
+          <IconButton onClick={() => navigate(getRelativePath('/assets'))} size="small">
             <ArrowBack />
           </IconButton>
           <Avatar 
             sx={{ 
-              width: 56, 
-              height: 56, 
+              width: { xs: 44, sm: 56 }, 
+              height: { xs: 44, sm: 56 }, 
               bgcolor: alpha(theme.palette.primary.main, 0.1),
-              color: theme.palette.primary.main
+              color: theme.palette.primary.main,
+              flexShrink: 0
             }}
           >
             {getAssetIcon(asset.type)}
           </Avatar>
-          <Box>
-            <Typography variant="h4" fontWeight="800">{asset.name}</Typography>
-            <Stack direction="row" spacing={1} alignItems="center">
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography 
+              variant="h4" 
+              fontWeight="800" 
+              sx={{ 
+                fontSize: { xs: '1.2rem', sm: '1.75rem', md: '2.125rem' },
+                lineHeight: { xs: 1.25, sm: 1.3 },
+                wordBreak: 'break-word'
+              }}
+            >
+              {asset.name}
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mt: 0.5, gap: 0.5 }}>
               <Chip label={asset.type} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
               <Chip icon={status.icon} label={status.label} color={status.color as any} size="small" />
             </Stack>
           </Box>
         </Stack>
         
-        <Stack direction="row" spacing={1}>
-          <Button startIcon={<Edit />} variant="outlined" onClick={() => navigate('edit')}>Edit</Button>
-          <Button startIcon={<Delete />} variant="outlined" color="error">Delete</Button>
+        <Stack direction="row" spacing={1} justifyContent={{ xs: 'flex-end', sm: 'flex-start' }} sx={{ flexShrink: 0, pl: { xs: 6.5, sm: 0 } }}>
+          <Button size="small" startIcon={<Edit />} variant="outlined" onClick={() => navigate('edit')}>Edit</Button>
+          <Button size="small" startIcon={<Delete />} variant="outlined" color="error" onClick={() => setDeleteDialogOpen(true)}>Delete</Button>
         </Stack>
       </Stack>
 
@@ -308,35 +344,38 @@ const getStatusDisplay = (asset: any) => {
               </CardContent>
             </Card>
 
-            {/* Quick Actions Card */}
-            <Card sx={{ borderRadius: 3, bgcolor: alpha(theme.palette.primary.main, 0.03), border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}` }}>
-              <CardContent>
-                <Typography variant="h6" fontWeight="700" mb={2}>Quick Actions</Typography>
-                <Stack spacing={2}>
-                  {asset.lifecycle?.serviceRequired && (
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      startIcon={<Build />}
-                      onClick={() => setCompletionDialog({ ...completionDialog, open: true, type: 'service' })}
-                    >
-                      Record Maintenance
-                    </Button>
-                  )}
-                  {(asset.type === 'Document' || asset.type === 'License') && asset.lifecycle?.renewalRequired && (
-                    <Button 
-                      fullWidth 
-                      variant="contained" 
-                      color="warning" 
-                      startIcon={<CheckCircle />}
-                      onClick={() => setCompletionDialog({ ...completionDialog, open: true, type: 'renewal' })}
-                    >
-                      Complete Renewal
-                    </Button>
-                  )}
-                </Stack>
-              </CardContent>
-            </Card>
+            {/* Quick Actions Card - Only show when actions exist */}
+            {(asset.lifecycle?.serviceRequired || 
+              ((asset.type === 'Document' || asset.type === 'License') && (asset.lifecycle?.renewalRequired || status.label === 'Expired' || status.label === 'Expiring Soon'))) && (
+              <Card sx={{ borderRadius: 3, bgcolor: alpha(theme.palette.primary.main, 0.03), border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}` }}>
+                <CardContent>
+                  <Typography variant="h6" fontWeight="700" mb={2}>Quick Actions</Typography>
+                  <Stack spacing={2}>
+                    {asset.lifecycle?.serviceRequired && (
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        startIcon={<Build />}
+                        onClick={() => setCompletionDialog({ ...completionDialog, open: true, type: 'service' })}
+                      >
+                        Record Maintenance
+                      </Button>
+                    )}
+                    {(asset.type === 'Document' || asset.type === 'License') && (asset.lifecycle?.renewalRequired || status.label === 'Expired' || status.label === 'Expiring Soon') && (
+                      <Button 
+                        fullWidth 
+                        variant="contained" 
+                        color="warning" 
+                        startIcon={<CheckCircle />}
+                        onClick={() => setCompletionDialog({ ...completionDialog, open: true, type: 'renewal' })}
+                      >
+                        Complete Renewal
+                      </Button>
+                    )}
+                  </Stack>
+                </CardContent>
+              </Card>
+            )}
           </Stack>
         </Grid>
 
@@ -606,6 +645,22 @@ const getStatusDisplay = (asset: any) => {
         <DialogActions>
           <Button onClick={() => setPreviewOpen(false)}>Close</Button>
           <Button variant="contained" onClick={() => window.open(previewUrl, '_blank')}>Open in New Tab</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => !deleting && setDeleteDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Delete Asset</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Are you sure you want to delete <strong>{asset?.name}</strong>? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button disabled={deleting} onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" color="error" disabled={deleting} onClick={handleDeleteAsset}>
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -386,9 +386,12 @@ const DashboardPage: React.FC = () => {
     }
     try {
       const params: any = { range: timeRange };
-      if (timeRange === 'custom' && startDate && endDate) {
-        params.startDate = startDate;
-        params.endDate = endDate;
+      if (timeRange === 'custom') {
+        if (!startDate || !endDate) return;
+        const [sY, sM, sD] = startDate.split('-').map(Number);
+        const [eY, eM, eD] = endDate.split('-').map(Number);
+        params.startDate = new Date(sY, sM - 1, sD, 0, 0, 0, 0).toISOString();
+        params.endDate = new Date(eY, eM - 1, eD, 23, 59, 59, 999).toISOString();
       }
 
       const promises: Promise<any>[] = [
@@ -790,10 +793,17 @@ const DashboardPage: React.FC = () => {
                 onChange={(_, v) => {
                   if (v) {
                     setTimeRange(v);
-                    if (v === 'custom') {
-                      const today = new Date().toISOString().split('T')[0];
-                      setStartDate(today);
-                      setEndDate(today);
+                    if (v === 'custom' && (!startDate || !endDate)) {
+                      const now = new Date();
+                      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+                      const formatDateInput = (d: Date) => {
+                        const y = d.getFullYear();
+                        const m = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        return `${y}-${m}-${day}`;
+                      };
+                      setStartDate(formatDateInput(firstDay));
+                      setEndDate(formatDateInput(now));
                     }
                   }
                 }}
@@ -846,7 +856,13 @@ const DashboardPage: React.FC = () => {
                   type="date"
                   size="small"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    const nextStart = e.target.value;
+                    setStartDate(nextStart);
+                    if (endDate && nextStart > endDate) {
+                      setEndDate(nextStart);
+                    }
+                  }}
                   inputProps={{ max: endDate || undefined }}
                   sx={{ flex: { xs: 1, sm: 'none' }, width: { sm: 140 } }}
                 />
@@ -855,7 +871,13 @@ const DashboardPage: React.FC = () => {
                   type="date"
                   size="small"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => {
+                    const nextEnd = e.target.value;
+                    setEndDate(nextEnd);
+                    if (startDate && nextEnd < startDate) {
+                      setStartDate(nextEnd);
+                    }
+                  }}
                   inputProps={{ min: startDate || undefined }}
                   sx={{ flex: { xs: 1, sm: 'none' }, width: { sm: 140 } }}
                 />

@@ -151,6 +151,8 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
                 capacity: editTable.capacity,
                 location: editTable.location,
                 status: editTable.status,
+                shape: editTable.shape || 'rectangle',
+                rotation: editTable.rotation ?? 0,
                 featureTag: editTable.featureTag || '',
                 vibeText: editTable.vibeText || '',
             };
@@ -225,6 +227,36 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
                         </Select>
                         {touched.capacity && errors.capacity && <FormHelperText>{errors.capacity}</FormHelperText>}
                     </FormControl>
+
+                    <Stack direction="row" spacing={2}>
+                        <FormControl fullWidth>
+                            <InputLabel>Table Shape</InputLabel>
+                            <Select
+                                value={editTable.shape || 'rectangle'}
+                                label="Table Shape"
+                                onChange={e => setEditTable({ ...editTable, shape: e.target.value })}
+                            >
+                                <MenuItem value="rectangle">Rectangle</MenuItem>
+                                <MenuItem value="square">Square</MenuItem>
+                                <MenuItem value="round">Round / Circle</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        <FormControl fullWidth>
+                            <InputLabel>Orientation / Rotation</InputLabel>
+                            <Select
+                                value={editTable.rotation ?? 0}
+                                label="Orientation / Rotation"
+                                onChange={e => setEditTable({ ...editTable, rotation: Number(e.target.value) })}
+                            >
+                                <MenuItem value={0}>Horizontal (0°)</MenuItem>
+                                <MenuItem value={90}>Vertical (90°)</MenuItem>
+                                <MenuItem value={180}>Horizontal Reversed (180°)</MenuItem>
+                                <MenuItem value={270}>Vertical Reversed (270°)</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Stack>
+
                     <Stack direction="row" sx={{ width: '100%' }}>
                         <FormControl fullWidth sx={{ '& .MuiOutlinedInput-root': { borderTopRightRadius: 0, borderBottomRightRadius: 0 } }}>
                             <InputLabel>Location</InputLabel>

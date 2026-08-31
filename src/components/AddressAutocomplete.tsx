@@ -71,13 +71,19 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
     useEffect(() => {
         if (scriptLoaded && inputRef.current && !autocompleteRef.current) {
-            autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
-                // types: ['address'], // Removed to allow all types (establishments, geocodes, etc.)
-                fields: ['address_components', 'formatted_address', 'geometry'],
-            });
+            if (window.google?.maps?.places?.Autocomplete) {
+                try {
+                    autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
+                        // types: ['address'], // Removed to allow all types (establishments, geocodes, etc.)
+                        fields: ['address_components', 'formatted_address', 'geometry'],
+                    });
 
-            if (autocompleteRef.current) {
-                autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
+                    if (autocompleteRef.current) {
+                        autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
+                    }
+                } catch (error) {
+                    console.warn('Failed to initialize Google Places Autocomplete:', error);
+                }
             }
         }
     }, [scriptLoaded]);
@@ -168,7 +174,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             async (position) => {
                 const { latitude, longitude } = position.coords;
 
-                if (apiKey) {
+                if (apiKey && window.google?.maps?.Geocoder) {
                     try {
                         const geocoder = new window.google.maps.Geocoder();
                         const result = await geocoder.geocode({ location: { lat: latitude, lng: longitude } });
