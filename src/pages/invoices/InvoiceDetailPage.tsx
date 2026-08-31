@@ -40,6 +40,16 @@ const InvoiceDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [resending, setResending] = useState(false);
 
+    // Invoices created before the plan name was baked into the line item stored a
+    // generic description; prefix the plan so older invoices name it too.
+    const describeItem = (description: string) => {
+        const planName = invoice?.plan?.name;
+        if (!planName || !description) return description;
+        return description.toLowerCase().includes(String(planName).toLowerCase())
+            ? description
+            : `${planName} - ${description}`;
+    };
+
     useEffect(() => {
         const fetchInvoice = async () => {
             try {
@@ -189,6 +199,11 @@ const InvoiceDetailPage = () => {
                     </Grid>
                     <Grid item xs={12} md={6} textAlign={{ xs: 'left', md: 'right' }}>
                         <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' }, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', md: 'right' } }}>Payment Details:</Typography>
+                        {invoice.plan?.name && (
+                            <Typography variant="body2" sx={{ fontSize: bodyFontSize, textAlign: { xs: 'center', md: 'right' } }}>
+                                <strong>Plan:</strong> {invoice.plan.name}
+                            </Typography>
+                        )}
                         <Typography variant="body2" sx={{ fontSize: bodyFontSize, textAlign: { xs: 'center', md: 'right' } }}>
                             <strong>Issue Date:</strong> {new Date(invoice.issueDate).toLocaleDateString()}
                         </Typography>
@@ -207,7 +222,7 @@ const InvoiceDetailPage = () => {
                 <Paper sx={{ display: { xs: 'block', sm: 'none' }, mt: 2, p: 1.1 }}>
                     {(invoice?.items || []).map((item: any, index: number) => (
                         <Paper key={index} variant="outlined" sx={{ p: 1.1, borderRadius: 2, mb: 1 }}>
-                            <Typography sx={{ fontSize: bodyFontSize, fontWeight: 700 }}>{item.description}</Typography>
+                            <Typography sx={{ fontSize: bodyFontSize, fontWeight: 700 }}>{describeItem(item.description)}</Typography>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
                                 <Typography sx={{ fontSize: bodyFontSize }}>Qty: {item.quantity}</Typography>
                                 <Typography sx={{ fontSize: bodyFontSize }}>{formatMoney(item.unitPrice)}</Typography>
@@ -232,7 +247,7 @@ const InvoiceDetailPage = () => {
                         <TableBody>
                             {(invoice?.items || []).map((item: any, index: number) => (
                                 <TableRow key={index}>
-                                    <TableCell>{item.description}</TableCell>
+                                    <TableCell>{describeItem(item.description)}</TableCell>
                                     <TableCell align="right">{item.quantity}</TableCell>
                                     <TableCell align="right">
                                         {formatMoney(item.unitPrice)}

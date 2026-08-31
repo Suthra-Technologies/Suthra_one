@@ -34,11 +34,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
-  FormControl,
   FormControlLabel,
-  FormLabel,
-  Radio,
-  RadioGroup,
   IconButton,
   LinearProgress,
   Paper,
@@ -123,10 +119,6 @@ const KitchenInterface: React.FC = () => {
   const [cancelOrderDialogOpen, setCancelOrderDialogOpen] = useState(false);
   const [cancelOrderRef, setCancelOrderRef] = useState<Order | null>(null);
   const [cancelOrderReason, setCancelOrderReason] = useState('');
-
-  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
-  const [refundItemRef, setRefundItemRef] = useState<{ orderId: string, itemIndex: number, itemName: string, orderType: string, itemSubtotal: number, itemTax: number } | null>(null);
-  const [refundMethod, setRefundMethod] = useState<'original' | 'cash'>('original');
 
   const handlePrintKOT = async (order: Order) => {
     // Native Android Wi-Fi kitchen printer (ESC/POS or ePOS over the LAN). Fastest, no dialog.
@@ -472,47 +464,6 @@ const KitchenInterface: React.FC = () => {
     } finally {
       setCancelOrderReason('');
       setCancelOrderRef(null);
-      setProcessingOrders(prev => {
-        const updated = new Set(prev);
-        updated.delete(orderId);
-        return updated;
-      });
-    }
-  };
-
-  const handleRefundItem = (orderId: string, itemIndex: number, item: OrderItem, order: Order) => {
-    const itemSubtotal = (item.price ?? 0) * item.quantity;
-    const orderSubtotal = order.subtotal ?? (order?.items || []).reduce((sum, i) => sum + (i.price ?? 0) * i.quantity, 0);
-    const orderTax = order.tax?.amount ?? 0;
-    const itemTax = orderSubtotal > 0 ? (itemSubtotal / orderSubtotal) * orderTax : 0;
-    setRefundItemRef({ orderId, itemIndex, itemName: item.name, orderType: order.orderType, itemSubtotal, itemTax });
-    setRefundMethod('original');
-    setRefundDialogOpen(true);
-  };
-
-  const handleRefundItemProcess = async () => {
-    if (!refundItemRef) return;
-    const { orderId, itemIndex } = refundItemRef;
-    if (processingOrders.has(orderId)) return;
-    setRefundDialogOpen(false);
-    const key = `${orderId}-${itemIndex}`;
-    setProcessingOrders(prev => new Set(prev).add(orderId));
-    setUpdatingItems(prev => new Set(prev).add(key));
-
-    try {
-      await ordersAPI.refundItem(orderId, itemIndex, refundMethod);
-      toast.success('Item refunded successfully');
-      fetchOrders(true);
-    } catch (error: any) {
-      console.error('Error refunding item:', error);
-      toast.error(error.response?.data?.message || 'Failed to refund item');
-    } finally {
-      setUpdatingItems(prev => {
-        const updated = new Set(prev);
-        updated.delete(key);
-        return updated;
-      });
-      setRefundItemRef(null);
       setProcessingOrders(prev => {
         const updated = new Set(prev);
         updated.delete(orderId);
@@ -1109,16 +1060,12 @@ const KitchenInterface: React.FC = () => {
 
                             {isCancelled && canRefund && (
                               <Stack direction="row" spacing={0.5} sx={{ ml: 1 }}>
-                                <Tooltip title="Refund Item">
-                                  <IconButton
-                                    size="small"
-                                    color="error"
-                                    onClick={() => handleRefundItem(order._id, idx, item, order)}
-                                    disabled={updatingItems.has(`${order._id}-${idx}`)}
-                                    sx={{ p: 0.5 }}
-                                  >
-                                    <RefundIcon sx={{ fontSize: 18 }} />
-                                  </IconButton>
+                                <Tooltip title="Refunds are handled via a dispute — raise or resolve a dispute for this order to refund it">
+                                  <span>
+                                    <IconButton size="small" color="error" disabled sx={{ p: 0.5 }}>
+                                      <RefundIcon sx={{ fontSize: 18 }} />
+                                    </IconButton>
+                                  </span>
                                 </Tooltip>
                               </Stack>
                             )}
@@ -1357,50 +1304,6 @@ const KitchenInterface: React.FC = () => {
       }}
     >
       Confirm Cancellation
-    </Button>
-  </DialogActions>
-</Dialog>
-
-{/* Dialog for refunding item */}
-<Dialog open={refundDialogOpen} onClose={() => setRefundDialogOpen(false)}>
-  <DialogTitle>Refund Item</DialogTitle>
-  <DialogContent>
-    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-      Refunding <strong>{refundItemRef?.itemName}</strong> will remove it from the bill. Select how the refund should be issued.
-    </Typography>
-    <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, px: 2, py: 1.5, mb: 2 }}>
-      <Stack direction="row" justifyContent="space-between">
-        <Typography variant="body2">Item Price</Typography>
-        <Typography variant="body2">${refundItemRef?.itemSubtotal?.toFixed(2)}</Typography>
-      </Stack>
-      <Stack direction="row" justifyContent="space-between">
-        <Typography variant="body2">Tax</Typography>
-        <Typography variant="body2">${refundItemRef?.itemTax?.toFixed(2)}</Typography>
-      </Stack>
-      <Divider sx={{ my: 0.75 }} />
-      <Stack direction="row" justifyContent="space-between">
-        <Typography variant="body2" fontWeight={700}>Total Refund</Typography>
-        <Typography variant="body2" fontWeight={700}>${((refundItemRef?.itemSubtotal ?? 0) + (refundItemRef?.itemTax ?? 0)).toFixed(2)}</Typography>
-      </Stack>
-    </Box>
-    {refundItemRef?.orderType === 'dine_in' ? (
-      <FormControl>
-        <FormLabel>Refund Method</FormLabel>
-        <RadioGroup value={refundMethod} onChange={(e) => setRefundMethod(e.target.value as 'original' | 'cash')}>
-          <FormControlLabel value="original" control={<Radio />} label="Original Payment Method" />
-          <FormControlLabel value="cash" control={<Radio />} label="Cash" />
-        </RadioGroup>
-      </FormControl>
-    ) : (
-      <Typography variant="body2" color="text.secondary">
-        Refund will be processed to the <strong>original payment method</strong>.
-      </Typography>
-    )}
-  </DialogContent>
-  <DialogActions>
-    <Button onClick={() => setRefundDialogOpen(false)}>Cancel</Button>
-    <Button onClick={handleRefundItemProcess} color="error" variant="contained">
-      Confirm Refund
     </Button>
   </DialogActions>
 </Dialog>

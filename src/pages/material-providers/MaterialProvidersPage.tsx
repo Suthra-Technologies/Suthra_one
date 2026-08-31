@@ -96,34 +96,38 @@ const MaterialImageSlider: React.FC<{ images: string[]; alt: string }> = ({ imag
                     <InventoryIcon sx={{ color: 'text.disabled', fontSize: 48 }} />
                 </Box>
             )}
-            {hasMultiple && (
+            {images.length > 0 && (
                 <>
                     <IconButton
                         size="small"
                         onClick={(e) => { e.stopPropagation(); go(-1); }}
-                        sx={{ position: 'absolute', top: '50%', left: 4, transform: 'translateY(-50%)', bgcolor: 'rgba(0,0,0,0.4)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' } }}
+                        disabled={!hasMultiple}
+                        sx={{ position: 'absolute', top: '50%', left: 4, transform: 'translateY(-50%)', bgcolor: 'rgba(0,0,0,0.4)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' }, '&.Mui-disabled': { bgcolor: 'rgba(0,0,0,0.2)', color: 'rgba(255,255,255,0.5)' } }}
                     >
                         <ChevronLeftIcon fontSize="small" />
                     </IconButton>
                     <IconButton
                         size="small"
                         onClick={(e) => { e.stopPropagation(); go(1); }}
-                        sx={{ position: 'absolute', top: '50%', right: 4, transform: 'translateY(-50%)', bgcolor: 'rgba(0,0,0,0.4)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' } }}
+                        disabled={!hasMultiple}
+                        sx={{ position: 'absolute', top: '50%', right: 4, transform: 'translateY(-50%)', bgcolor: 'rgba(0,0,0,0.4)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' }, '&.Mui-disabled': { bgcolor: 'rgba(0,0,0,0.2)', color: 'rgba(255,255,255,0.5)' } }}
                     >
                         <ChevronRightIcon fontSize="small" />
                     </IconButton>
-                    <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)' }}>
-                        {images.map((_, i) => (
-                            <Box
-                                key={i}
-                                onClick={(e) => { e.stopPropagation(); setIndex(i); }}
-                                sx={{
-                                    width: 6, height: 6, borderRadius: '50%', cursor: 'pointer',
-                                    bgcolor: i === index ? '#fff' : 'rgba(255,255,255,0.5)',
-                                }}
-                            />
-                        ))}
-                    </Stack>
+                    {hasMultiple && (
+                        <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)' }}>
+                            {images.map((_, i) => (
+                                <Box
+                                    key={i}
+                                    onClick={(e) => { e.stopPropagation(); setIndex(i); }}
+                                    sx={{
+                                        width: 6, height: 6, borderRadius: '50%', cursor: 'pointer',
+                                        bgcolor: i === index ? '#fff' : 'rgba(255,255,255,0.5)',
+                                    }}
+                                />
+                            ))}
+                        </Stack>
+                    )}
                 </>
             )}
         </Box>
@@ -205,6 +209,8 @@ const MaterialProvidersPage: React.FC = () => {
         providerPhone: p.phone || '',
         providerAddress: p.address || '',
         orderText: combinedOrderText,
+        // unitPrice is intentionally omitted: the server stamps it from the
+        // provider's catalog at order time, so the client can't influence price.
         items: filledOrderItems.map(it => ({ name: it.name.trim(), quantity: it.quantity || '1', unit: it.unit || '' })),
         needByDate: orderNeedDate || undefined,
         note: orderText.trim() || undefined,

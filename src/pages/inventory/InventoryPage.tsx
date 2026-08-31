@@ -326,7 +326,7 @@ const InventoryPage: React.FC = () => {
     const [dailyReport, setDailyReport] = useState<DailyReport | null>(null);
     const [loading, setLoading] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [showDeleted, setShowDeleted] = useState(false);
+    const showDeleted = tabValue === 2;
 // Notes History Feature
     // const { openTab, activeTabs } = useNotesHistory();
     const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
@@ -358,10 +358,6 @@ const InventoryPage: React.FC = () => {
     });
 
     useEffect(() => {
-        loadRawMaterials();
-    }, []);
-
-    useEffect(() => {
         if (tabValue === 1) {
             loadDailyReport();
         }
@@ -379,10 +375,10 @@ const InventoryPage: React.FC = () => {
     }, [debouncedSearch]);
 
     useEffect(() => {
-        if (tabValue === 0) {
+        if (tabValue === 0 || tabValue === 2) {
             loadRawMaterials();
         }
-    }, [page, limit, tabValue, showDeleted, debouncedSearch]);
+    }, [page, limit, tabValue, debouncedSearch]);
 
     const loadRawMaterials = async () => {
         try {
@@ -530,7 +526,7 @@ const InventoryPage: React.FC = () => {
                 {isMobile ? (
                     <IconButton
                         color="primary"
-                        onClick={() => tabValue === 0 ? loadRawMaterials() : loadDailyReport()}
+                        onClick={() => (tabValue === 0 || tabValue === 2) ? loadRawMaterials() : loadDailyReport()}
                         sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) } }}
                     >
                         <RefreshIcon />
@@ -539,7 +535,7 @@ const InventoryPage: React.FC = () => {
                     <Button
                         variant="outlined"
                         startIcon={<RefreshIcon />}
-                        onClick={() => tabValue === 0 ? loadRawMaterials() : loadDailyReport()}
+                        onClick={() => (tabValue === 0 || tabValue === 2) ? loadRawMaterials() : loadDailyReport()}
                     >
                         Refresh
                     </Button>
@@ -547,9 +543,10 @@ const InventoryPage: React.FC = () => {
             </Box>
 
             <Paper sx={{ mb: 3 }}>
-                <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
+                <Tabs value={tabValue} onChange={(_, newValue) => { setTabValue(newValue); setPage(0); setSearchTerm(''); }}>
                     <Tab label="Raw Materials" sx={{ fontSize: bodyFontSize, minHeight: { xs: 42, sm: 48 } }} />
                     <Tab label="Usage Reports" sx={{ fontSize: bodyFontSize, minHeight: { xs: 42, sm: 48 } }} />
+                    <Tab label="Deleted Items" sx={{ fontSize: bodyFontSize, minHeight: { xs: 42, sm: 48 }, fontWeight: 'bold', '&.Mui-selected': { color: 'error.main' } }} />
                 </Tabs>
                   {/* <Box sx={{ display: 'flex', alignItems: 'center', px: 1 }}>
                     <IconButton
@@ -579,49 +576,33 @@ const InventoryPage: React.FC = () => {
                                 }}
                                 sx={{ minWidth: { xs: '100%', sm: 220 } }}
                             />
-                            <FormControl size="small" sx={{ minWidth: 160 }}>
-                                <InputLabel>Filter</InputLabel>
-                                <Select
-                                    value={showDeleted ? 'deleted' : 'active'}
-                                    label="Filter"
-                                    onChange={(e) => {
-                                        setShowDeleted(e.target.value === 'deleted');
-                                        setPage(0);
-                                    }}
-                                >
-                                    <MenuItem value="active">Active Items</MenuItem>
-                                    <MenuItem value="deleted">Deleted Items</MenuItem>
-                                </Select>
-                            </FormControl>
                         </Stack>
-                        {!showDeleted && (
-                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                                <Button
-                                    variant="outlined"
-                                    startIcon={<BulkUploadIcon />}
-                                    onClick={() => setBulkUploadDialogOpen(true)}
-                                    sx={{
-                                        width: { xs: '100%', sm: 'auto' },
-                                        py: { xs: 1.2, sm: 1 },
-                                        borderColor: 'primary.main',
-                                        '&:hover': {
-                                            borderColor: 'primary.dark',
-                                            bgcolor: alpha(theme.palette.primary.main, 0.05),
-                                        }
-                                    }}
-                                >
-                                    Bulk Upload
-                                </Button>
-                                <Button
-                                    variant="contained"
-                                    startIcon={<AddIcon />}
-                                    onClick={handleAddMaterial}
-                                    sx={{ width: { xs: '100%', sm: 'auto' }, py: { xs: 1.2, sm: 1 } }}
-                                >
-                                    Add Material
-                                </Button>
-                            </Stack>
-                        )}
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                            <Button
+                                variant="outlined"
+                                startIcon={<BulkUploadIcon />}
+                                onClick={() => setBulkUploadDialogOpen(true)}
+                                sx={{
+                                    width: { xs: '100%', sm: 'auto' },
+                                    py: { xs: 1.2, sm: 1 },
+                                    borderColor: 'primary.main',
+                                    '&:hover': {
+                                        borderColor: 'primary.dark',
+                                        bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                    }
+                                }}
+                            >
+                                Bulk Upload
+                            </Button>
+                            <Button
+                                variant="contained"
+                                startIcon={<AddIcon />}
+                                onClick={handleAddMaterial}
+                                sx={{ width: { xs: '100%', sm: 'auto' }, py: { xs: 1.2, sm: 1 } }}
+                            >
+                                Add Material
+                            </Button>
+                        </Stack>
                     </Box>
 
                     {loading ? (
@@ -629,9 +610,9 @@ const InventoryPage: React.FC = () => {
                     ) : rawMaterials.length === 0 ? (
                         <Box sx={{ p: 4, textAlign: 'center' }}>
                             <Typography color="text.secondary" sx={{ fontSize: bodyFontSize, textAlign: 'center' }}>
-                        {debouncedSearch
-                            ? `No raw materials found matching "${debouncedSearch}".`
-                            : `No raw materials found. ${showDeleted ? 'No deleted items.' : 'Click "Add Material" to get started.'}`}
+                                {debouncedSearch
+                                    ? `No raw materials found matching "${debouncedSearch}".`
+                                    : 'No raw materials found. Click "Add Material" to get started.'}
                             </Typography>
                         </Box>
                     ) : isTabletOrMobile ? (
@@ -692,35 +673,15 @@ const InventoryPage: React.FC = () => {
                                 </TableHead>
                                 <TableBody>
                                     {rawMaterials.map((material) => (
-                                        showDeleted ? (
-                                            <TableRow key={material._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
-                                                <TableCell>{material.name}</TableCell>
-                                                <TableCell align="right"><strong>{parseFloat((material.currentStock || 0).toFixed(2))}</strong></TableCell>
-                                                <TableCell align="right">{parseFloat((material.minimumStock || 0).toFixed(2))}</TableCell>
-                                                <TableCell align="right">{parseFloat((material.reorderLevel || 0).toFixed(2))}</TableCell>
-                                                <TableCell>{material.unit}</TableCell>
-                                                <TableCell><Chip label="Deleted" color="error" size="small" /></TableCell>
-                                                <TableCell>{material.supplier?.name || '-'}</TableCell>
-                                                <TableCell>
-                                                    <Typography variant="caption" color="text.secondary">{new Date(material.updatedAt).toLocaleString()}</Typography>
-                                                </TableCell>
-                                                <TableCell align="center">
-                                                    <IconButton size="small" color="success" onClick={() => handleRestoreMaterial(material)} title="Restore">
-                                                        <RestoreIcon />
-                                                    </IconButton>
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            <MemoizedMaterialRow
-                                                key={material._id}
-                                                material={material}
-                                                onUsage={handleRecordUsage}
-                                                // onItemNotes={handleItemNotes}
-                                                onEdit={handleEditMaterial}
-                                                onDelete={handleDeleteMaterial}
-                                                getStatus={getStockStatus}
-                                            />
-                                        )
+                                        <MemoizedMaterialRow
+                                            key={material._id}
+                                            material={material}
+                                            onUsage={handleRecordUsage}
+                                            // onItemNotes={handleItemNotes}
+                                            onEdit={handleEditMaterial}
+                                            onDelete={handleDeleteMaterial}
+                                            getStatus={getStockStatus}
+                                        />
                                     ))}
                                 </TableBody>
                             </Table>
@@ -873,6 +834,115 @@ const InventoryPage: React.FC = () => {
                             }}
                         />
                     )}
+                </Box>
+            )}
+
+            {/* Deleted Items Tab */}
+            {tabValue === 2 && (
+                <Box>
+                    <Box sx={{ mb: 2, display: 'flex', justifyContent: { xs: 'center', sm: 'space-between' }, alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
+                        <TextField
+                            size="small"
+                            placeholder="Search deleted items"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            InputProps={{
+                                startAdornment: <SearchIcon fontSize="small" sx={{ color: 'text.secondary', mr: 1 }} />,
+                            }}
+                            sx={{ minWidth: { xs: '100%', sm: 220 } }}
+                        />
+                    </Box>
+
+                    {loading ? (
+                        <TableSkeleton rows={8} columns={9} />
+                    ) : rawMaterials.length === 0 ? (
+                        <Box sx={{ p: 4, textAlign: 'center' }}>
+                            <Typography color="text.secondary" sx={{ fontSize: bodyFontSize, textAlign: 'center' }}>
+                                {debouncedSearch
+                                    ? `No deleted raw materials found matching "${debouncedSearch}".`
+                                    : "No deleted raw materials found."}
+                            </Typography>
+                        </Box>
+                    ) : isTabletOrMobile ? (
+                        // Mobile Card View for Deleted Items
+                        <Stack spacing={2}>
+                            {rawMaterials.map((material) => (
+                                <Card key={material._id}>
+                                    <CardContent>
+                                        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+                                            <Box>
+                                                <Typography variant="subtitle1" fontWeight="bold">{material.name}</Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {material.currentStock} {material.unit} · {material.category}
+                                                </Typography>
+                                            </Box>
+                                            <Chip label="Deleted" color="error" size="small" />
+                                        </Stack>
+                                        <Button
+                                            size="small"
+                                            variant="outlined"
+                                            color="success"
+                                            startIcon={<RestoreIcon />}
+                                            onClick={() => handleRestoreMaterial(material)}
+                                        >
+                                            Restore
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </Stack>
+                    ) : (
+                        // Desktop Table View for Deleted Items
+                        <TableContainer component={Paper}>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Name</TableCell>
+                                        <TableCell align="right">Current Stock</TableCell>
+                                        <TableCell align="right">Min Stock</TableCell>
+                                        <TableCell align="right">Reorder Level</TableCell>
+                                        <TableCell>Unit</TableCell>
+                                        <TableCell>Status</TableCell>
+                                        <TableCell>Supplier</TableCell>
+                                        <TableCell>Last Modified</TableCell>
+                                        <TableCell align="center">Actions</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {rawMaterials.map((material) => (
+                                        <TableRow key={material._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                                            <TableCell>{material.name}</TableCell>
+                                            <TableCell align="right"><strong>{parseFloat((material.currentStock || 0).toFixed(2))}</strong></TableCell>
+                                            <TableCell align="right">{parseFloat((material.minimumStock || 0).toFixed(2))}</TableCell>
+                                            <TableCell align="right">{parseFloat((material.reorderLevel || 0).toFixed(2))}</TableCell>
+                                            <TableCell>{material.unit}</TableCell>
+                                            <TableCell><Chip label="Deleted" color="error" size="small" /></TableCell>
+                                            <TableCell>{material.supplier?.name || '-'}</TableCell>
+                                            <TableCell>
+                                                <Typography variant="caption" color="text.secondary">{new Date(material.updatedAt).toLocaleString()}</Typography>
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <IconButton size="small" color="success" onClick={() => handleRestoreMaterial(material)} title="Restore">
+                                                    <RestoreIcon />
+                                                </IconButton>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
+                    <TablePagination
+                        component="div"
+                        count={totalMaterials}
+                        page={page}
+                        onPageChange={(e, newPage) => setPage(newPage)}
+                        rowsPerPage={limit}
+                        onRowsPerPageChange={(e) => {
+                            setLimit(parseInt(e.target.value, 10));
+                            setPage(0);
+                        }}
+                    />
                 </Box>
             )}
 

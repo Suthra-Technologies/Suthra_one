@@ -924,6 +924,10 @@ export const providerPortalAPI = {
   // can mark it received.
   updateOrderStatus: (tenantSlug: string, id: string, data: { status: string; providerNote?: string }) =>
     api.patch(`/provider-portal/orders/${tenantSlug}/${id}/status`, data),
+  // Records whether the restaurant's payment actually arrived. Confirming sets
+  // the linked Purchase Order's paymentStatus to paid.
+  confirmPayment: (tenantSlug: string, id: string, data: { paymentReceived: boolean; paymentNote?: string }) =>
+    api.patch(`/provider-portal/orders/${tenantSlug}/${id}/payment`, data),
   // Catalog — what restaurants pick from when ordering. Items are addressed by
   // their position in the provider's materials list.
   addMaterial: (data: { name: string; unit?: string; defaultUnitPrice?: number; image?: string; images?: string[] }) =>

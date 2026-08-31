@@ -78,11 +78,22 @@ const CORE_FEATURES = [
     'settings', 'managenotifications',
 ];
 
+// Label for the "Max X / <window>" limit fields — reflects how often the usage counter
+// actually resets for this interval (monthly plans reset monthly, yearly plans reset once
+// per year, trial plans get a single allowance for the whole trial period).
+const resourceWindowLabel = (interval: string, trialDays?: number): string => {
+    if (interval === 'trial') return `${trialDays || 7} Days`;
+    if (interval === 'yearly') return 'Year';
+    if (interval === 'one-time') return 'Month';
+    return 'Month';
+};
+
 interface SubscriptionPlan {
     _id: string;
     name: string;
     price: number;
-    interval: 'monthly' | 'yearly' | 'one-time';
+    interval: 'monthly' | 'yearly' | 'one-time' | 'trial';
+    trialDays?: number;
     type: 'subscription' | 'topup';
     resourceType?: 'email' | 'sms' | 'orders' | 'none';
     resourceCount?: number;
@@ -95,6 +106,10 @@ interface SubscriptionPlan {
     isActive: boolean;
     stripePriceId?: string;
     baseplanId?: string | null;
+    disableStripeOnboarding?: boolean;
+    disableDelivery?: boolean;
+    disableSms?: boolean;
+    disableEmail?: boolean;
 }
 
 const PlansPage: React.FC = () => {
@@ -108,7 +123,8 @@ const PlansPage: React.FC = () => {
     const [formData, setFormData] = useState({
         name: '',
         price: 0,
-        interval: 'monthly' as 'monthly' | 'yearly' | 'one-time',
+        interval: 'monthly' as 'monthly' | 'yearly' | 'one-time' | 'trial',
+        trialDays: 7,
         type: 'subscription' as 'subscription' | 'topup',
         resourceType: 'none' as 'email' | 'sms' | 'orders' | 'none',
         resourceCount: 0,
@@ -121,6 +137,10 @@ const PlansPage: React.FC = () => {
         isActive: true,
         modules: [] as string[],
         isLegacyCore: false,
+        disableStripeOnboarding: false,
+        disableDelivery: false,
+        disableSms: false,
+        disableEmail: false,
     });
     const [baseplanId, setBaseplanId] = useState('');
 
@@ -155,6 +175,7 @@ const PlansPage: React.FC = () => {
                 name: plan.name,
                 price: plan.price,
                 interval: plan.interval as any,
+                trialDays: plan.trialDays || 7,
                 type: plan.type || 'subscription',
                 resourceType: plan.resourceType || 'none',
                 resourceCount: plan.resourceCount || 0,
@@ -167,6 +188,10 @@ const PlansPage: React.FC = () => {
                 isActive: plan.isActive,
                 modules,
                 isLegacyCore: plan.features.includes('core'),
+                disableStripeOnboarding: !!plan.disableStripeOnboarding,
+                disableDelivery: !!plan.disableDelivery,
+                disableSms: !!plan.disableSms,
+                disableEmail: !!plan.disableEmail,
             });
             setBaseplanId(plan.baseplanId || '');
         } else {
@@ -175,6 +200,7 @@ const PlansPage: React.FC = () => {
                 name: '',
                 price: 0,
                 interval: defaultType === 'topup' ? 'one-time' : 'monthly',
+                trialDays: 7,
                 type: defaultType,
                 resourceType: 'none',
                 resourceCount: 0,
@@ -187,6 +213,10 @@ const PlansPage: React.FC = () => {
                 isActive: true,
                 modules: [],
                 isLegacyCore: false,
+                disableStripeOnboarding: false,
+                disableDelivery: false,
+                disableSms: false,
+                disableEmail: false,
             });
             setBaseplanId('');
         }
@@ -294,12 +324,14 @@ const PlansPage: React.FC = () => {
                             {plan.name}
                         </Typography>
                         <Typography variant="h4" color="primary" gutterBottom>
-                            ${Number(plan.price || 0).toFixed(2)}
+                            {plan.interval === 'trial' ? 'Free' : `$${Number(plan.price || 0).toFixed(2)}`}
                             <Typography component="span" variant="body2" color="text.secondary">
-                                /{plan.type === 'topup' ? 'one-time' : plan.interval}
+                                {plan.interval === 'trial'
+                                    ? ` / ${plan.trialDays || 7} days`
+                                    : `/${plan.type === 'topup' ? 'one-time' : plan.interval}`}
                             </Typography>
                         </Typography>
-                        {plan.type !== 'topup' && (
+                        {plan.type !== 'topup' && plan.interval !== 'trial' && (
                             <Typography
                                 component="span"
                                 variant="body2"
@@ -499,36 +531,74 @@ const PlansPage: React.FC = () => {
                         />
 
                         <Grid container spacing={2}>
-                            <Grid size={{ xs: 12 }}>
-                                <TextField
-                                    label="Price"
-                                    type="number"
-                                    value={formData.price}
-                                    onChange={(e) => {
-                                        const val = parseFloat(e.target.value);
-                                        setFormData({ ...formData, price: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
-                                    }}
-                                    onFocus={(e) => e.target.select()}
-                                    fullWidth
-                                    required
-                                    inputProps={{ min: 0, step: "0.01" }}
-                                />
-                            </Grid>
-                            
+                            {formData.interval !== 'trial' && (
+                                <Grid size={{ xs: 12 }}>
+                                    <TextField
+                                        label="Price"
+                                        type="number"
+                                        value={formData.price}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            setFormData({ ...formData, price: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
+                                        }}
+                                        onFocus={(e) => e.target.select()}
+                                        fullWidth
+                                        required
+                                        inputProps={{ min: 0, step: "0.01" }}
+                                    />
+                                </Grid>
+                            )}
+
                             {formData.type === 'subscription' && (
                                 <Grid size={{ xs: 12 }}>
                                     <TextField
                                         label="Interval"
                                         select
                                         value={formData.interval}
-                                        onChange={(e) => setFormData({ ...formData, interval: e.target.value as any })}
+                                        onChange={(e) => {
+                                            const interval = e.target.value as any;
+                                            // Switching a new plan to "Trial" defaults every restriction
+                                            // on, since trial plans are expected to be locked down by default.
+                                            const defaultingToTrial = interval === 'trial' && !editingPlan;
+                                            setFormData({
+                                                ...formData,
+                                                interval,
+                                                // Trial plans are free by definition.
+                                                ...(interval === 'trial' ? { price: 0 } : {}),
+                                                ...(defaultingToTrial ? {
+                                                    disableStripeOnboarding: true,
+                                                    disableDelivery: true,
+                                                    disableSms: true,
+                                                    disableEmail: true,
+                                                } : {}),
+                                            });
+                                        }}
                                         fullWidth
                                         SelectProps={{ native: true }}
                                     >
                                         <option value="monthly">Monthly</option>
                                         <option value="yearly">Yearly</option>
                                         <option value="one-time">One-Time</option>
+                                        <option value="trial">Trial</option>
                                     </TextField>
+                                </Grid>
+                            )}
+
+                            {formData.type === 'subscription' && formData.interval === 'trial' && (
+                                <Grid size={{ xs: 12 }}>
+                                    <TextField
+                                        label="Trial Days"
+                                        type="number"
+                                        value={formData.trialDays}
+                                        onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            setFormData({ ...formData, trialDays: isNaN(val) ? 0 : (val < 1 ? 1 : val) });
+                                        }}
+                                        onFocus={(e) => e.target.select()}
+                                        fullWidth
+                                        inputProps={{ min: 1 }}
+                                        helperText="How many days a tenant stays on this trial before it expires"
+                                    />
                                 </Grid>
                             )}
                         </Grid>
@@ -600,7 +670,7 @@ const PlansPage: React.FC = () => {
                                     </Grid>
                                     <Grid size={{ xs: 6 }}>
                                         <TextField
-                                            label="Max Orders / Month"
+                                            label={`Max Orders / ${resourceWindowLabel(formData.interval, formData.trialDays)}`}
                                             type="number"
                                             value={formData.maxOrders}
                                             onChange={(e) => {
@@ -614,7 +684,7 @@ const PlansPage: React.FC = () => {
                                     </Grid>
                                     <Grid size={{ xs: 6 }}>
                                         <TextField
-                                            label="Max SMS / Month"
+                                            label={`Max SMS / ${resourceWindowLabel(formData.interval, formData.trialDays)}`}
                                             type="number"
                                             value={formData.maxSms}
                                             onChange={(e) => {
@@ -629,7 +699,7 @@ const PlansPage: React.FC = () => {
                                     </Grid>
                                     <Grid size={{ xs: 6 }}>
                                         <TextField
-                                            label="Max Emails / Month"
+                                            label={`Max Emails / ${resourceWindowLabel(formData.interval, formData.trialDays)}`}
                                             type="number"
                                             value={formData.maxEmail}
                                             onChange={(e) => {
@@ -662,6 +732,30 @@ const PlansPage: React.FC = () => {
                                             <option key={p._id} value={p._id}>{p.name}</option>
                                         ))}
                                 </TextField>
+
+                                <Divider sx={{ my: 1 }} />
+                                <Typography variant="subtitle2" color="primary">Restrictions</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    Block tenants on this plan from using these integrations, regardless of their own settings.
+                                </Typography>
+                                <Stack direction="row" flexWrap="wrap" sx={{ mb: 1 }}>
+                                    <FormControlLabel
+                                        control={<Checkbox checked={formData.disableStripeOnboarding} onChange={(e) => setFormData({ ...formData, disableStripeOnboarding: e.target.checked })} />}
+                                        label="Disable Stripe Onboarding"
+                                    />
+                                    <FormControlLabel
+                                        control={<Checkbox checked={formData.disableDelivery} onChange={(e) => setFormData({ ...formData, disableDelivery: e.target.checked })} />}
+                                        label="Disable Delivery Services"
+                                    />
+                                    <FormControlLabel
+                                        control={<Checkbox checked={formData.disableSms} onChange={(e) => setFormData({ ...formData, disableSms: e.target.checked })} />}
+                                        label="Disable SMS"
+                                    />
+                                    <FormControlLabel
+                                        control={<Checkbox checked={formData.disableEmail} onChange={(e) => setFormData({ ...formData, disableEmail: e.target.checked })} />}
+                                        label="Disable Email"
+                                    />
+                                </Stack>
 
                                 <Typography variant="subtitle2" color="primary">Modules</Typography>
                                 <Typography variant="caption" color="text.secondary">

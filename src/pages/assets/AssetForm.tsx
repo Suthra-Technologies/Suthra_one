@@ -201,8 +201,11 @@ const AssetForm: React.FC = () => {
         lifecycle: {
           ...form.lifecycle,
           // Handle Renewal Fields: Only for Documents/Licenses
+          // Next Renewal Date always mirrors Expiry Date — a document's
+          // renewal is due exactly when it expires, so it's not a separate
+          // user-entered value.
           renewalRequired: isDocOrLicense ? form.lifecycle.renewalRequired : false,
-          nextRenewalDate: isDocOrLicense && form.lifecycle.renewalRequired ? form.lifecycle.nextRenewalDate : null,
+          nextRenewalDate: isDocOrLicense && form.lifecycle.renewalRequired ? form.lifecycle.expiryDate : null,
           renewalFrequency: isDocOrLicense && form.lifecycle.renewalRequired ? form.lifecycle.renewalFrequency : null,
           renewalUnit: isDocOrLicense && form.lifecycle.renewalRequired ? form.lifecycle.renewalUnit : null,
           reminderDaysForRenewals: isDocOrLicense && form.lifecycle.renewalRequired ? form.lifecycle.reminderDaysForRenewals : [],
@@ -477,9 +480,11 @@ const AssetForm: React.FC = () => {
                               fullWidth
                               type="date"
                               label="Next Renewal Date"
+                              helperText="Always matches the expiry date above"
                               InputLabelProps={{ shrink: true }}
-                              value={form.lifecycle.nextRenewalDate}
-                              onChange={(e) => setForm({ ...form, lifecycle: { ...form.lifecycle, nextRenewalDate: e.target.value } })}
+                              InputProps={{ readOnly: true }}
+                              value={form.lifecycle.expiryDate}
+                              disabled
                             />
 
                             <Typography variant="caption" fontWeight="bold" color="primary">Renewal Frequency</Typography>

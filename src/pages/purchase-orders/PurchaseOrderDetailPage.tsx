@@ -129,7 +129,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                             fontWeight="bold"
                             sx={{
                                 fontSize: headingFontSize,
-                                color: { xs: '#000', sm: 'text.primary' },
+                                color: 'text.primary',
                                 textAlign: { xs: 'center', sm: 'left' },
                                 width: { xs: '100%', sm: 'auto' }
                             }}
@@ -185,7 +185,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                 {/* Vendor & Details */}
                 <Grid item xs={12} md={8}>
                     <Paper sx={{ p: { xs: 1.4, sm: 3 }, mb: { xs: 1.5, sm: 3 } }}>
-                        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' }, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', sm: 'left' } }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' }, color: 'text.primary', textAlign: { xs: 'center', sm: 'left' } }}>
                             {po.type === 'expense' ? 'Payee Details' : 'Vendor Information'}
                         </Typography>
                         <Grid container spacing={2}>
@@ -302,7 +302,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                 {/* Sidebar Info */}
                 <Grid item xs={12} md={4}>
                     <Paper sx={{ p: { xs: 1.4, sm: 3 }, mb: { xs: 1.5, sm: 3 } }}>
-                        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' }, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', sm: 'left' } }}>Payment Info</Typography>
+                        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' }, color: 'text.primary', textAlign: { xs: 'center', sm: 'left' } }}>Payment Info</Typography>
                         <Stack spacing={1}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Typography variant="body2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Status</Typography>
@@ -320,7 +320,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                     </Paper>
 
                     <Paper sx={{ p: { xs: 1.4, sm: 3 } }}>
-                        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' }, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', sm: 'left' } }}>Attachments</Typography>
+                        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' }, color: 'text.primary', textAlign: { xs: 'center', sm: 'left' } }}>Attachments</Typography>
                         {po.attachments && po.attachments.length > 0 ? (
                             <Stack spacing={2}>
                                 {po.attachments.map((att: any, index: number) => (
@@ -355,7 +355,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
 
                     {/* History */}
                     <Paper sx={{ p: { xs: 1.4, sm: 3 }, mt: { xs: 1.5, sm: 3 } }}>
-                        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' }, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', sm: 'left' } }}>History</Typography>
+                        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' }, color: 'text.primary', textAlign: { xs: 'center', sm: 'left' } }}>History</Typography>
                         <ActionHistoryList history={po.actionHistory || []} emptyMessage="No history for this PO." />
                     </Paper>
                 </Grid>
