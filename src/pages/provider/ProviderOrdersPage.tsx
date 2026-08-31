@@ -69,6 +69,20 @@ const NEXT_ACTION: Record<string, { status: string; label: string } | undefined>
 
 const fmtDate = (v?: string) => (v ? new Date(v).toLocaleDateString() : '—');
 const fmtDateTime = (v?: string) => (v ? new Date(v).toLocaleString() : '—');
+const fmtMoney = (v: number) =>
+    v.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+
+/**
+ * Order value from the line items priced at order time.
+ *
+ * Returns null when no item carries a unitPrice, so the UI can stay silent
+ * rather than claim an order is worth $0.00.
+ */
+const orderValue = (items: any[] = []): number | null => {
+    const priced = items.filter((it) => it?.unitPrice != null);
+    if (priced.length === 0) return null;
+    return priced.reduce((sum, it) => sum + Number(it.unitPrice) * (Number(it.quantity) || 0), 0);
+};
 
 /** Compact one-line summary of an order's items, e.g. "Tomatoes ×5 lb, Onions ×2 boxes". */
 const itemsSummary = (items: any[] = []) =>
@@ -121,6 +135,7 @@ const ProviderOrdersPage: React.FC = () => {
     // Note captured alongside a status change (courier, ETA, partial shipment).
     const [statusNote, setStatusNote] = useState('');
     const [updating, setUpdating] = useState(false);
+    const [confirmingPayment, setConfirmingPayment] = useState(false);
 
     const advanceStatus = async (order: any, next: { status: string; label: string }) => {
         setUpdating(true);
@@ -149,6 +164,28 @@ const ProviderOrdersPage: React.FC = () => {
         }
     };
 
+    // The provider is the only party who knows the money actually arrived, so
+    // this drives the restaurant's Purchase Order payment status.
+    const setPaymentReceived = async (order: any, received: boolean) => {
+        setConfirmingPayment(true);
+        try {
+            const res = await providerPortalAPI.confirmPayment(order.tenantSlug, order._id, {
+                paymentReceived: received,
+            });
+            toast.success(received ? 'Payment marked as received' : 'Marked as not received');
+
+            const patch = { ...res.data };
+            setRows(prev => prev.map(r =>
+                r._id === order._id && r.tenantSlug === order.tenantSlug ? { ...r, ...patch } : r,
+            ));
+            setDetail((prev: any) => (prev ? { ...prev, ...patch } : prev));
+        } catch (err: any) {
+            toast.error(err?.response?.data?.message || 'Could not update the payment status');
+        } finally {
+            setConfirmingPayment(false);
+        }
+    };
+
     const openDetail = async (row: any) => {
         // Show what the list already has straight away, then fill in the rest.
         setDetail(row);
@@ -160,6 +197,10 @@ const ProviderOrdersPage: React.FC = () => {
             // The summary from the list is still on screen; nothing more to do.
         }
     };
+
+    // Null when the order carries no per-item pricing, so the dialog can omit
+    // money entirely rather than showing a misleading zero.
+    const orderTotal = detail ? orderValue(detail.items) : null;
 
     return (
         <Box sx={{ pb: 4 }}>
@@ -345,14 +386,38 @@ const ProviderOrdersPage: React.FC = () => {
                                     </Typography>
                                 ) : (
                                     <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                                        {detail.items.map((it: any, i: number) => (
-                                            <Stack key={i} direction="row" justifyContent="space-between" sx={{ py: 0.5 }}>
-                                                <Typography variant="body2">{it.name}</Typography>
-                                                <Typography variant="body2" fontWeight={600}>
-                                                    {it.quantity}{it.unit ? ` ${it.unit}` : ''}
-                                                </Typography>
+                                        {detail.items.map((it: any, i: number) => {
+                                            const qty = Number(it.quantity) || 0;
+                                            const lineTotal = it.unitPrice != null ? Number(it.unitPrice) * qty : null;
+                                            return (
+                                                <Stack key={i} direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ py: 0.5 }}>
+                                                    <Box>
+                                                        <Typography variant="body2">{it.name}</Typography>
+                                                        {it.unitPrice != null && (
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {fmtMoney(it.unitPrice)}{it.unit ? ` / ${it.unit}` : ' each'}
+                                                            </Typography>
+                                                        )}
+                                                    </Box>
+                                                    <Box sx={{ textAlign: 'right' }}>
+                                                        <Typography variant="body2" fontWeight={600}>
+                                                            {it.quantity}{it.unit ? ` ${it.unit}` : ''}
+                                                        </Typography>
+                                                        {lineTotal != null && (
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {fmtMoney(lineTotal)}
+                                                            </Typography>
+                                                        )}
+                                                    </Box>
+                                                </Stack>
+                                            );
+                                        })}
+                                        {orderTotal != null && (
+                                            <Stack direction="row" justifyContent="space-between" sx={{ pt: 1, mt: 0.5, borderTop: '1px solid', borderColor: 'divider' }}>
+                                                <Typography variant="body2" fontWeight={700}>Total</Typography>
+                                                <Typography variant="body2" fontWeight={700}>{fmtMoney(orderTotal)}</Typography>
                                             </Stack>
-                                        ))}
+                                        )}
                                     </Stack>
                                 )}
                             </Box>
@@ -366,6 +431,118 @@ const ProviderOrdersPage: React.FC = () => {
                                     </Box>
                                 </>
                             )}
+
+                            {(detail.restaurantAddress || detail.restaurantPhone) && (
+                                <>
+                                    <Divider />
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary" fontWeight={700}>DELIVER TO</Typography>
+                                        <Typography variant="body2" fontWeight={600}>{detail.restaurantName}</Typography>
+                                        {detail.restaurantAddress && (
+                                            <Typography variant="body2" color="text.secondary">{detail.restaurantAddress}</Typography>
+                                        )}
+                                        {detail.restaurantPhone && (
+                                            <Typography variant="body2" color="text.secondary">{detail.restaurantPhone}</Typography>
+                                        )}
+                                    </Box>
+                                </>
+                            )}
+
+                            {/* Always rendered: the provider must be able to confirm
+                                payment even on an order with no attached details. */}
+                            <Divider />
+                            <Box>
+                                        <Typography variant="caption" color="text.secondary" fontWeight={700}>PAYMENT</Typography>
+                                        <Stack spacing={1} sx={{ mt: 0.5 }}>
+                                            {orderTotal != null && (
+                                                <Stack direction="row" justifyContent="space-between" spacing={2}>
+                                                    <Typography variant="body2" color="text.secondary">Amount</Typography>
+                                                    <Typography variant="body2" fontWeight={600}>{fmtMoney(orderTotal)}</Typography>
+                                                </Stack>
+                                            )}
+                                            <Stack direction="row" justifyContent="space-between" spacing={2}>
+                                                <Typography variant="body2" color="text.secondary">Method</Typography>
+                                                <Typography variant="body2" fontWeight={600}>{detail.paymentMode || 'Not specified'}</Typography>
+                                            </Stack>
+                                            {detail.paymentProofUrl ? (
+                                                <Box>
+                                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
+                                                        Proof of payment
+                                                    </Typography>
+                                                    <Box
+                                                        component="a"
+                                                        href={detail.paymentProofUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        sx={{ display: 'block', width: '100%', maxWidth: 260, borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}
+                                                    >
+                                                        <Box
+                                                            component="img"
+                                                            src={detail.paymentProofUrl}
+                                                            alt="Payment proof"
+                                                            sx={{ width: '100%', display: 'block', objectFit: 'cover' }}
+                                                        />
+                                                    </Box>
+                                                    <Typography variant="caption" sx={{ mt: 0.5, display: 'block' }}>
+                                                        <a href={detail.paymentProofUrl} target="_blank" rel="noopener noreferrer">Open full size</a>
+                                                    </Typography>
+                                                </Box>
+                                            ) : (
+                                                <Typography variant="body2" color="text.secondary">
+                                                    No payment proof attached.
+                                                </Typography>
+                                            )}
+
+                                            {/* Only the provider can confirm the money arrived; doing
+                                                so marks the restaurant's Purchase Order as paid. */}
+                                            <Box sx={{ pt: 1, mt: 0.5, borderTop: '1px solid', borderColor: 'divider' }}>
+                                                {detail.paymentReceived ? (
+                                                    <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2} flexWrap="wrap" useFlexGap>
+                                                        <Chip
+                                                            label={`Payment received${detail.paymentReceivedAt ? ` · ${fmtDate(detail.paymentReceivedAt)}` : ''}`}
+                                                            color="success"
+                                                            size="small"
+                                                        />
+                                                        <Button
+                                                            size="small"
+                                                            color="inherit"
+                                                            disabled={confirmingPayment}
+                                                            onClick={() => setPaymentReceived(detail, false)}
+                                                        >
+                                                            Undo
+                                                        </Button>
+                                                    </Stack>
+                                                ) : (
+                                                    <>
+                                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                                            Did you receive this payment?
+                                                        </Typography>
+                                                        <Stack direction="row" spacing={1}>
+                                                            <Button
+                                                                size="small"
+                                                                variant="contained"
+                                                                disabled={confirmingPayment}
+                                                                startIcon={confirmingPayment ? <CircularProgress size={14} color="inherit" /> : undefined}
+                                                                onClick={() => setPaymentReceived(detail, true)}
+                                                                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: ACCENT } }}
+                                                            >
+                                                                Yes, received
+                                                            </Button>
+                                                            <Button
+                                                                size="small"
+                                                                variant="outlined"
+                                                                color="inherit"
+                                                                disabled={confirmingPayment}
+                                                                onClick={() => setPaymentReceived(detail, false)}
+                                                            >
+                                                                Not yet
+                                                            </Button>
+                                                        </Stack>
+                                                    </>
+                                                )}
+                                            </Box>
+                                        </Stack>
+                            </Box>
 
                             <Divider />
                             <Stack spacing={1}>

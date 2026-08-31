@@ -49,7 +49,8 @@ const TenantsPage: React.FC = () => {
     subscriptionEndsAt: '',
     autoRenew: true,
     currentPlan: '',
-    status: ''
+    status: '',
+    notes: ''
   });
   // Quick account-status change via the card chip
   const [statusMenuAnchor, setStatusMenuAnchor] = useState<null | HTMLElement>(null);
@@ -128,7 +129,8 @@ const TenantsPage: React.FC = () => {
       subscriptionEndsAt: tenant.subscriptionEndsAt ? new Date(tenant.subscriptionEndsAt).toISOString().split('T')[0] : '',
       autoRenew: tenant.autoRenew,
       currentPlan: tenant.currentPlan?._id || '',
-      status: tenant.status || 'pending'
+      status: tenant.status || 'pending',
+      notes: ''
     });
     setEditDialogOpen(true);
   };
@@ -182,6 +184,10 @@ const TenantsPage: React.FC = () => {
 
   const handleUpdate = async () => {
     if (!selectedTenant) return;
+    if (!editForm.notes.trim()) {
+      toast.error('Please add a note explaining this subscription change');
+      return;
+    }
     try {
       await superAPI.updateTenantSubscription(selectedTenant._id, editForm);
       toast.success('Tenant updated successfully');
@@ -571,11 +577,22 @@ const TenantsPage: React.FC = () => {
                 <MenuItem value="false">No</MenuItem>
               </Select>
             </FormControl>
+            <TextField
+              label="Notes (required)"
+              placeholder="Why is this subscription being changed?"
+              value={editForm.notes}
+              onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+              multiline
+              minRows={2}
+              required
+              error={editForm.notes.length > 0 && !editForm.notes.trim()}
+              helperText="Recorded in the admin activity log."
+            />
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleUpdate} variant="contained">Save</Button>
+          <Button onClick={handleUpdate} variant="contained" disabled={!editForm.notes.trim()}>Save</Button>
         </DialogActions>
       </Dialog>
     </Box>
