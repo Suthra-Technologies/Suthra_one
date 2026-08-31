@@ -2,6 +2,7 @@ import {
   Business as BusinessIcon,
   CheckCircle as CheckIcon,
   Close as CloseIcon,
+  ContentCopy as CopyIcon,
   Email as EmailIcon,
   Error as ErrorIcon,
   Inventory as InventoryIcon,
@@ -13,9 +14,8 @@ import {
   QrCode as QrIcon,
   Smartphone as SmartphoneIcon,
   EventSeat as TableIcon,
-  DeleteSweep as WastageIcon,
   VideoCall as VideoCallIcon,
-  ContentCopy as CopyIcon
+  DeleteSweep as WastageIcon
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -23,7 +23,6 @@ import {
   Button,
   Card,
   CardContent,
-  CircularProgress,
   Dialog,
   DialogContent,
   Drawer,
@@ -31,9 +30,9 @@ import {
   Paper,
   Stack,
   Toolbar,
+  Tooltip,
   useTheme,
-  Zoom,
-  Tooltip
+  Zoom
 } from "@mui/material";
 import { keyframes } from "@mui/system";
 import React, { useEffect, useState } from "react";
@@ -47,7 +46,7 @@ import {
   TextField,
 } from "@mui/material";
 import PhoneInput from "../../components/PhoneInput";
-import { getEasternTzAbbreviation, formatSlotLabel, easternWallClockToUtcIso } from "../../utils/demoSlots";
+import { easternWallClockToUtcIso, formatSlotLabel, getEasternTzAbbreviation } from "../../utils/demoSlots";
 
 // Orders
 import OrdersIconActiveImg from "/src/assets/images/icons/orders-active.png";
@@ -117,7 +116,7 @@ import StaffIconImg from "/src/assets/images/icons/staff.png";
 
 import { Box, Container, Grid, IconButton, Typography } from "@mui/material";
 import { CardGridSkeleton } from "../../components/common/PageSkeleton";
-import { splitPlanFeatures, planFeatureLabel } from "../../utils/planFeatures";
+import { planFeatureLabel, splitPlanFeatures } from "../../utils/planFeatures";
 
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -1324,7 +1323,7 @@ const HomePage: React.FC = () => {
                 }}
               >
                 <img
-                   src={womenserved1}
+                  src={womenserved1}
                   alt="Waiter serving customer"
                   style={{
                     maxWidth: "100%",
@@ -2341,18 +2340,26 @@ const HomePage: React.FC = () => {
                         <Typography variant="caption" color="text.secondary">
                           I agree to the{" "}
                           <Box
-                            component="span"
+                            component={Link}
+                            to="/terms-and-conditions"
+                            target="_blank"
+                            rel="noopener noreferrer"
                             sx={{
+                              color: "inherit",
                               textDecoration: "underline",
                               cursor: "pointer",
                             }}
                           >
-                            Terms of Service
+                            Terms & Conditions
                           </Box>{" "}
                           and{" "}
                           <Box
-                            component="span"
+                            component={Link}
+                            to="/privacy-policy"
+                            target="_blank"
+                            rel="noopener noreferrer"
                             sx={{
+                              color: "inherit",
                               textDecoration: "underline",
                               cursor: "pointer",
                             }}
@@ -2776,7 +2783,7 @@ const HomePage: React.FC = () => {
               >
                 Join Google Meet
               </Button>
-              
+
               <Box
                 sx={{
                   display: "flex",
