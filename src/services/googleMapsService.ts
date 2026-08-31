@@ -1,13 +1,11 @@
-
-
 export const initializeGoogleMaps = (): Promise<any> => {
   return new Promise((resolve, reject) => {
-    if ((window as any).google && (window as any).google.maps) {
+    if ((window as any).google && (window as any).google.maps && (window as any).google.maps.places) {
       resolve((window as any).google.maps);
       return;
     }
     const checkGoogleMaps = () => {
-      if ((window as any).google && (window as any).google.maps) {
+      if ((window as any).google && (window as any).google.maps && (window as any).google.maps.places) {
         resolve((window as any).google.maps);
       } else {
         setTimeout(checkGoogleMaps, 100);
@@ -15,7 +13,11 @@ export const initializeGoogleMaps = (): Promise<any> => {
     };
     checkGoogleMaps();
     setTimeout(() => {
-      reject(new Error('Google Maps failed to load'));
+      if ((window as any).google && (window as any).google.maps) {
+        resolve((window as any).google.maps);
+      } else {
+        reject(new Error('Google Maps failed to load'));
+      }
     }, 10000);
   });
 };

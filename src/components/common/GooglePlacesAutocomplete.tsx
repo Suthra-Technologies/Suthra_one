@@ -71,7 +71,7 @@ const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> = ({
         }
         const maps = await initializeGoogleMaps();
         if (cancelled) return;
-        if (inputRef.current && !autocompleteRef.current) {
+        if (inputRef.current && !autocompleteRef.current && maps?.places?.Autocomplete) {
           const autocomplete = new maps.places.Autocomplete(inputRef.current, {
             types,
             componentRestrictions: countryRestriction.length ? { country: countryRestriction } : undefined,
@@ -134,6 +134,11 @@ const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> = ({
     try {
       const maps = await initializeGoogleMaps();
       const location = await getCurrentLocation();
+      if (!maps?.Geocoder) {
+        setMapError('Google Geocoder is unavailable');
+        setCurrentLocationLoading(false);
+        return;
+      }
       const geocoder = new maps.Geocoder();
       geocoder.geocode(
         { location: { lat: location.lat, lng: location.lng } },

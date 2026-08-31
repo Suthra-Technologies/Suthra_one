@@ -199,6 +199,36 @@ const MobileBackHandler: React.FC = () => {
   return null;
 };
 
+/**
+ * Helper component to handle redirects when a slug is present in the path 
+ * but the user is already on a tenant subdomain.
+ * e.g. mythri.localhost/mythri/menu -> mythri.localhost/menu
+ */
+const SubdomainRedirect: React.FC<{ contextSlug: string }> = ({ contextSlug }) => {
+  const location = useLocation();
+
+  const redirectContent = (path: string) => (
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100vh',
+      bgcolor: '#f8f9fa'
+    }}>
+      <CircularProgress size={40} sx={{ mb: 2, color: '#4F46E5' }} />
+      <Typography variant="body2" color="text.secondary" fontWeight="medium">
+        Redirecting...
+      </Typography>
+      <Navigate to={path} replace />
+    </Box>
+  );
+
+  // Remove the slug from the path but preserve query parameters
+  const newPath = (location.pathname.replace(`/${contextSlug}`, '') || '/') + location.search;
+  return redirectContent(newPath);
+};
+
 const AppRoutes: React.FC = () => {
   const { user, activeRole, isAuthenticated } = useAuth();
   const hostnameSlug = getTenantSlugFromHostname();
@@ -330,9 +360,6 @@ const App: React.FC = () => {
     (async function () {
       try {
         if (!Capacitor.isNativePlatform()) return;
-        if (Capacitor.getPlatform() === 'android') {
-          await SafeArea.setImmersiveNavigationBar();
-        }
         const safeAreaData = await SafeArea.getSafeAreaInsets();
         const { insets } = safeAreaData;
         for (const [key, value] of Object.entries(insets)) {
@@ -356,6 +383,42 @@ const App: React.FC = () => {
     })();
   }, []);
 
+  // Global Auto-Pop Calendar Picker: Clicking anywhere on any date input or MUI DatePicker automatically opens the calendar
+  useEffect(() => {
+    const handleGlobalCalendarClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      // 1. Native HTML date / time inputs
+      const dateInput = (target instanceof HTMLInputElement && (target.type === 'date' || target.type === 'datetime-local' || target.type === 'month'))
+        ? target
+        : target.closest?.('input[type="date"], input[type="datetime-local"], input[type="month"]') as HTMLInputElement | null;
+
+      if (dateInput && typeof (dateInput as any).showPicker === 'function') {
+        try {
+          (dateInput as any).showPicker();
+          return;
+        } catch {
+          // Browser may restrict or already open
+        }
+      }
+
+      // 2. MUI DatePicker (@mui/x-date-pickers) text fields & containers
+      const datePickerRoot = target.closest?.('.MuiPickersTextField-root, .MuiFormControl-root, .MuiInputBase-root');
+      if (datePickerRoot) {
+        const calendarBtn = datePickerRoot.querySelector?.('button[aria-label*="Choose date"], button[aria-label*="calendar"], button:has([data-testid="CalendarIcon"])') as HTMLButtonElement | null;
+        if (calendarBtn && !calendarBtn.contains(target)) {
+          calendarBtn.click();
+        }
+      }
+    };
+
+    document.addEventListener('click', handleGlobalCalendarClick, true);
+    return () => {
+      document.removeEventListener('click', handleGlobalCalendarClick, true);
+    };
+  }, []);
+
   return (
     <Router>
       <BrandProvider tenantSlug={tenantSlug}>
@@ -370,36 +433,6 @@ const App: React.FC = () => {
       </BrandProvider>
     </Router>
   );
-};
-
-/**
- * Helper component to handle redirects when a slug is present in the path 
- * but the user is already on a tenant subdomain.
- * e.g. mythri.localhost/mythri/menu -> mythri.localhost/menu
- */
-const SubdomainRedirect: React.FC<{ contextSlug: string }> = ({ contextSlug }) => {
-  const location = useLocation();
-
-  const redirectContent = (path: string) => (
-    <Box sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100vh',
-      bgcolor: '#f8f9fa'
-    }}>
-      <CircularProgress size={40} sx={{ mb: 2, color: '#4F46E5' }} />
-      <Typography variant="body2" color="text.secondary" fontWeight="medium">
-        Redirecting...
-      </Typography>
-      <Navigate to={path} replace />
-    </Box>
-  );
-
-  // Remove the slug from the path but preserve query parameters
-  const newPath = (location.pathname.replace(`/${contextSlug}`, '') || '/') + location.search;
-  return redirectContent(newPath);
 };
 
 const RedirectPage: React.FC = () => {

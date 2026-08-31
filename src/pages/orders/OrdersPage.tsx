@@ -394,7 +394,8 @@ const OrdersPage = () => {
                 <MenuItem value="confirmed">Confirmed</MenuItem>
                 <MenuItem value="preparing">Preparing</MenuItem>
                 <MenuItem value="in-progress">In Progress</MenuItem>
-                <MenuItem value="ready">Ready</MenuItem>
+                <MenuItem value="ready">Ready (All)</MenuItem>
+                <MenuItem value="ready_to_takeaway">Ready for Takeaway</MenuItem>
                 <MenuItem value="served">Served</MenuItem>
                 <MenuItem value="completed">Completed</MenuItem>
                 <MenuItem value="cancelled">Cancelled</MenuItem>

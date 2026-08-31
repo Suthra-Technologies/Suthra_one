@@ -67,6 +67,9 @@ import {
     Info as InfoIcon,
     QrCode2 as QrCodeIcon,
     DragIndicator as DragHandleIcon,
+    RotateRight as RotateRightIcon,
+    RotateLeft as RotateLeftIcon,
+    SwapHoriz as FlipIcon,
 } from '@mui/icons-material';
 import { QRCodeSVG } from 'qrcode.react';
 import TableLegendDialog from './TableLegendDialog';
@@ -79,6 +82,7 @@ export interface TableItem {
     location: string;
     section?: string;
     shape?: 'square' | 'rectangle' | 'round';
+    rotation?: number;
     status: string;
     coordinates?: { x?: number; y?: number };
     occupiedAt?: string | Date;
@@ -133,7 +137,7 @@ interface FloorPlanViewProps {
     onOpenDeletedTables?: () => void;
     onQuickStatusChange?: (tableId: string, status: string) => void;
     onOpenHistory?: (tableId: string, title: string) => void;
-    onSaveTableCoordinates?: (updatedTables: { _id: string; coordinates: { x: number; y: number } }[]) => Promise<void>;
+    onSaveTableCoordinates?: (updatedTables: { _id: string; coordinates: { x: number; y: number }; rotation?: number }[]) => Promise<void>;
     onAddFloorElement?: (element: Omit<FloorElementItem, '_id'>) => Promise<void>;
     highlightedTableId?: string | null;
     onOpenOverdueModal?: () => void;
@@ -548,17 +552,18 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     }, [highlightedTableId, tables]);
 
     const [searchQuery, setSearchQuery]           = useState<string>('');
+    const [tablePositions, setTablePositions]     = useState<{ [id: string]: { x: number; y: number } }>({});
+    const [tableRotations, setTableRotations]     = useState<{ [id: string]: number }>({});
+    const [elementPositions, setElementPositions] = useState<{ [id: string]: { x: number; y: number } }>({});
+    const [customRoomHeight, setCustomRoomHeight] = useState<number>(660);
+    const [isSavingLayout, setIsSavingLayout]     = useState(false);
+    const [, setHasUnsavedChanges]                = useState(false);
     const [canvasFilter, setCanvasFilter]         = useState<'all' | 'available' | 'occupied' | 'cleaning' | 'long_seating'>('all');
     const [legendOpen, setLegendOpen]             = useState<boolean>(false);
     const [zoomLevel, setZoomLevel]               = useState<number>(1);
     const [is3DMode, setIs3DMode]                 = useState<boolean>(true);
     const [roomSwitchToast, setRoomSwitchToast]   = useState<string | null>(null);
     const [elementMenuAnchorEl, setElementMenuAnchorEl] = useState<null | HTMLElement>(null);
-    const [tablePositions, setTablePositions]     = useState<{ [id: string]: { x: number; y: number } }>({});
-    const [elementPositions, setElementPositions] = useState<{ [id: string]: { x: number; y: number } }>({});
-    const [customRoomHeight, setCustomRoomHeight] = useState<number>(660);
-    const [isSavingLayout, setIsSavingLayout]     = useState(false);
-    const [, setHasUnsavedChanges]                = useState(false);
     const [contextMenu, setContextMenu]           = useState<{ mouseX: number; mouseY: number; table: TableItem | null } | null>(null);
     const [elementContextMenu, setElementContextMenu] = useState<{ mouseX: number; mouseY: number; element: FloorElementItem | null } | null>(null);
     const [deleteElementConfirm, setDeleteElementConfirm] = useState<{ id: string; label: string } | null>(null);
@@ -569,54 +574,6 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     const canvasRef     = useRef<HTMLDivElement>(null);
     const [, setTick]   = useState(0);
-
-    const handleAddLandmarkElement = (type: string, label: string) => {
-        setElementMenuAnchorEl(null);
-        let defaultCoords = { x: 740, y: 15 };
-        if (type === 'window') defaultCoords = { x: 920, y: 120 };
-        else if (type === 'bar') defaultCoords = { x: 45, y: 560 };
-        else if (type === 'door') defaultCoords = { x: 45, y: 15 };
-        else if (type === 'restroom') defaultCoords = { x: 740, y: 560 };
-
-        const newElem: FloorElementItem = {
-            _id: `elem-${Date.now()}`,
-            type: type as any,
-            label,
-            section: activeSection === 'all' ? 'indoor' : activeSection,
-            coordinates: defaultCoords,
-            width: type === 'window' ? 18 : (type === 'bar' ? 180 : 100),
-            height: type === 'window' ? 150 : 35,
-        };
-        if (onAddFloorElement) {
-            onAddFloorElement({
-                type: newElem.type,
-                label: newElem.label,
-                section: newElem.section,
-                coordinates: newElem.coordinates,
-                width: newElem.width,
-                height: newElem.height,
-            });
-        }
-        toast.success(`Added "${label}" to floor map`);
-    };
-
-    const handleDeleteLandmarkElement = async (elemId: string, label: string) => {
-        try {
-            if (!elemId.startsWith('elem-')) {
-                await floorElementsAPI.remove(elemId).catch(() => null);
-            }
-            setDeletedElementIds(prev => [...prev, elemId]);
-            toast.success(`Deleted "${label}" from floor map`);
-            setElementPositions(prev => {
-                const next = { ...prev };
-                delete next[elemId];
-                return next;
-            });
-        } catch (err) {
-            setDeletedElementIds(prev => [...prev, elemId]);
-            toast.success(`Removed "${label}"`);
-        }
-    };
 
     useEffect(() => {
         const interval = setInterval(() => setTick(t => t + 1), 60000);
@@ -672,19 +629,106 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         return true;
     };
 
+    const handleRotateTable = (tableId: string, degreesDelta: number = 90, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        setTableRotations(prev => {
+            const current = prev[tableId] ?? (tables.find(t => t._id === tableId)?.rotation || 0);
+            const next = ((current + degreesDelta) % 360 + 360) % 360;
+            return { ...prev, [tableId]: next };
+        });
+        setHasUnsavedChanges(true);
+        toast.success(`Rotated table ${degreesDelta > 0 ? '+' : ''}${degreesDelta}°`);
+    };
+
+    const handleSetTableRotation = (tableId: string, degrees: number, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        const normalized = ((degrees % 360) + 360) % 360;
+        setTableRotations(prev => ({ ...prev, [tableId]: normalized }));
+        setHasUnsavedChanges(true);
+        toast.success(`Table set to ${normalized}°${normalized === 180 ? ' (Completely Reversed)' : (normalized === 0 ? ' (Default)' : '')}`);
+    };
+
+    const dynamicCanvasWidth = useMemo(() => {
+        let maxX = 1200;
+        currentSectionTables.forEach(table => {
+            const pos = tablePositions[table._id] || { x: 45, y: 75 };
+            const isRound = table.shape === 'round';
+            const rot = tableRotations[table._id] ?? table.rotation ?? 0;
+            const isRotated90or270 = rot === 90 || rot === 270;
+            const dims = getTableDimensions(table.capacity, isRound);
+            const w = isRotated90or270 ? dims.h : dims.w;
+            const rightEdge = pos.x + w + 140;
+            if (rightEdge > maxX) {
+                maxX = rightEdge;
+            }
+        });
+        return Math.max(maxX, 1500);
+    }, [currentSectionTables, tablePositions, tableRotations]);
+
     const dynamicCanvasHeight = useMemo(() => {
         let maxY = 540;
         currentSectionTables.forEach(table => {
             const pos = tablePositions[table._id] || { x: 45, y: 75 };
             const isRound = table.shape === 'round';
-            const { h } = getTableDimensions(table.capacity, isRound);
+            const rot = tableRotations[table._id] ?? table.rotation ?? 0;
+            const isRotated90or270 = rot === 90 || rot === 270;
+            const dims = getTableDimensions(table.capacity, isRound);
+            const h = isRotated90or270 ? dims.w : dims.h;
             const bottomEdge = pos.y + h + 110;
             if (bottomEdge > maxY) {
                 maxY = bottomEdge;
             }
         });
         return Math.max(maxY, customRoomHeight);
-    }, [currentSectionTables, tablePositions, customRoomHeight]);
+    }, [currentSectionTables, tablePositions, tableRotations, customRoomHeight]);
+
+    const handleAddLandmarkElement = (type: string, label: string) => {
+        setElementMenuAnchorEl(null);
+        let defaultCoords = { x: 740, y: 15 };
+        if (type === 'window') defaultCoords = { x: 920, y: 120 };
+        else if (type === 'bar') defaultCoords = { x: 45, y: 560 };
+        else if (type === 'door') defaultCoords = { x: 45, y: 15 };
+        else if (type === 'restroom') defaultCoords = { x: 740, y: 560 };
+
+        const newElem: FloorElementItem = {
+            _id: `elem-${Date.now()}`,
+            type: type as any,
+            label,
+            section: activeSection === 'all' ? 'indoor' : activeSection,
+            coordinates: defaultCoords,
+            width: type === 'window' ? 18 : (type === 'bar' ? 180 : 100),
+            height: type === 'window' ? 150 : 35,
+        };
+        if (onAddFloorElement) {
+            onAddFloorElement({
+                type: newElem.type,
+                label: newElem.label,
+                section: newElem.section,
+                coordinates: newElem.coordinates,
+                width: newElem.width,
+                height: newElem.height,
+            });
+        }
+        toast.success(`Added "${label}" to floor map`);
+    };
+
+    const handleDeleteLandmarkElement = async (elemId: string, label: string) => {
+        try {
+            if (!elemId.startsWith('elem-')) {
+                await floorElementsAPI.remove(elemId).catch(() => null);
+            }
+            setDeletedElementIds(prev => [...prev, elemId]);
+            toast.success(`Deleted "${label}" from floor map`);
+            setElementPositions(prev => {
+                const next = { ...prev };
+                delete next[elemId];
+                return next;
+            });
+        } catch (err) {
+            setDeletedElementIds(prev => [...prev, elemId]);
+            toast.success(`Removed "${label}"`);
+        }
+    };
 
     const currentSectionElements = useMemo<FloorElementItem[]>(() => [], []);
 
@@ -701,8 +745,10 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     // Grid calculations start cleanly at y = 90 to prevent overlap with top landmark banners
     useEffect(() => {
         const pos: { [id: string]: { x: number; y: number } } = {};
+        const rots: { [id: string]: number } = {};
         const COLS = isMobile ? 2 : 4;
         currentSectionTables.forEach((table, index) => {
+            rots[table._id] = table.rotation || 0;
             if (table.coordinates && typeof table.coordinates.x === 'number' && typeof table.coordinates.y === 'number') {
                 pos[table._id] = { x: table.coordinates.x, y: table.coordinates.y };
             } else {
@@ -714,6 +760,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             }
         });
         setTablePositions(pos);
+        setTableRotations(rots);
     }, [currentSectionTables, isMobile]);
 
     const handleDragStart = (e: React.MouseEvent, tableId: string) => {
@@ -754,15 +801,20 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
     const handleMouseMove = (e: React.MouseEvent) => {
         if (!isCustomizeMode || isCustomerMode) return;
+        const availableWidth = canvasRef.current ? (canvasRef.current.clientWidth / zoomLevel) : 1050;
         if (draggingTableId) {
             const rawX = Math.round((e.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10;
             const rawY = Math.round((e.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10;
             const draggingTable = currentSectionTables.find(t => t._id === draggingTableId);
             const isRound = draggingTable?.shape === 'round';
-            const { w: tableWidth, h: tableHeight } = getTableDimensions(draggingTable?.capacity || 4, isRound);
+            const rot = tableRotations[draggingTableId] ?? draggingTable?.rotation ?? 0;
+            const isRotated90or270 = rot === 90 || rot === 270;
+            const dims = getTableDimensions(draggingTable?.capacity || 4, isRound);
+            const tableWidth = isRotated90or270 ? dims.h : dims.w;
+            const tableHeight = isRotated90or270 ? dims.w : dims.h;
 
             const minX = 35;
-            const maxX = Math.max(minX, 930 - tableWidth);
+            const maxX = Math.max(minX, availableWidth - tableWidth - 45);
             const minY = 40;
             const maxY = Math.max(minY, dynamicCanvasHeight - tableHeight - 20);
 
@@ -773,7 +825,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         } else if (draggingElementId) {
             const rawX = Math.round((e.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10;
             const rawY = Math.round((e.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10;
-            const clampedX = Math.min(Math.max(35, rawX), 850);
+            const clampedX = Math.min(Math.max(35, rawX), availableWidth - 100);
             const clampedY = Math.min(Math.max(40, rawY), Math.max(40, dynamicCanvasHeight - 50));
             setElementPositions(prev => ({ ...prev, [draggingElementId]: { x: clampedX, y: clampedY } }));
             setHasUnsavedChanges(true);
@@ -783,15 +835,20 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     const handleTouchMove = (e: React.TouchEvent) => {
         if (!isCustomizeMode || isCustomerMode || e.touches.length === 0) return;
         const touch = e.touches[0];
+        const availableWidth = canvasRef.current ? (canvasRef.current.clientWidth / zoomLevel) : 1050;
         if (draggingTableId) {
             const rawX = Math.round((touch.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10;
             const rawY = Math.round((touch.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10;
             const draggingTable = currentSectionTables.find(t => t._id === draggingTableId);
             const isRound = draggingTable?.shape === 'round';
-            const { w: tableWidth, h: tableHeight } = getTableDimensions(draggingTable?.capacity || 4, isRound);
+            const rot = tableRotations[draggingTableId] ?? draggingTable?.rotation ?? 0;
+            const isRotated90or270 = rot === 90 || rot === 270;
+            const dims = getTableDimensions(draggingTable?.capacity || 4, isRound);
+            const tableWidth = isRotated90or270 ? dims.h : dims.w;
+            const tableHeight = isRotated90or270 ? dims.w : dims.h;
 
             const minX = 35;
-            const maxX = Math.max(minX, 930 - tableWidth);
+            const maxX = Math.max(minX, availableWidth - tableWidth - 45);
             const minY = 40;
             const maxY = Math.max(minY, dynamicCanvasHeight - tableHeight - 20);
 
@@ -802,7 +859,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         } else if (draggingElementId) {
             const rawX = Math.round((touch.clientX - dragOffsetRef.current.x) / zoomLevel / 10) * 10;
             const rawY = Math.round((touch.clientY - dragOffsetRef.current.y) / zoomLevel / 10) * 10;
-            const clampedX = Math.min(Math.max(35, rawX), 850);
+            const clampedX = Math.min(Math.max(35, rawX), availableWidth - 100);
             const clampedY = Math.min(Math.max(40, rawY), Math.max(40, dynamicCanvasHeight - 50));
             setElementPositions(prev => ({ ...prev, [draggingElementId]: { x: clampedX, y: clampedY } }));
             setHasUnsavedChanges(true);
@@ -820,7 +877,8 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         let currentX = 45;
         let currentY = 85;
         let rowMaxHeight = 0;
-        const MAX_CANVAS_WIDTH = 860;
+        const availableWidth = canvasRef.current ? (canvasRef.current.clientWidth / zoomLevel) : 1050;
+        const MAX_CANVAS_WIDTH = Math.max(700, availableWidth - 80);
         const GAP_X = 65;
         const GAP_Y = 65;
 
@@ -848,7 +906,11 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             const validTableIds = new Set(tables.filter(t => t.isActive !== false).map(t => t._id));
             const updates = Object.entries(tablePositions)
                 .filter(([id]) => validTableIds.has(id))
-                .map(([id, coords]) => ({ _id: id, coordinates: coords }));
+                .map(([id, coords]) => ({
+                    _id: id,
+                    coordinates: coords,
+                    rotation: tableRotations[id] ?? tables.find(t => t._id === id)?.rotation ?? 0,
+                }));
             await onSaveTableCoordinates(updates);
 
             // Save moved doors, windows, bar counters, restrooms coordinates to MongoDB
@@ -1177,7 +1239,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                 ) : (
                     <Box sx={{
                         position: 'relative',
-                        minWidth: 960,
+                        width: '100%',
                         minHeight: dynamicCanvasHeight + 40,
                         transform: `scale(${zoomLevel})`,
                         transformOrigin: 'top left',
@@ -1212,7 +1274,12 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                 statusLabel = 'Selected Table ✨';
                             }
 
-                            const { w, h } = getTableDimensions(table.capacity, isRound);
+                            const rot = tableRotations[table._id] ?? table.rotation ?? 0;
+                            const isRotated90or270 = rot === 90 || rot === 270;
+                            const { w: baseW, h: baseH } = getTableDimensions(table.capacity, isRound);
+                            const w = isRotated90or270 ? baseH : baseW;
+                            const h = isRotated90or270 ? baseW : baseH;
+
                             const tooltipText = isCustomerMode
                                 ? `${table.tableNumber ? `Table ${table.tableNumber}` : (table.tableName || 'Table')} • ${table.capacity} Guests • ${isOccupied || isCleaning ? 'Taken 🔒' : 'Available to Book ✅'}`
                                 : `${table.tableNumber ? `T-${table.tableNumber}` : (table.tableName || 'Table')} • ${table.capacity} seats • ${statusLabel}`;
@@ -1274,6 +1341,58 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                         }),
                                     }}
                                 >
+                                    {/* 1-Click Rotate & Flip Buttons in Move Mode */}
+                                    {isCustomizeMode && !isCustomerMode && (
+                                        <Box sx={{ position: 'absolute', top: -11, right: -11, display: 'flex', gap: 0.5, zIndex: 30 }}>
+                                            <Tooltip title={`Rotate 90° Clockwise (Current: ${rot}°)`}>
+                                                <Box
+                                                    onClick={(e) => handleRotateTable(table._id, 90, e)}
+                                                    onMouseDown={(e) => e.stopPropagation()}
+                                                    onTouchStart={(e) => e.stopPropagation()}
+                                                    sx={{
+                                                        bgcolor: '#2563EB',
+                                                        color: '#FFFFFF',
+                                                        borderRadius: '50%',
+                                                        width: 22,
+                                                        height: 22,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        boxShadow: '0 2px 6px rgba(37,99,235,0.6)',
+                                                        transition: 'all 0.15s ease',
+                                                        '&:hover': { transform: 'scale(1.2)', bgcolor: '#1D4ED8' }
+                                                    }}
+                                                >
+                                                    <RotateRightIcon sx={{ fontSize: 13 }} />
+                                                </Box>
+                                            </Tooltip>
+                                            <Tooltip title={`Flip 180° / Completely Reverse (Current: ${rot}°)`}>
+                                                <Box
+                                                    onClick={(e) => handleRotateTable(table._id, 180, e)}
+                                                    onMouseDown={(e) => e.stopPropagation()}
+                                                    onTouchStart={(e) => e.stopPropagation()}
+                                                    sx={{
+                                                        bgcolor: '#7C3AED',
+                                                        color: '#FFFFFF',
+                                                        borderRadius: '50%',
+                                                        width: 22,
+                                                        height: 22,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        boxShadow: '0 2px 6px rgba(124,58,237,0.6)',
+                                                        transition: 'all 0.15s ease',
+                                                        '&:hover': { transform: 'scale(1.2)', bgcolor: '#6D28D9' }
+                                                    }}
+                                                >
+                                                    <FlipIcon sx={{ fontSize: 13 }} />
+                                                </Box>
+                                            </Tooltip>
+                                        </Box>
+                                    )}
+
                                     {/* REALISTIC SEATING FORMULA CHAIRS */}
                                     {renderDynamicChairs(table.capacity, table.shape, statusColor, is3DMode, guestCount, isCommunalTable)}
 
@@ -1330,7 +1449,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                             <Box sx={{
                                                 position: 'absolute',
                                                 top: 3,
-                                                right: 3,
+                                                left: 3,
                                                 bgcolor: '#0F172A',
                                                 color: '#38BDF8',
                                                 borderRadius: '50%',
@@ -1345,11 +1464,12 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                                                 <DragHandleIcon sx={{ fontSize: 11 }} />
                                             </Box>
                                         )}
-                                            {/* Status dot + Table number */}
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-                                                <Box sx={{
-                                                    width: 7, height: 7, borderRadius: '50%',
-                                                    bgcolor: isOverdue ? '#DC2626' : statusColor,
+
+                                        {/* Status dot + Table number */}
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                                            <Box sx={{
+                                                width: 7, height: 7, borderRadius: '50%',
+                                                bgcolor: isOverdue ? '#DC2626' : statusColor,
                                                     boxShadow: isOverdue
                                                         ? `0 0 0 1.5px #FFFFFF, 0 0 8px #DC2626`
                                                         : `0 0 0 1.5px #FFFFFF, 0 0 6px ${statusColor}`,
@@ -1521,6 +1641,23 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                             </MenuItem>
                         ),
                         <Divider key="div-2" sx={{ my: 0.5 }} />,
+                        <MenuItem key="rotate-90" onClick={() => { if (contextMenu?.table) handleRotateTable(contextMenu.table._id, 90); handleCloseContextMenu(); }}>
+                            <ListItemIcon><RotateRightIcon fontSize="small" color="primary" /></ListItemIcon>
+                            <ListItemText primary="Rotate 90° Clockwise" primaryTypographyProps={{ fontWeight: 700 }} />
+                        </MenuItem>,
+                        <MenuItem key="flip-180" onClick={() => { if (contextMenu?.table) handleRotateTable(contextMenu.table._id, 180); handleCloseContextMenu(); }}>
+                            <ListItemIcon><FlipIcon fontSize="small" sx={{ color: '#7C3AED' }} /></ListItemIcon>
+                            <ListItemText primary="Flip 180° (Complete Reverse)" primaryTypographyProps={{ fontWeight: 700 }} />
+                        </MenuItem>,
+                        <MenuItem key="rotate-270" onClick={() => { if (contextMenu?.table) handleRotateTable(contextMenu.table._id, 270); handleCloseContextMenu(); }}>
+                            <ListItemIcon><RotateLeftIcon fontSize="small" color="secondary" /></ListItemIcon>
+                            <ListItemText primary="Rotate 270° (90° Counter-Clockwise)" />
+                        </MenuItem>,
+                        <MenuItem key="reset-rot" onClick={() => { if (contextMenu?.table) handleSetTableRotation(contextMenu.table._id, 0); handleCloseContextMenu(); }}>
+                            <ListItemIcon><ResetZoomIcon fontSize="small" color="action" /></ListItemIcon>
+                            <ListItemText primary="Reset to Normal (0°)" />
+                        </MenuItem>,
+                        <Divider key="div-3" sx={{ my: 0.5 }} />,
                         onOpenEditTable && (
                             <MenuItem key="edit-details" onClick={() => { if (contextMenu?.table) onOpenEditTable(contextMenu.table); handleCloseContextMenu(); }}>
                                 <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>

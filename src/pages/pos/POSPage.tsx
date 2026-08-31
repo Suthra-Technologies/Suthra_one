@@ -3543,7 +3543,10 @@ const POSPage: React.FC = () => {
                     <Box sx={{
                         display: { xs: 'flex', md: 'none' },
                         position: 'fixed',
-                        bottom: 16,
+                        bottom: {
+                            xs: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+                            sm: 24
+                        },
                         left: 16,
                         right: 16,
                         bgcolor: '#10b981', // Premium green color

@@ -220,10 +220,10 @@ const LoginPage: React.FC = () => {
           
           const tenant = result.user?.tenant;
           const isSettingsIncomplete = tenant 
-            ? (tenant.isProfileComplete === false || (tenant.isProfileComplete === undefined && !tenant.logo))
+            ? (tenant.isProfileComplete === false && !tenant.name)
             : false;
           
-          const forceSettings = userRole === 'admin' && (result.user?.isFirstLogin || isSettingsIncomplete);
+          const forceSettings = userRole === 'admin' && result.user?.isFirstLogin && isSettingsIncomplete;
           
           if (forceSettings) {
             console.log('LoginPage: Forcing newly registered/incomplete admin to /settings');

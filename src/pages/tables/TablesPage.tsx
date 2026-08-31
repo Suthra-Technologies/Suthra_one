@@ -839,11 +839,14 @@ const TablesPage: React.FC = () => {
         }
     };
 
-    const handleSaveTableCoordinates = async (updatedTables: { _id: string; coordinates: { x: number; y: number } }[]) => {
+    const handleSaveTableCoordinates = async (updatedTables: { _id: string; coordinates: { x: number; y: number }; rotation?: number }[]) => {
         try {
             await Promise.all(
                 updatedTables.map(item =>
-                    tablesAPI.update(item._id, { coordinates: item.coordinates })
+                    tablesAPI.update(item._id, {
+                        coordinates: item.coordinates,
+                        ...(item.rotation !== undefined ? { rotation: item.rotation } : {})
+                    })
                 )
             );
             toast.success('Floor layout saved successfully');

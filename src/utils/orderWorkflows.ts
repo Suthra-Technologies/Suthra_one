@@ -179,7 +179,12 @@ export function getAvailableStatuses(currentStatus: string, orderType: string): 
         return [];
     }
 
-    // Always allow cancellation
+    // Once food has reached served status and is with the customer, allow only completing/paying the order (hide cancelled)
+    if (currentStatus === 'served') {
+        return ['completed'];
+    }
+
+    // Always allow cancellation before served
     if (!nextStatuses.includes('cancelled')) {
         nextStatuses.push('cancelled');
     }

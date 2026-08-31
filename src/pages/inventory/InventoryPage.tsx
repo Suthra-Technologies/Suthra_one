@@ -140,14 +140,12 @@ interface DailyReport {
 const MemoizedMaterialCard = React.memo(({
     material,
     onUsage,
-    onNotes,
     onEdit,
     onDelete,
     getStatus
 }: {
     material: RawMaterial;
     onUsage: (m: RawMaterial) => void;
-    onNotes: (m: RawMaterial) => void;
     onEdit: (m: RawMaterial) => void;
     onDelete: (m: RawMaterial) => void;
     getStatus: (m: RawMaterial) => { label: string; color: "error" | "warning" | "success" };
@@ -199,9 +197,6 @@ const MemoizedMaterialCard = React.memo(({
 
                 <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 1, borderTop: 1, borderColor: 'divider', pt: 2 }}>
                     <Button size="small" startIcon={<UsageIcon />} onClick={() => onUsage(material)}>Usage</Button>
-                    {material.supplier?.name && (
-                        <Button size="small" startIcon={<NotesIcon />} onClick={() => onNotes(material)} color="info">Notes</Button>
-                    )}
                     <IconButton size="small" color="primary" onClick={() => onEdit(material)}><EditIcon /></IconButton>
                     <IconButton size="small" color="error" onClick={() => onDelete(material)}><DeleteIcon /></IconButton>
                 </Stack>
@@ -624,16 +619,39 @@ const InventoryPage: React.FC = () => {
                         // Mobile Card View for Raw Materials
                         <Stack spacing={2}>
                             {rawMaterials.map((material) => (
-                                <MemoizedMaterialCard
-                                    key={material._id}
-                                    material={material}
-                                    onUsage={handleRecordUsage}
-                                    onNotes={handleVendorNotes}
-                                    // onItemNotes={handleItemNotes}
-                                    onEdit={handleEditMaterial}
-                                    onDelete={handleDeleteMaterial}
-                                    getStatus={getStockStatus}
-                                />
+                                showDeleted ? (
+                                    <Card key={material._id}>
+                                        <CardContent>
+                                            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+                                                <Box>
+                                                    <Typography variant="subtitle1" fontWeight="bold">{material.name}</Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {material.currentStock} {material.unit} · {material.category}
+                                                    </Typography>
+                                                </Box>
+                                                <Chip label="Deleted" color="error" size="small" />
+                                            </Stack>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                color="success"
+                                                startIcon={<RestoreIcon />}
+                                                onClick={() => handleRestoreMaterial(material)}
+                                            >
+                                                Restore
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+                                ) : (
+                                    <MemoizedMaterialCard
+                                        key={material._id}
+                                        material={material}
+                                        onUsage={handleRecordUsage}
+                                        onEdit={handleEditMaterial}
+                                        onDelete={handleDeleteMaterial}
+                                        getStatus={getStockStatus}
+                                    />
+                                )
                             ))}
                         </Stack>
                     ) : (

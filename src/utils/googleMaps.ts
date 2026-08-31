@@ -2,7 +2,7 @@
 let googleMapsScriptLoadingPromise: Promise<void> | null = null;
 
 export const loadGoogleMapsScript = (apiKey: string): Promise<void> => {
-    if (window.google && window.google.maps) {
+    if (window.google && window.google.maps && window.google.maps.places) {
         return Promise.resolve();
     }
 
