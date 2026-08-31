@@ -239,6 +239,7 @@ interface PhoneInputProps {
 }
 
 import { useSettings } from '../context/SettingsContext';
+import { validatePhone } from '../utils/validation';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -262,6 +263,19 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
 }) => {
     const { defaultDialCode } = useSettings();
     const effectiveDialCode = dialCode || defaultDialCode || '1';
+
+    // Live validation evaluation as user types
+    const liveValidation = useMemo(() => {
+        const rawDigits = String(value || '').replace(/\D/g, '');
+        if (!rawDigits || rawDigits.trim() === '') {
+            return { isValid: true };
+        }
+        return validatePhone(rawDigits, effectiveDialCode);
+    }, [value, effectiveDialCode]);
+
+    const isInvalidLive = Boolean(value && String(value).trim().length > 0 && !liveValidation.isValid);
+    const hasError = Boolean(error) || isInvalidLive;
+    const effectiveHelperText = isInvalidLive ? liveValidation.message : (helperText || '');
 
     // Format phone numbers dynamically
     const formatPhone = (val: string, dCode: string) => {
@@ -338,8 +352,8 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
                     onChange(raw);
                 }}
                 required={required}
-                error={error}
-                helperText={helperText}
+                error={hasError}
+                helperText={effectiveHelperText}
                 disabled={disabled}
                 size={size}
                 placeholder={placeholder}

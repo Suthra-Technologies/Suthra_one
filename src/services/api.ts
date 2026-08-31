@@ -383,7 +383,9 @@ export const payrollAPI = {
   updateProfile: (id: string, data: any) => api.put(`/payroll/profiles/${id}`, data),
   deactivateProfile: (id: string, data: { status?: string; reason?: string; resignationDate?: string; letterUrl?: string }) =>
     api.delete(`/payroll/profiles/${id}`, { data }),
-  syncUsers: () => api.post('/payroll/sync-users'),
+  // Staff who can still be given a payroll profile. Listed automatically, so a
+  // new tenant needs no import step before adding anyone.
+  getStaffOptions: () => api.get('/payroll/staff-options'),
 
   // Payroll runs
   getSheet: (month: number, year: number) => api.get('/payroll/sheet', { params: { month, year } }),

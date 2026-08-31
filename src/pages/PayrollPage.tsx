@@ -11,12 +11,12 @@ import {
     PlayArrow as ProcessIcon,
     Refresh as RefreshIcon,
     Search as SearchIcon,
-    Sync as SyncIcon,
     Today as TodayIcon,
     Visibility as ViewIcon,
 } from '@mui/icons-material';
 import {
     alpha,
+    Autocomplete,
     Avatar,
     Box,
     Button,
@@ -59,7 +59,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../context/SettingsContext';
-import { payrollAPI, usersAPI } from '../services/api';
+import { payrollAPI } from '../services/api';
 import { TableSkeleton } from '../components/common/PageSkeleton';
 
 const ITEMS_PER_PAGE = 10;
@@ -168,6 +168,9 @@ const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const emptyProfile = {
     user: '',
+    // Set instead of `user` when a name is typed for someone who has no
+    // system access. Exactly one of the two is ever populated.
+    staffName: '',
     designation: '',
     basicSalary: 0,
     bonus: 0,
@@ -215,7 +218,11 @@ const PayrollPage: React.FC = () => {
     const [saving, setSaving] = useState(false);
 
     // ----- profile form validation -----
-    const staffError = !editingId && !form.user ? 'Select a staff member' : '';
+    // Either an existing user is selected or a name was typed — one is enough.
+    const staffError =
+        !editingId && !form.user && !String(form.staffName || '').trim()
+            ? 'Enter the employee name'
+            : '';
     const designationIssue = designationError(form.designation || '');
     const salaryError = numValue(numText(form.basicSalary)) <= 0 ? 'Enter an amount greater than 0' : '';
     const shiftHoursValue = numValue(numText(form.shiftHours));
@@ -349,18 +356,9 @@ const PayrollPage: React.FC = () => {
         runBusy('create', async () => {
             setEditingId(null);
             setForm(emptyProfile);
-            try {
-                const res = await usersAPI.getUsers({ limit: 200 });
-                const list = res.data?.data || res.data?.users || res.data || [];
-                const covered = new Set(profiles.map((p: any) => String(p.user?._id)));
-                setStaffUsers(
-                    (Array.isArray(list) ? list : []).filter(
-                        (u: any) => !u.roles?.includes('customer') && !covered.has(String(u._id)),
-                    ),
-                );
-            } catch {
-                setStaffUsers([]);
-            }
+            // The server returns the tenant's staff minus those already covered,
+            // so the list is populated without any import step first.
+            await loadStaffOptions();
             setFormOpen(true);
         });
 
@@ -418,18 +416,16 @@ const PayrollPage: React.FC = () => {
         }
     };
 
-    const syncUsers = () =>
-        runBusy('sync', async () => {
-            try {
-                setLoading(true);
-                const res = await payrollAPI.syncUsers();
-                toast.success(`Created ${res.data?.created ?? 0} profile(s)`);
-                await loadProfiles();
-            } catch (err: any) {
-                toast.error(err?.response?.data?.message || 'Sync failed');
-                setLoading(false);
-            }
-        });
+    /** Staff eligible for a payroll profile, straight from the server. */
+    const loadStaffOptions = useCallback(async () => {
+        try {
+            const res = await payrollAPI.getStaffOptions();
+            setStaffUsers(Array.isArray(res.data) ? res.data : []);
+        } catch {
+            setStaffUsers([]);
+        }
+    }, []);
+
 
     const terminate = async (profile: any) => {
         if (!window.confirm(`Mark ${profile.user?.firstName || profile.employeeCode} as terminated?`)) return;
@@ -748,14 +744,6 @@ const PayrollPage: React.FC = () => {
                         variant="outlined" size="small"
                     >
                         Daily{!isMobile && ' Attendance'}
-                    </Button>
-                    <Button
-                        startIcon={isBusy('sync') ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
-                        onClick={syncUsers}
-                        disabled={isBusy('sync')}
-                        variant="outlined" size="small"
-                    >
-                        {isBusy('sync') ? 'Syncing…' : 'Sync Staff'}
                     </Button>
                     <Button
                         startIcon={isBusy('export') ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
@@ -1311,26 +1299,46 @@ const PayrollPage: React.FC = () => {
                     <Grid container spacing={2} sx={{ mt: 0 }}>
                         {!editingId && (
                             <Grid item xs={12}>
-                                <FormControl fullWidth size="small" required error={!!staffError}>
-                                    <InputLabel>Staff Member</InputLabel>
-                                    <Select
-                                        value={form.user}
-                                        label="Staff Member"
-                                        onChange={(e) => setForm({ ...form, user: e.target.value })}
-                                    >
-                                        {staffUsers.map((u) => (
-                                            <MenuItem key={u._id} value={u._id}>
-                                                {u.firstName} {u.lastName} — {u.roles?.[0]}
-                                            </MenuItem>
-                                        ))}
-                                        {!staffUsers.length && (
-                                            <MenuItem value="" disabled>
-                                                No staff without a payroll profile
-                                            </MenuItem>
-                                        )}
-                                    </Select>
-                                    <FormHelperText>{staffError || 'Required'}</FormHelperText>
-                                </FormControl>
+                                <Autocomplete
+                                    freeSolo
+                                    size="small"
+                                    options={staffUsers}
+                                    // Existing staff are objects; a typed-in name
+                                    // arrives as a plain string.
+                                    getOptionLabel={(option: any) =>
+                                        typeof option === 'string' ? option : option?.name || ''
+                                    }
+                                    isOptionEqualToValue={(option: any, value: any) =>
+                                        String(option?._id) === String(value?._id)
+                                    }
+                                    value={form.user ? staffUsers.find((u: any) => String(u._id) === String(form.user)) || null : (form.staffName || null)}
+                                    onChange={(_: any, next: any) => {
+                                        if (next && typeof next === 'object') {
+                                            // Picked someone who already has a login.
+                                            setForm({ ...form, user: next._id, staffName: '' });
+                                        } else {
+                                            // Typed a name: no user account is involved.
+                                            setForm({ ...form, user: '', staffName: next || '' });
+                                        }
+                                    }}
+                                    onInputChange={(_: any, text: string, reason: string) => {
+                                        if (reason === 'input') {
+                                            setForm((prev: any) => ({ ...prev, user: '', staffName: text }));
+                                        }
+                                    }}
+                                    renderInput={(params: any) => (
+                                        <TextField
+                                            {...params}
+                                            required
+                                            label="Employee Name"
+                                            error={!!staffError}
+                                            helperText={
+                                                staffError
+                                                || 'Pick from the list, or type a name for someone without system access.'
+                                            }
+                                        />
+                                    )}
+                                />
                             </Grid>
                         )}
                         <Grid item xs={12} sm={6}>

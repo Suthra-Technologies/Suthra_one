@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TextField } from '@mui/material';
 import type { TextFieldProps } from '@mui/material';
 import { applySanitization, validateEmail } from '../../utils/inputSanitizers';
+import { validatePhone } from '../../utils/validation';
 import type { InputType } from '../../utils/inputSanitizers';
 
 export type CustomInputProps = Omit<TextFieldProps, 'type' | 'onChange'> & {
@@ -41,7 +42,6 @@ const CustomInput: React.FC<CustomInputProps> = ({
     const sanitizedValue = applySanitization(rawValue, type, allowDecimals, customRegex);
     
     // Fix: Force the DOM node to instantly reflect the sanitized value.
-    // If the sanitized value is identical to the previous state, React might skip re-rendering the DOM node, leaving the invalid character visible.
     if (e.target.value !== sanitizedValue) {
         e.target.value = sanitizedValue;
     }
@@ -51,22 +51,22 @@ const CustomInput: React.FC<CustomInputProps> = ({
       onChange(sanitizedValue, e);
     }
     
-    // 4. Clear internal validation errors immediately upon typing
-    if (internalError) {
+    // 4. Perform real-time validation on typing for phone
+    if (type === 'phone') {
+      if (sanitizedValue && sanitizedValue.trim().length > 0) {
+        const res = validatePhone(sanitizedValue);
+        setInternalError(res.isValid ? '' : (res.message || 'Please enter a valid phone number'));
+      } else {
+        setInternalError('');
+      }
+    } else if (internalError) {
       setInternalError('');
     }
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     const pastedText = e.clipboardData.getData('text');
-    
-    // Provide onPaste protection by enforcing sanitization on pasted data
     const sanitizedPasted = applySanitization(pastedText, type, allowDecimals, customRegex);
-    if (pastedText !== sanitizedPasted) {
-      // You can choose to preventDefault here if you want to strictly reject dirty pastes,
-      // but letting the onChange catch and format it is usually better UX.
-    }
-
     if (onPaste) onPaste(e);
   };
 
@@ -78,6 +78,9 @@ const CustomInput: React.FC<CustomInputProps> = ({
       } else {
         setInternalError('');
       }
+    } else if (type === 'phone' && e.target.value) {
+      const res = validatePhone(e.target.value);
+      setInternalError(res.isValid ? '' : (res.message || 'Please enter a valid phone number'));
     } else if (type === 'name' && e.target.value) {
         // Automatically trim trailing spaces on blur for names
         const trimmed = e.target.value.trim();

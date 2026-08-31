@@ -957,7 +957,7 @@ const KitchenInterface: React.FC = () => {
                                   <Checkbox
                                     checked={isReady}
                                     onChange={() => handleItemStatusChange(order._id, idx, item.preparationStatus || 'pending')}
-                                    disabled={isUpdating}
+                                    disabled={isUpdating || order.status !== 'preparing'}
                                     color="success"
                                     size="small"
                                     sx={{
@@ -1090,7 +1090,7 @@ const KitchenInterface: React.FC = () => {
                     >
                       Print KOT
                     </Button>
-                    {!isAllReady && order.status !== 'pending' && (
+                    {!isAllReady && order.status === 'preparing' && (
                       <Tooltip title={isPreOrderLocked ? preOrderLockedLabel : ''} arrow>
                         <span>
                           <Button

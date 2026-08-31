@@ -570,7 +570,7 @@ const CustomiseScreensPage: React.FC = () => {
           <Tab label="Home Page" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} />
           <Tab label="Gallery" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} />
           <Tab label="About Page" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} />
-          <Tab label="Menu & QR Code" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} />
+          {/* <Tab label="Menu & QR Code" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} /> */}
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -765,7 +765,7 @@ const CustomiseScreensPage: React.FC = () => {
 
         </TabPanel>
 
-        <TabPanel value={tabValue} index={3}>
+        {/* <TabPanel value={tabValue} index={3}>
           <Box sx={{ py: { xs: 2, md: 3 }, px: { xs: 0, md: 3 } }}>
             <MenuSettingsEditor 
               menuPdfUrl={menuSettings.menuPdfUrl} 
@@ -775,7 +775,7 @@ const CustomiseScreensPage: React.FC = () => {
               uploadFile={handleUploadImage}
             />
           </Box>
-        </TabPanel>
+        </TabPanel> */}
       </Paper>
       </Container>
       ) : (
