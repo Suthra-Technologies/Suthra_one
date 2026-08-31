@@ -220,6 +220,9 @@ export const ordersAPI = {
   getPublicCoupons: (tenantSlug: string) =>
     api.get('/public/orders/coupons', { params: { tenantSlug } }),
 
+  getPublicOffers: (tenantSlug: string) =>
+    api.get('/public/orders/offers', { params: { tenantSlug } }),
+
   validatePublicCoupon: (code: string, tenantSlug: string, orderType?: string, purchaseAmount?: number, email?: string) =>
     api.post('/public/orders/validate-coupon', { code, orderType, purchaseAmount, email }, { params: { tenantSlug } }),
   getCustomerPublicCoupons: (email: string, tenantSlug: string) =>
@@ -823,6 +826,8 @@ export const superAPI = {
   listAdmins: () => api.get('/superadmin/admins'),
   updateTenantSubscription: (tenantId: string, payload: any) =>
     api.patch(`/superadmin/tenants/${tenantId}/subscription`, payload),
+  getTenantUsage: (tenantId: string) =>
+    api.get(`/superadmin/tenants/${tenantId}/usage`),
   listSupportTickets: (params?: any) => api.get('/superadmin/support-tickets', { params }),
   replySupportTicket: (ticketId: string, payload: any) =>
     api.post(`/superadmin/support-tickets/${ticketId}/reply`, payload),

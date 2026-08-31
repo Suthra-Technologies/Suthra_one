@@ -29,6 +29,7 @@ import {
     TextField,
     MenuItem as MuiMenuItem,
     InputAdornment,
+    Tooltip,
 } from '@mui/material';
 import { loadStripe } from '@stripe/stripe-js';
 import { PaymentElement, Elements, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -117,6 +118,9 @@ const GuestPOSPage: React.FC = () => {
     const [cartOpen, setCartOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
+    // Offers carry the redeemable code (the /coupons feed withholds it, since that
+    // one only powers the "% OFF" badges on menu tiles).
+    const [publicOffers, setPublicOffers] = useState<any[]>([]);
     const [couponCode, setCouponCode] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
     const [paymentSettings, setPaymentSettings] = useState<any>(null);
@@ -255,12 +259,14 @@ const GuestPOSPage: React.FC = () => {
 
     const fetchPublicInfo = async (tenantSlug: string) => {
         try {
-            const [couponsRes, settingsRes, tablesRes] = await Promise.all([
+            const [couponsRes, settingsRes, tablesRes, offersRes] = await Promise.all([
                 ordersAPI.getPublicCoupons(tenantSlug),
                 ordersAPI.getPublicSettings(tenantSlug),
-                ordersAPI.getPublicTables(tenantSlug)
+                ordersAPI.getPublicTables(tenantSlug),
+                ordersAPI.getPublicOffers(tenantSlug).catch(() => ({ data: [] })),
             ]);
             setAvailableCoupons(couponsRes.data);
+            setPublicOffers(Array.isArray(offersRes.data) ? offersRes.data : []);
             setTables(Array.isArray(tablesRes.data) ? tablesRes.data : []);
             setPaymentSettings(settingsRes.data);
             setRestaurantSettings(settingsRes.data?.restaurant || null);
@@ -1496,6 +1502,49 @@ const GuestPOSPage: React.FC = () => {
                                     )}
                                 </Box>
 
+                                {/* Quick-pick coupons — same as the POS cart: only offer the
+                                    ones this cart and order type already qualify for. */}
+                                {!appliedCoupon && (() => {
+                                    const subtotal = calculateTotal().subtotal;
+                                    const cartItemIds = cart.map(i => i._id);
+
+                                    const eligible = publicOffers.filter((o: any) => {
+                                        if (!o.code) return false;
+                                        if (!couponAppliesToOrderType(o, orderType)) return false;
+                                        if (o.minBillAmount && subtotal < Number(o.minBillAmount)) return false;
+                                        // Item-specific offers only help if the cart holds one of those items.
+                                        if (o.offerType === 'menu_item' && o.applicableItems?.length > 0) {
+                                            return o.applicableItems.some((id: string) => cartItemIds.includes(id));
+                                        }
+                                        return true;
+                                    });
+
+                                    if (eligible.length === 0) return null;
+
+                                    return (
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                            {eligible.slice(0, 5).map((o: any) => (
+                                                <Tooltip
+                                                    key={o._id || o.code}
+                                                    title={`${o.discountType === 'percentage'
+                                                        ? `${o.discountValue}% off`
+                                                        : `${formatCurrency(Number(o.discountValue || 0))} off`}${o.minBillAmount
+                                                            ? ` (min ${formatCurrency(Number(o.minBillAmount))})`
+                                                            : ''}`}
+                                                >
+                                                    <Chip
+                                                        label={o.code}
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="primary"
+                                                        onClick={() => setCouponCode(o.code)}
+                                                        sx={{ cursor: 'pointer', fontSize: '0.65rem' }}
+                                                    />
+                                                </Tooltip>
+                                            ))}
+                                        </Box>
+                                    );
+                                })()}
                             </Box>
 
                             <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #eee' }}>

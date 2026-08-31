@@ -56,6 +56,7 @@ import SuperAdminProfilePage from './pages/superadmin/SuperAdminProfilePage';
 import SuperAdminTeamPage from './pages/superadmin/SuperAdminTeamPage';
 import TenantDetailsPage from './pages/superadmin/TenantDetailsPage';
 import TenantOrdersPage from './pages/superadmin/TenantOrdersPage';
+import TenantUsagePage from './pages/superadmin/TenantUsagePage';
 import TenantPaymentsPage from './pages/superadmin/TenantPaymentsPage';
 import TenantsPage from './pages/superadmin/TenantsPage';
 import TicketsLogPage from './pages/superadmin/TicketsLogPage';
@@ -256,6 +257,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/superadmin/tenants/:tenantId" element={<TenantDetailsPage />} />
           <Route path="/superadmin/tenants/:tenantId/platform-payments" element={<TenantPaymentsPage />} />
           <Route path="/superadmin/tenants/:tenantId/orders" element={<TenantOrdersPage />} />
+          <Route path="/superadmin/tenants/:tenantId/usage" element={<TenantUsagePage />} />
           <Route path="/superadmin/plans" element={<PlansPage />} />
           <Route path="/superadmin/invoices" element={<InvoicesAdminPage />} />
           <Route path="/superadmin/tickets" element={<TicketsPage />} />

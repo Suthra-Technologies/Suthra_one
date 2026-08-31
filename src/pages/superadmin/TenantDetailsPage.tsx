@@ -7,6 +7,7 @@ import Grid from '@mui/material/Grid';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SmsIcon from '@mui/icons-material/Sms';
+import DonutLargeIcon from '@mui/icons-material/DonutLarge';
 import EmailIcon from '@mui/icons-material/Email';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import StoreIcon from '@mui/icons-material/Store';
@@ -57,6 +58,12 @@ const TenantDetailsPage: React.FC = () => {
   const clearFeedback = () => { setError(''); setInfo(''); };
 
   const tiles = [
+    {
+      title: 'Plan Usage',
+      icon: <DonutLargeIcon sx={{ fontSize: 40, color: '#c2185b' }} />,
+      path: `/superadmin/tenants/${tenantId}/usage`,
+      color: '#fce4ec',
+    },
     {
       title: 'SMS Usage',
       icon: <SmsIcon sx={{ fontSize: 40, color: '#1976d2' }} />,
