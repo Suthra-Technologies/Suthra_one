@@ -194,7 +194,7 @@ const TenantDetailsPage: React.FC = () => {
 
   const isConnected = !!connectAccountId;
 
-  // Global delivery platforms (read-only here â€” actual credentials are managed
+  // Global delivery platforms (read-only here — actual credentials are managed
   // once, globally, from the superadmin's own Profile page, not per-tenant).
   const [globalDeliverySettings, setGlobalDeliverySettings] = useState<any>(null);
   const [globalDeliveryLoading, setGlobalDeliveryLoading] = useState(false);
@@ -242,7 +242,7 @@ const TenantDetailsPage: React.FC = () => {
 
   // Platform processing fee (superadmin-managed) state.
   // Slab model: `processingFee` ($) charged per `processingFeeOrderValue` ($)
-  // of order subtotal, rounded up â€” e.g. $1 per $50 â†’ $150 order pays $3.
+  // of order subtotal, rounded up — e.g. $1 per $50 → $150 order pays $3.
   const [processingFee, setProcessingFee] = useState<string>('');
   const [feeOrderValue, setFeeOrderValue] = useState<string>('');
   const [feeLoading, setFeeLoading] = useState(false);
@@ -338,7 +338,7 @@ const TenantDetailsPage: React.FC = () => {
           {feeLoading && <CircularProgress size={18} />}
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-          Processing fee charged on this store's orders, per slab of order value â€”
+          Processing fee charged on this store's orders, per slab of order value —
           e.g. fee $1 per $50: orders up to $50 pay $1, up to $100 pay $2, up to $150 pay $3.
           Leave "Per Order Value" empty to charge the fee as a percent instead.
           Only superadmins can change it.
@@ -362,7 +362,7 @@ const TenantDetailsPage: React.FC = () => {
             onChange={(e) => { setFeeOrderValue(e.target.value); setFeeError(''); setFeeInfo(''); }}
             disabled={feeLoading}
             inputProps={{ min: 0, step: 1 }}
-            helperText="e.g. 50 â€” fee is charged per $50 of order value"
+            helperText="e.g. 50 — fee is charged per $50 of order value"
             sx={{ minWidth: 220 }}
           />
           <Button
