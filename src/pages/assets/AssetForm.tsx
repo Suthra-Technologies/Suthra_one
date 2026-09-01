@@ -84,6 +84,9 @@ const AssetForm: React.FC = () => {
     fileLinks: [] as string[],
   });
 
+  const [customType, setCustomType] = useState('');
+  const [customTypeError, setCustomTypeError] = useState('');
+
   const [newReminderDay, setNewReminderDay] = useState('');
   const [newServiceReminderDay, setNewServiceReminderDay] = useState('');
 
@@ -110,9 +113,15 @@ const AssetForm: React.FC = () => {
       }));
 
       const lifecycle = asset.lifecycle || {};
+      const isKnownType = ASSET_TYPES.filter(t => t !== 'Other').includes(asset.type);
+      const mappedType = isKnownType ? asset.type : 'Other';
+      if (!isKnownType && asset.type) {
+        setCustomType(asset.type);
+      }
 
       setForm({
         ...asset,
+        type: mappedType,
         metadata: metaArray,
         lifecycle: {
           ...lifecycle,
@@ -136,6 +145,15 @@ const AssetForm: React.FC = () => {
       navigate(getRelativePath('/assets'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCustomTypeChange = (val: string) => {
+    setCustomType(val);
+    if (!val.trim()) {
+      setCustomTypeError('Please specify the custom asset type');
+    } else {
+      setCustomTypeError('');
     }
   };
 
@@ -185,6 +203,13 @@ const AssetForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
+
+    if (form.type === 'Other' && !customType.trim()) {
+      setCustomTypeError('Please specify the custom asset type');
+      toast.error('Please specify the custom asset type');
+      return;
+    }
+
     setSubmitting(true);
     try {
       // Convert metadata array back to object
@@ -194,9 +219,11 @@ const AssetForm: React.FC = () => {
       }, {} as any);
 
       const isDocOrLicense = form.type === 'Document' || form.type === 'License';
+      const finalAssetType = form.type === 'Other' ? customType.trim() : form.type;
 
       const payload = {
         ...form,
+        type: finalAssetType,
         metadata: metadataObj,
         lifecycle: {
           ...form.lifecycle,
@@ -280,7 +307,7 @@ const AssetForm: React.FC = () => {
               <CardContent>
                 <Typography variant="h6" fontWeight="700" mb={3}>General Information</Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
+                  <Grid item xs={12} md={form.type === 'Other' ? 4 : 6}>
                     <CustomInput
                       type="name"
                       fullWidth
@@ -290,18 +317,48 @@ const AssetForm: React.FC = () => {
                       onChange={(val) => setForm({ ...form, name: val })}
                     />
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid item xs={12} md={form.type === 'Other' ? 4 : 6}>
                     <FormControl fullWidth>
                       <InputLabel>Asset Type</InputLabel>
                       <Select
                         value={form.type}
                         label="Asset Type"
-                        onChange={(e) => setForm({ ...form, type: e.target.value })}
+                        onChange={(e) => {
+                          const newType = e.target.value;
+                          setForm({ ...form, type: newType });
+                          if (newType === 'Other') {
+                            if (!customType.trim()) {
+                              setCustomTypeError('Please specify the custom asset type');
+                            }
+                          } else {
+                            setCustomTypeError('');
+                          }
+                        }}
                       >
                         {ASSET_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
                       </Select>
                     </FormControl>
                   </Grid>
+                  {form.type === 'Other' && (
+                    <Grid item xs={12} md={4}>
+                      <TextField
+                        fullWidth
+                        required
+                        label="Specify Asset Type"
+                        placeholder="e.g. Kitchen Appliance, POS Terminal"
+                        value={customType}
+                        onChange={(e) => handleCustomTypeChange(e.target.value)}
+                        onBlur={() => {
+                          if (!customType.trim()) {
+                            setCustomTypeError('Please specify the custom asset type');
+                          }
+                        }}
+                        error={!!customTypeError}
+                        helperText={customTypeError}
+                        autoFocus
+                      />
+                    </Grid>
+                  )}
                   {/* <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
