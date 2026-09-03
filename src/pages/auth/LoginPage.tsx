@@ -3,7 +3,6 @@ import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import {
   Backdrop,
   Box,
-  Paper,
   TextField,
   Button,
   Typography,
@@ -12,34 +11,96 @@ import {
   InputAdornment,
   IconButton,
   CircularProgress,
-  Grid,
   useTheme,
   useMediaQuery,
-  Avatar,
   Checkbox,
-  FormControlLabel
+  FormControlLabel,
+  Divider,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   Visibility,
   VisibilityOff,
-  Email,
-  Lock,
+  EmailOutlined,
+  LockOutlined,
   Restaurant,
-  LocalPizza,
-  LunchDining,
-  LocalCafe,
-  Icecream,
-  LocalBar
+  ArrowForward,
+  Language as LanguageIcon,
+  ExpandMore,
+  AssignmentOutlined,
+  Inventory2Outlined,
+  GroupOutlined,
+  BarChartOutlined,
+  ShieldOutlined,
+  CloudOutlined,
+  HeadsetMicOutlined,
+  BoltOutlined,
 } from '@mui/icons-material';
 
 import { useAuth } from '../../context/AuthContext';
 import { authAPI, tenantAPI } from '../../services/api';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
 import { toast } from 'react-hot-toast';
-import logo from '../../assets/images/icons/logo.jpeg';
+import posHardware from '../../assets/images/Images/Login/login-pos-hardware.png';
+import brandMark from '../../assets/images/Images/Login/suthra-one-mark.png';
 import { getTenantSlugFromHostname, redirectToTenant } from '../../utils/tenant.utils';
 import { planFeaturesOf, resolveLandingPath } from '../../utils/landingPath';
 
+const DS = {
+  orange: '#FF7A00',
+  dark: '#07070F',
+  purple: '#6366F1',
+  purpleDeep: '#4F46E5',
+  blue: '#3B82F6',
+  text: '#0F172A',
+  muted: '#6B7280',
+  border: '#E5E7EB',
+  font: "'Inter', 'Plus Jakarta Sans', sans-serif",
+  heading: "'Plus Jakarta Sans', 'Inter', sans-serif",
+};
+
+const FEATURE_ORBS = [
+  { label: 'Orders', icon: AssignmentOutlined, color: '#8B7CFF', top: '6%', left: '2%' },
+  { label: 'Inventory', icon: Inventory2Outlined, color: '#FF7A00', bottom: '18%', left: '0%' },
+  { label: 'Customers', icon: GroupOutlined, color: '#F472B6', top: '8%', right: '2%' },
+  { label: 'Reports', icon: BarChartOutlined, color: '#60A5FA', bottom: '16%', right: '0%' },
+];
+
+const TRUST = [
+  { title: 'Bank-Level', sub: 'Security', icon: ShieldOutlined, color: '#A78BFA' },
+  { title: '99.9%', sub: 'Uptime', icon: CloudOutlined, color: '#60A5FA' },
+  { title: '24/7', sub: 'Support', icon: HeadsetMicOutlined, color: '#818CF8' },
+  { title: 'Blazing Fast', sub: 'Performance', icon: BoltOutlined, color: '#FF7A00' },
+];
+
+const GoogleGIcon = () => (
+  <Box component="svg" viewBox="0 0 24 24" sx={{ width: 18, height: 18, mr: 1.25, flexShrink: 0 }}>
+    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+  </Box>
+);
+
+const fieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '12px',
+    bgcolor: '#fff',
+    fontFamily: DS.font,
+    fontSize: '15px',
+    height: 52,
+    '& fieldset': { borderColor: '#E8E8EE' },
+    '&:hover fieldset': { borderColor: '#D4D4DC' },
+    '&.Mui-focused fieldset': { borderColor: DS.purple, borderWidth: '1.5px' },
+  },
+  '& .MuiInputBase-input': {
+    py: 0,
+    fontFamily: DS.font,
+    fontSize: '15px',
+    '&::placeholder': { color: '#9CA3AF', opacity: 1 },
+  },
+};
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -49,123 +110,81 @@ const LoginPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
-
   const [rememberMe, setRememberMe] = useState(false);
   const [forgotPasswordView, setForgotPasswordView] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-
-  // Company picker: shown after login when an admin belongs to >1 company.
   const [companyChoices, setCompanyChoices] = useState<Array<{ slug: string; name: string }> | null>(null);
   const [pendingLogin, setPendingLogin] = useState<{ slug?: string; token?: string; user?: any } | null>(null);
   const [switching, setSwitching] = useState(false);
-  
-  // Dynamic Tenant Branding
-  const [activeTenant, setActiveTenant] = useState<{
-    slug: string;
-    name: string;
-    logo?: string;
-  } | null>(null);
-  const [tenantLoading, setTenantLoading] = useState(false);
-  const headingFontSize = { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' };
-  const bodyFontSize = { xs: '0.95rem', sm: '0.95rem', md: '0.95rem' };
+  const [activeTenant, setActiveTenant] = useState<{ slug: string; name: string; logo?: string } | null>(null);
+  const [langAnchor, setLangAnchor] = useState<null | HTMLElement>(null);
 
-  // Multi-tenant switching support
   const searchParams = new URLSearchParams(location.search);
   const targetTenant = searchParams.get('targetTenant');
   const prefillEmail = searchParams.get('email');
 
-  // Initialize email and password from URL or local storage if present
   React.useEffect(() => {
     const savedEmail = localStorage.getItem('rememberedEmail');
     const savedPassword = localStorage.getItem('rememberedPassword');
     if (prefillEmail) {
-      setFormData(prev => ({ ...prev, email: prefillEmail }));
+      setFormData((prev) => ({ ...prev, email: prefillEmail }));
     } else if (savedEmail) {
-      setFormData(prev => ({
-        ...prev,
-        email: savedEmail,
-        password: savedPassword || ''
-      }));
+      setFormData((prev) => ({ ...prev, email: savedEmail, password: savedPassword || '' }));
       setRememberMe(true);
     }
   }, [prefillEmail]);
 
-  // Load dynamic tenant branding
   React.useEffect(() => {
     const fetchTenantBranding = async () => {
       const slug = getTenantSlugFromHostname();
       if (slug) {
-        setTenantLoading(true);
         try {
           const response = await tenantAPI.getRestaurantStatus(slug);
           if (response.data) {
             setActiveTenant({
               slug: response.data.slug,
               name: response.data.name,
-              logo: response.data.logo
+              logo: response.data.logo,
             });
           }
         } catch (error) {
           console.error('[LoginPage] Failed to fetch tenant branding:', error);
-        } finally {
-          setTenantLoading(false);
         }
       }
     };
-
     fetchTenantBranding();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name as keyof typeof errors]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+      setErrors((prev) => ({ ...prev, [name]: '' }));
     }
-    if (apiError) {
-      setApiError('');
-    }
+    if (apiError) setApiError('');
   };
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
+    if (!formData.email) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
+    if (!formData.password) newErrors.password = 'Password is required';
+    else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
     setLoading(true);
     setApiError('');
     try {
-      // Handle Remember Me
       if (rememberMe) {
         localStorage.setItem('rememberedEmail', formData.email);
         localStorage.setItem('rememberedPassword', formData.password);
@@ -174,119 +193,65 @@ const LoginPage: React.FC = () => {
         localStorage.removeItem('rememberedPassword');
       }
 
-      // Use detected slug if present, otherwise fallback to URL param
       const slugToUse = activeTenant?.slug || targetTenant || undefined;
-
-      // Pass tenantSlug if we are switching tenants or on dynamic subdomain.
-      // deferCommit lets a multi-company admin see the picker without the session
-      // committing (which would otherwise redirect away from /login instantly).
       const result = await login(
         { ...formData, tenantSlug: slugToUse },
         { deferCommit: !isSubdomain && !slugToUse && !(location.state as any)?.from },
       );
 
       if (result.success) {
-        console.log('LoginPage: Login successful. User:', result.user);
         const userRole = result.user?.role;
         const targetSlug = result.slug;
-        console.log('LoginPage: User role:', userRole, 'Tenant Slug:', targetSlug);
 
-        // If an admin belongs to more than one company, let them choose which to
-        // enter — unless they logged in on a specific tenant subdomain or via a
-        // targeted link (which already implies the company).
-        // If login deferred the session (multi-company admin on the root domain),
-        // show the company picker instead of redirecting.
         if (result.deferred) {
-          const choices = result.availableTenants || [];
-          console.log('LoginPage: Admin has multiple companies, showing picker', choices);
           setPendingLogin({ slug: targetSlug, token: result.token, user: result.user });
-          setCompanyChoices(choices);
+          setCompanyChoices(result.availableTenants || []);
           setLoading(false);
           return;
         }
 
         if (userRole === 'superadmin') {
-          console.log('LoginPage: Superadmin detected, navigating to /superadmin');
           navigate('/superadmin', { replace: true });
         } else if (userRole === 'material_provider') {
-          // Providers are platform-level (no tenant), so they land straight on
-          // their own portal. The portal layout itself forces the password
-          // change on a freshly provisioned account.
-          console.log('LoginPage: Material provider detected, navigating to /provider');
           navigate('/provider', { replace: true });
         } else if (targetSlug) {
           const from = (location.state as any)?.from;
-          console.log('LoginPage: Redirecting. "from" state:', from);
-          
           const tenant = result.user?.tenant;
-          const isSettingsIncomplete = tenant 
-            ? (tenant.isProfileComplete === false && !tenant.name)
-            : false;
-          
+          const isSettingsIncomplete = tenant ? tenant.isProfileComplete === false && !tenant.name : false;
           const forceSettings = userRole === 'admin' && result.user?.isFirstLogin && isSettingsIncomplete;
-          
+
           if (forceSettings) {
-            console.log('LoginPage: Forcing newly registered/incomplete admin to /settings');
-            if (isSubdomain) {
-              setTimeout(() => navigate('/settings', { replace: true }), 100);
-            } else {
-              await redirectToTenant(targetSlug, '/settings', result.token);
-            }
+            if (isSubdomain) setTimeout(() => navigate('/settings', { replace: true }), 100);
+            else await redirectToTenant(targetSlug, '/settings', result.token);
           } else if (from) {
-            console.log('LoginPage: Navigating to "from":', from);
             setTimeout(() => navigate(from, { replace: true }), 100);
           } else if (userRole === 'customer') {
-            console.log('LoginPage: Customer detected. isSubdomain:', isSubdomain);
-            if (isSubdomain) {
-              console.log('LoginPage: Navigating to /customer/order');
-              setTimeout(() => navigate('/customer/order', { replace: true }), 100);
-            } else {
-              await redirectToTenant(targetSlug, '/customer/order', result.token);
-            }
+            if (isSubdomain) setTimeout(() => navigate('/customer/order', { replace: true }), 100);
+            else await redirectToTenant(targetSlug, '/customer/order', result.token);
           } else {
-            // Not every role/plan includes Dashboard, so land on the first page
-            // this user can actually open instead of bouncing to /unauthorized.
             const landingPath = resolveLandingPath(userRole, planFeaturesOf(result.user));
-            console.log('LoginPage: Staff/Admin detected. Landing on', landingPath, 'isSubdomain:', isSubdomain);
-
-            if (isSubdomain) {
-              setTimeout(() => navigate(landingPath, { replace: true }), 100);
-            } else {
-              await redirectToTenant(targetSlug, landingPath, result.token);
-            }
+            if (isSubdomain) setTimeout(() => navigate(landingPath, { replace: true }), 100);
+            else await redirectToTenant(targetSlug, landingPath, result.token);
           }
         } else {
-          console.error('LoginPage: No slug and not superadmin. Result:', result);
           setApiError('Login successful but no tenant associated with this account. Please contact support.');
         }
       } else {
-        console.warn('LoginPage: Login failed:', result.error);
         setApiError(result.error || 'Login failed. Please check your credentials.');
       }
     } catch (error: any) {
-      console.error('Login error:', error);
-      setApiError(
-        error.response?.data?.message ||
-        'Login failed. Please check your credentials.'
-      );
+      setApiError(error.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Admin picked a restaurant from the post-login picker. The session was NOT
-  // committed at login (deferred), so we obtain a token scoped to the chosen
-  // restaurant and hand off to its subdomain via a one-time code (no token in URL).
   const handleSelectCompany = async (slug: string) => {
     setSwitching(true);
     setApiError('');
     try {
       let tokenForCompany = pendingLogin?.token;
-      // Role and plan can differ per restaurant, so land using the picked
-      // restaurant's own user payload rather than the login-default one.
       let userForCompany = pendingLogin?.user;
-
-      // If they picked a restaurant other than the login-default, re-scope the token.
       if (!pendingLogin?.slug || slug !== pendingLogin.slug) {
         const res = await authAPI.switchTenant(
           { targetTenantSlug: slug },
@@ -295,14 +260,12 @@ const LoginPage: React.FC = () => {
         tokenForCompany = res.data?.token || tokenForCompany;
         userForCompany = res.data?.user || userForCompany;
       }
-
       const landingPath = resolveLandingPath(
         userForCompany?.role || userForCompany?.roles?.[0],
         planFeaturesOf(userForCompany),
       );
       await redirectToTenant(slug, landingPath, tokenForCompany);
     } catch (error: any) {
-      console.error('Restaurant select error:', error);
       setApiError(error?.response?.data?.message || 'Failed to open the selected restaurant. Please try again.');
       setSwitching(false);
     }
@@ -327,209 +290,391 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const handleTogglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
+  const displayName = activeTenant?.name || 'Suthra One';
+  const registerPath = getTenantSlugFromHostname()
+    ? '/register'
+    : targetTenant
+      ? `/${targetTenant}/register`
+      : '/register';
 
-  // Branding resolution
-  const displayLogo = activeTenant?.logo || logo;
-  const displayName = activeTenant?.name || "Restaurant POS";
+  const formTitle = companyChoices
+    ? 'Choose a Restaurant'
+    : forgotPasswordView
+      ? 'Reset Password'
+      : 'Welcome Back!';
+
+  const formSubtitle = companyChoices
+    ? 'You have access to multiple restaurants. Select one to continue.'
+    : forgotPasswordView
+      ? "Enter your email address and we'll send you a link to reset your password."
+      : null;
 
   return (
-    <Grid container component="main" sx={{ minHeight: '100vh', height: { xs: 'auto', sm: '100vh' }, overflow: { xs: 'auto', sm: 'hidden' } }}>
-      {/* Animation Section (Left Side) */}
-      <Grid
-        item
-        xs={12}
-        sm={5}
-        md={6}
+    <Box
+      sx={{
+        minHeight: '100vh',
+        height: { md: '100vh' },
+        bgcolor: DS.dark,
+        display: 'flex',
+        fontFamily: DS.font,
+        overflow: { xs: 'auto', md: 'hidden' },
+      }}
+    >
+      <style>{`
+        @keyframes suthraFloat {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-8px); }
+        }
+      `}</style>
+
+      {/* LEFT — branding */}
+      <Box
         sx={{
-          background: 'linear-gradient(135deg, #1e1e2f 0%, #2d2d44 100%)',
-          display: { xs: 'none', sm: 'flex', md: 'flex' },
+          display: { xs: 'none', md: 'flex' },
           flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
+          width: { md: '56%', lg: '55%' },
+          height: '100vh',
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          px: { md: 4.5, lg: 6.5 },
+          pt: 3.5,
+          pb: 3,
+          background: `
+            radial-gradient(ellipse 80% 50% at 20% 0%, rgba(124,58,237,0.38) 0%, transparent 55%),
+            radial-gradient(ellipse 70% 45% at 90% 80%, rgba(255,122,0,0.16) 0%, transparent 50%),
+            radial-gradient(ellipse 50% 30% at 50% 100%, rgba(99,102,241,0.28) 0%, transparent 60%),
+            ${DS.dark}
+          `,
         }}
       >
-        {/* Decorative Background Elements */}
-        {Array.from({ length: 20 }).map((_, i) => (
+        {/* glow arcs */}
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            background: `
+              radial-gradient(ellipse 40% 18% at 70% 8%, rgba(167,139,250,0.22) 0%, transparent 70%),
+              conic-gradient(from 200deg at 50% 60%, transparent 0%, rgba(124,58,237,0.12) 20%, transparent 40%)
+            `,
+          }}
+        />
+
+        {/* Logo */}
+        <Box sx={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 1.4, mb: 2 }}>
           <Box
-            key={i}
+            component="img"
+            src={activeTenant?.logo || brandMark}
+            alt={displayName}
             sx={{
-              position: 'absolute',
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              width: Math.random() * 4 + 2,
-              height: Math.random() * 4 + 2,
+              width: 46,
+              height: 46,
               borderRadius: '50%',
-              bgcolor: 'rgba(255,255,255,0.1)',
+              objectFit: 'cover',
+              boxShadow: '0 0 0 2px rgba(255,122,0,0.35)',
             }}
           />
-        ))}
+          <Box>
+            <Typography
+              sx={{
+                fontFamily: DS.heading,
+                fontWeight: 800,
+                fontSize: '1.2rem',
+                color: '#fff',
+                lineHeight: 1.1,
+                letterSpacing: '-0.02em',
+              }}
+            >
+              {activeTenant ? displayName : (
+                <>
+                  Suthra <Box component="span" sx={{ color: DS.orange }}>One</Box>
+                </>
+              )}
+            </Typography>
+            <Typography
+              sx={{
+                mt: 0.35,
+                color: 'rgba(255,255,255,0.55)',
+                fontSize: '9px',
+                fontWeight: 600,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                fontFamily: DS.font,
+              }}
+            >
+              All-in-One POS System
+            </Typography>
+          </Box>
+        </Box>
 
-        {/* Rotating Table Animation */}
+        {/* Headline */}
+        <Box sx={{ position: 'relative', zIndex: 2, textAlign: 'center', mt: { md: 1, lg: 2 }, mb: 1 }}>
+          <Typography
+            sx={{
+              fontFamily: DS.heading,
+              fontWeight: 800,
+              fontSize: { md: '2.35rem', lg: '2.85rem' },
+              lineHeight: 1.12,
+              letterSpacing: '-0.035em',
+            }}
+          >
+            <Box component="span" sx={{ color: DS.orange }}>One System. </Box>
+            <Box component="span" sx={{ color: '#fff' }}>Every Restaurant Need.</Box>
+          </Typography>
+          <Typography
+            sx={{
+              mt: 1.5,
+              mx: 'auto',
+              maxWidth: 460,
+              color: 'rgba(255,255,255,0.62)',
+              fontSize: { md: '13.5px', lg: '15px' },
+              lineHeight: 1.65,
+              fontFamily: DS.font,
+            }}
+          >
+            Streamline orders, manage inventory, delight customers, and grow your business effortlessly.
+          </Typography>
+        </Box>
+
+        {/* POS + orbs */}
         <Box
           sx={{
             position: 'relative',
-            width: { md: 280, lg: 400 },
-            height: { md: 280, lg: 400 },
-            borderRadius: '50%',
-            bgcolor: '#3f3f5f',
-            boxShadow: '0 0 50px rgba(0,0,0,0.5)',
+            zIndex: 2,
+            flex: 1,
+            minHeight: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            animation: 'rotate-table 20s linear infinite',
-            border: '10px solid #555',
-            '&::after': { // Table cloth texture/details
-              content: '""',
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: '90%',
-              height: '90%',
-              borderRadius: '50%',
-              border: '2px dashed rgba(255,255,255,0.1)'
-            }
-          }}
-        >
-          {/* Centerpiece */}
-          <Box sx={{ width: 60, height: 60, bgcolor: '#222', borderRadius: '50%', boxShadow: 'inset 0 0 10px #000' }} />
-
-          {/* Food Items around the table */}
-          {[
-            { icon: <LocalPizza sx={{ fontSize: { sm: 22, md: 28, lg: 40 }, color: '#f44336' }} />, bg: '#fff3e0' },
-            { icon: <LunchDining sx={{ fontSize: { sm: 22, md: 28, lg: 40 }, color: '#ff9800' }} />, bg: '#e8f5e9' },
-            { icon: <Restaurant sx={{ fontSize: { sm: 22, md: 28, lg: 40 }, color: '#2196f3' }} />, bg: '#e3f2fd' },
-            { icon: <LocalCafe sx={{ fontSize: { sm: 22, md: 28, lg: 40 }, color: '#795548' }} />, bg: '#efebe9' },
-            { icon: <Icecream sx={{ fontSize: { sm: 22, md: 28, lg: 40 }, color: '#e91e63' }} />, bg: '#fce4ec' },
-            { icon: <LocalBar sx={{ fontSize: { sm: 22, md: 28, lg: 40 }, color: '#9c27b0' }} />, bg: '#f3e5f5' },
-          ].map((item, index) => {
-            const angle = (index * 60) * (Math.PI / 180);
-            const radius = window.innerWidth < 1280 ? 100 : 140;
-
-            const x = Math.cos(angle) * radius;
-            const y = Math.sin(angle) * radius;
-
-            return (
-              <Box
-                key={index}
-                sx={{
-                  position: 'absolute',
-                  transform: `translate(${x}px, ${y}px) rotate(${-index * 60}deg)`,
-
-                }}
-              >
-                <Paper
-                  elevation={4}
-                  sx={{
-                    width: { sm: 46, md: 55, lg: 70 },
-                    height: { sm: 46, md: 55, lg: 70 },
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: item.bg,
-                    animation: 'counter-rotate-icons 20s linear infinite'
-                  }}
-                >
-                  {item.icon}
-                </Paper>
-              </Box>
-            );
-          })}
-        </Box>
-
-        <Typography variant="h4" sx={{ mt: { sm: 3, md: 5 }, color: '#fff', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.5)', fontSize: headingFontSize, textAlign: 'center', px: 2 }}>
-          {activeTenant ? `Welcome to ${displayName}` : 'Welcome to a World of Great Taste'}
-        </Typography>
-        <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.7)', mt: 1, fontSize: bodyFontSize, textAlign: 'center', px: 2 }}>
-          {activeTenant ? 'Log in to manage your kitchen and orders' : 'Manage your orders with ease'}
-        </Typography>
-      </Grid>
-
-      {/* Login Form Section (Right Side) */}
-      <Grid 
-        item 
-        xs={12} 
-        sm={7} 
-        md={6} 
-        component={Paper} 
-        elevation={0} 
-        square 
-        sx={{ 
-          overflowY: 'auto', 
-          maxHeight: { xs: 'none', sm: '100vh' },
-          bgcolor: { xs: '#f8f9fa', sm: '#fff' }, // Light grey on mobile for card contrast
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        <Box
-          sx={{
-            my: { xs: 4, sm: 3, md: 4 },
-            mx: { xs: 2, sm: 3 },
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            width: '100%',
-            maxWidth: 450,
-            p: { xs: 3, sm: 0 },
-            bgcolor: { xs: '#fff', sm: 'transparent' },
-            borderRadius: { xs: 4, sm: 0 },
-            boxShadow: { xs: '0 8px 32px rgba(0,0,0,0.05)', sm: 'none' }
           }}
         >
           <Box
             component="img"
-            src={displayLogo}
-            alt={displayName}
-            sx={{ 
-              height: { xs: 80, sm: 110, md: 150 }, 
-              width: "auto", 
-              maxWidth: "100%", 
-              objectFit: "contain", 
-              mb: 2, 
-              borderRadius: activeTenant ? '12px' : '0' 
+            src={posHardware}
+            alt="Suthra One POS"
+            sx={{
+              width: '92%',
+              maxWidth: 620,
+              maxHeight: '100%',
+              objectFit: 'contain',
+              filter: 'drop-shadow(0 28px 50px rgba(99,102,241,0.35))',
             }}
           />
-          <Typography 
-            component="h1" 
-            variant="h4" 
-            fontWeight="900" 
-            sx={{ 
-              fontSize: headingFontSize,
-              color: '#1a1a1a',
-              letterSpacing: '-0.5px'
+          {FEATURE_ORBS.map((orb, i) => (
+            <Box
+              key={orb.label}
+              sx={{
+                position: 'absolute',
+                top: (orb as any).top,
+                bottom: (orb as any).bottom,
+                left: (orb as any).left,
+                right: (orb as any).right,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 0.75,
+                animation: `suthraFloat 5s ease-in-out ${i * 0.4}s infinite`,
+              }}
+            >
+              <Box
+                sx={{
+                  width: { md: 52, lg: 58 },
+                  height: { md: 52, lg: 58 },
+                  borderRadius: '50%',
+                  background: `radial-gradient(circle at 30% 30%, ${orb.color}, ${orb.color}cc 70%)`,
+                  boxShadow: `0 8px 24px ${orb.color}66, inset 0 1px 0 rgba(255,255,255,0.35)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid rgba(255,255,255,0.18)',
+                }}
+              >
+                <orb.icon sx={{ color: '#fff', fontSize: 22 }} />
+              </Box>
+              <Typography
+                sx={{
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  fontFamily: DS.font,
+                  textShadow: '0 2px 8px rgba(0,0,0,0.6)',
+                }}
+              >
+                {orb.label}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+
+        {/* Trust bar */}
+        <Box
+          sx={{
+            position: 'relative',
+            zIndex: 2,
+            mt: 1.5,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 0,
+            px: 1.5,
+            py: 1.4,
+            borderRadius: '18px',
+            bgcolor: 'rgba(18,16,32,0.72)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(16px)',
+          }}
+        >
+          {TRUST.map((item, i) => (
+            <Box
+              key={item.title}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                px: 1.25,
+                borderRight: i < 3 ? '1px solid rgba(255,255,255,0.08)' : 'none',
+              }}
+            >
+              <Box
+                sx={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '10px',
+                  bgcolor: `${item.color}18`,
+                  color: item.color,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: `0 0 12px ${item.color}33`,
+                }}
+              >
+                <item.icon sx={{ fontSize: 18 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ color: '#fff', fontSize: '12px', fontWeight: 700, fontFamily: DS.heading, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                  {item.title}
+                </Typography>
+                <Typography sx={{ color: 'rgba(200,200,230,0.7)', fontSize: '11px', fontFamily: DS.font, lineHeight: 1.3 }}>
+                  {item.sub}
+                </Typography>
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      </Box>
+
+      {/* RIGHT — form */}
+      <Box
+        sx={{
+          width: { xs: '100%', md: '44%', lg: '45%' },
+          minHeight: { xs: '100vh', md: '100vh' },
+          bgcolor: '#fff',
+          borderRadius: { xs: 0, md: '40px 0 0 40px' },
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          boxShadow: { md: '-28px 0 80px rgba(0,0,0,0.45)' },
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            left: 0,
+            bottom: 0,
+            width: 280,
+            height: 240,
+            background: 'radial-gradient(ellipse at bottom left, rgba(255,122,0,0.13) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          },
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: { xs: 3, md: 4.5 }, pt: 3, position: 'relative', zIndex: 1 }}>
+          <Button
+            onClick={(e) => setLangAnchor(e.currentTarget)}
+            startIcon={<LanguageIcon sx={{ fontSize: 18, color: DS.muted }} />}
+            endIcon={<ExpandMore sx={{ fontSize: 18, color: DS.muted }} />}
+            sx={{
+              textTransform: 'none',
+              color: DS.text,
+              fontFamily: DS.font,
+              fontWeight: 500,
+              fontSize: '14px',
+              border: `1px solid ${DS.border}`,
+              borderRadius: '999px',
+              px: 1.75,
+              py: 0.6,
+              minWidth: 0,
+              bgcolor: '#fff',
+              '&:hover': { bgcolor: '#F9FAFB' },
             }}
           >
-            {companyChoices ? 'Choose a Restaurant' : forgotPasswordView ? 'Reset Password' : 'Sign In'}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mb: 4, textAlign: 'center', px: 2, fontSize: bodyFontSize }}
+            English
+          </Button>
+          <Menu
+            anchorEl={langAnchor}
+            open={Boolean(langAnchor)}
+            onClose={() => setLangAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
           >
-            {companyChoices
-              ? 'You have access to multiple restaurants. Select one to continue.'
-              : forgotPasswordView
-                ? "Enter your email address and we'll send you a link to reset your password."
-                : ''}
+            <MenuItem selected onClick={() => setLangAnchor(null)}>English</MenuItem>
+          </Menu>
+        </Box>
+
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            width: '100%',
+            maxWidth: 400,
+            mx: 'auto',
+            px: { xs: 3.5, md: 2 },
+            py: 2,
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          {isMobile && (
+            <Box sx={{ mb: 3.5, display: 'flex', alignItems: 'center', gap: 1.25 }}>
+              <Box component="img" src={activeTenant?.logo || brandMark} alt={displayName} sx={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover' }} />
+              <Typography sx={{ fontFamily: DS.heading, fontWeight: 800, fontSize: '1.2rem', color: DS.text }}>
+                {activeTenant ? displayName : <>Suthra <Box component="span" sx={{ color: DS.orange }}>One</Box></>}
+              </Typography>
+            </Box>
+          )}
+
+          <Typography
+            component="h1"
+            sx={{
+              fontFamily: DS.heading,
+              fontWeight: 800,
+              fontSize: { xs: '28px', md: '32px' },
+              color: DS.text,
+              letterSpacing: '-0.03em',
+              mb: 1,
+            }}
+          >
+            {formTitle}
           </Typography>
 
-          {/* Error Alert */}
+          {!companyChoices && !forgotPasswordView ? (
+            <Typography sx={{ color: DS.muted, fontSize: '15px', fontFamily: DS.font, mb: 3.5 }}>
+              Sign in to your{' '}
+              <Box component="span" sx={{ color: DS.orange, fontWeight: 600 }}>Suthra One</Box>
+              {' '}account
+            </Typography>
+          ) : (
+            <Typography sx={{ color: DS.muted, fontSize: '15px', fontFamily: DS.font, mb: 3.5, lineHeight: 1.6 }}>
+              {formSubtitle}
+            </Typography>
+          )}
+
           {apiError && (
-            <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
-              {apiError}
-            </Alert>
+            <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>{apiError}</Alert>
           )}
 
           {companyChoices ? (
-            <Box sx={{ mt: 1, width: '100%', maxWidth: 400 }}>
+            <Box>
               {companyChoices.map((c) => (
                 <Button
                   key={c.slug}
@@ -542,10 +687,13 @@ const LoginPage: React.FC = () => {
                     mb: 1.5,
                     py: 1.5,
                     justifyContent: 'flex-start',
-                    borderRadius: 3,
+                    borderRadius: '12px',
                     textTransform: 'none',
-                    fontSize: '1rem',
+                    fontSize: '16px',
                     fontWeight: 700,
+                    fontFamily: DS.font,
+                    borderColor: DS.border,
+                    color: DS.text,
                   }}
                 >
                   {c.name}
@@ -553,226 +701,242 @@ const LoginPage: React.FC = () => {
               ))}
               {switching && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                  <CircularProgress size={24} />
+                  <CircularProgress size={24} sx={{ color: DS.purple }} />
                 </Box>
               )}
             </Box>
           ) : forgotPasswordView ? (
-            <Box component="form" noValidate onSubmit={handleForgotPasswordSubmit} sx={{ mt: 1, width: '100%', maxWidth: 400 }}>
+            <Box component="form" noValidate onSubmit={handleForgotPasswordSubmit}>
               {isSuccess ? (
-                <Alert severity="success" sx={{ mb: 3 }}>
+                <Alert severity="success" sx={{ mb: 3, borderRadius: '12px' }}>
                   Password reset link has been sent to your email. Please check your inbox.
                 </Alert>
               ) : (
-                <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  id="email"
-                  label="Email Address"
-                  name="email"
-                  autoComplete="email"
-                  autoFocus
-                  value={formData.email}
-                  onChange={handleChange}
-                  error={!!errors.email}
-                  helperText={errors.email}
-                  sx={{ 
-                    mb: 2,
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                    }
-                  }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Email color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
+                <Box sx={{ mb: 2.5 }}>
+                  <Typography component="label" htmlFor="email" sx={{ display: 'block', mb: 1, fontSize: '13px', fontWeight: 600, color: '#374151', fontFamily: DS.font }}>
+                    Email Address
+                  </Typography>
+                  <TextField
+                    required
+                    fullWidth
+                    id="email"
+                    name="email"
+                    placeholder="Enter your email"
+                    autoComplete="email"
+                    autoFocus
+                    value={formData.email}
+                    onChange={handleChange}
+                    error={!!errors.email}
+                    helperText={errors.email}
+                    sx={fieldSx}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <EmailOutlined sx={{ color: '#9CA3AF', fontSize: 20 }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Box>
               )}
               <Button
                 type="submit"
                 fullWidth
                 variant="contained"
                 disabled={loading || isSuccess}
-                sx={{ mt: 3, mb: 2, py: 1.5, fontSize: '1.1rem' }}
+                endIcon={!loading && !isSuccess ? <ArrowForward /> : undefined}
+                sx={{
+                  mt: 0.5,
+                  mb: 2,
+                  height: 52,
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  fontFamily: DS.font,
+                  textTransform: 'none',
+                  borderRadius: '12px',
+                  background: `linear-gradient(90deg, ${DS.purple} 0%, ${DS.blue} 100%)`,
+                  boxShadow: '0 10px 24px rgba(99,102,241,0.35)',
+                  '&:hover': { background: `linear-gradient(90deg, ${DS.purpleDeep} 0%, #2563EB 100%)` },
+                }}
               >
                 {loading ? 'Sending...' : 'Send Reset Link'}
               </Button>
-              <Grid container justifyContent="center">
-                <Grid item>
-                  <Link
-                    component="button"
-                    variant="body2"
-                  sx={{ fontSize: bodyFontSize }}
-                    onClick={() => {
-                      setForgotPasswordView(false);
-                      setIsSuccess(false);
-                    }}
-                  >
-                    Back to Login
-                  </Link>
-                </Grid>
-              </Grid>
+              <Box sx={{ textAlign: 'center' }}>
+                <Link
+                  component="button"
+                  type="button"
+                  onClick={() => { setForgotPasswordView(false); setIsSuccess(false); }}
+                  sx={{ fontSize: '14px', fontFamily: DS.font, fontWeight: 600, color: DS.blue, textDecoration: 'none', cursor: 'pointer' }}
+                >
+                  Back to Login
+                </Link>
+              </Box>
             </Box>
           ) : (
-            <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1, width: '100%', maxWidth: 400 }}>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                id="email"
-                label="Email Address"
-                name="email"
-                autoComplete="email"
-                autoFocus
-                value={formData.email}
-                onChange={handleChange}
-                error={!!errors.email}
-                helperText={errors.email}
-                sx={{ 
-                  mb: 2,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 3,
-                  }
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Email color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="password"
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                autoComplete="current-password"
-                value={formData.password}
-                onChange={handleChange}
-                error={!!errors.password}
-                helperText={errors.password}
-                sx={{ 
-                  mb: 2,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 3,
-                  }
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Lock color="action" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={handleTogglePasswordVisibility}
-                        edge="end"
-                      >
-                        {showPassword ? <Visibility /> : <VisibilityOff />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+            <Box component="form" noValidate onSubmit={handleSubmit}>
+              <Box sx={{ mb: 2.25 }}>
+                <Typography component="label" htmlFor="email" sx={{ display: 'block', mb: 1, fontSize: '13px', fontWeight: 600, color: '#374151', fontFamily: DS.font }}>
+                  Email Address
+                </Typography>
+                <TextField
+                  required
+                  fullWidth
+                  id="email"
+                  name="email"
+                  placeholder="Enter your email"
+                  autoComplete="email"
+                  autoFocus
+                  value={formData.email}
+                  onChange={handleChange}
+                  error={!!errors.email}
+                  helperText={errors.email}
+                  sx={fieldSx}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailOutlined sx={{ color: '#9CA3AF', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+
+              <Box sx={{ mb: 1.25 }}>
+                <Typography component="label" htmlFor="password" sx={{ display: 'block', mb: 1, fontSize: '13px', fontWeight: 600, color: '#374151', fontFamily: DS.font }}>
+                  Password
+                </Typography>
+                <TextField
+                  required
+                  fullWidth
+                  name="password"
+                  placeholder="Enter your password"
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  autoComplete="current-password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  error={!!errors.password}
+                  helperText={errors.password}
+                  sx={fieldSx}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockOutlined sx={{ color: '#9CA3AF', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" sx={{ color: '#9CA3AF' }}>
+                          {showPassword ? <Visibility /> : <VisibilityOff />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, mt: 0.5 }}>
                 <FormControlLabel
-                  sx={{ '& .MuiFormControlLabel-label': { fontSize: bodyFontSize } }}
+                  sx={{ ml: -0.5, '& .MuiFormControlLabel-label': { fontSize: '14px', fontFamily: DS.font, color: '#374151', fontWeight: 500 } }}
                   control={
                     <Checkbox
-                      value="remember"
-                      color="primary"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
+                      sx={{ color: DS.border, '&.Mui-checked': { color: DS.purple }, '& .MuiSvgIcon-root': { fontSize: 22 } }}
                     />
                   }
                   label="Remember me"
                 />
                 <Link
                   component="button"
-                  variant="body2"
-                  sx={{ fontSize: bodyFontSize }}
-                  onClick={() => setForgotPasswordView(true)}
                   type="button"
+                  onClick={() => setForgotPasswordView(true)}
+                  sx={{ fontSize: '14px', fontFamily: DS.font, fontWeight: 600, color: DS.blue, textDecoration: 'none', cursor: 'pointer' }}
                 >
                   Forgot password?
                 </Link>
               </Box>
+
               <Button
                 type="submit"
                 fullWidth
                 variant="contained"
                 disabled={loading}
-                sx={{ 
-                  mt: 3, 
-                  mb: 2, 
-                  py: { xs: 1.8, sm: 1.5 }, 
-                  fontSize: '1.1rem',
-                  borderRadius: 3,
+                endIcon={!loading ? <ArrowForward sx={{ fontSize: 18 }} /> : undefined}
+                sx={{
+                  height: 52,
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  fontFamily: DS.font,
                   textTransform: 'none',
-                  fontWeight: 'bold',
-                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)'
+                  borderRadius: '12px',
+                  background: `linear-gradient(90deg, ${DS.purple} 0%, ${DS.blue} 100%)`,
+                  boxShadow: '0 10px 24px rgba(99,102,241,0.35)',
+                  '&:hover': { background: `linear-gradient(90deg, ${DS.purpleDeep} 0%, #2563EB 100%)` },
+                  '&.Mui-disabled': { background: `linear-gradient(90deg, ${DS.purple} 0%, ${DS.blue} 100%)`, color: '#fff', opacity: 0.7 },
                 }}
               >
-                {loading ? 'Logging in...' : 'Log In'}
+                {loading ? 'Signing in...' : 'Sign In'}
               </Button>
-              <Grid container>
-                <Grid item xs>
-                  {/* Space for additional links if needed */}
-                </Grid>
-                <Grid item>
-                  <Link
-                    component={RouterLink}
-                    to={getTenantSlugFromHostname() ? "/register" : (targetTenant ? `/${targetTenant}/register` : "/register")}
-                    variant="body2"
-                    sx={{ fontSize: bodyFontSize }}
-                  >
-                    {"Don't have an account? Sign Up"}
-                  </Link>
-                </Grid>
-              </Grid>
+
+              <Divider sx={{ my: 3, '&::before, &::after': { borderColor: '#EDEDF2' }, '& .MuiDivider-wrapper': { px: 2, color: DS.muted, fontSize: '13px', fontWeight: 500, fontFamily: DS.font } }}>
+                OR
+              </Divider>
+
+              <Button
+                fullWidth
+                variant="outlined"
+                type="button"
+                onClick={() =>
+                  toast('Google sign-in for staff accounts is not enabled yet. Please use email and password.', { icon: 'ℹ️' })
+                }
+                sx={{
+                  height: 52,
+                  borderRadius: '12px',
+                  textTransform: 'none',
+                  fontFamily: DS.font,
+                  fontWeight: 600,
+                  fontSize: '15px',
+                  color: DS.text,
+                  borderColor: '#E5E7EB',
+                  bgcolor: '#fff',
+                  boxShadow: 'none',
+                  '&:hover': { borderColor: '#D1D5DB', bgcolor: '#F9FAFB', boxShadow: 'none' },
+                }}
+              >
+                <GoogleGIcon />
+                Continue with Google
+              </Button>
+
+              <Typography sx={{ mt: 3.5, textAlign: 'center', fontSize: '14px', color: DS.muted, fontFamily: DS.font }}>
+                Don&apos;t have an account?{' '}
+                <Link component={RouterLink} to={registerPath} sx={{ color: DS.blue, fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                  Create Account
+                </Link>
+              </Typography>
             </Box>
           )}
         </Box>
-      </Grid>
-      <style>{`
-            @keyframes rotate-table {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-            }
-            @keyframes counter-rotate-icons {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(-360deg); }
-            }
-        `}</style>
+      </Box>
+
       <Backdrop
         sx={{
           color: '#fff',
-          zIndex: (theme) => theme.zIndex.drawer + 1,
+          zIndex: (t) => t.zIndex.drawer + 1,
           flexDirection: 'column',
           gap: 2,
           backdropFilter: 'blur(4px)',
-          backgroundColor: 'rgba(0,0,0,0.7)'
+          backgroundColor: 'rgba(0,0,0,0.7)',
         }}
         open={loading}
       >
         <CircularProgress color="inherit" size={60} thickness={4} />
-        <Typography variant="h6" color="inherit" sx={{ fontWeight: 500, fontSize: headingFontSize }}>
+        <Typography sx={{ fontWeight: 600, fontSize: '18px', fontFamily: DS.heading }}>
           {forgotPasswordView ? 'Sending reset link...' : 'Signing you in...'}
         </Typography>
-        <Typography variant="body2" color="inherit" sx={{ opacity: 0.8, fontSize: bodyFontSize }}>
-          Please wait a moment
-        </Typography>
+        <Typography sx={{ opacity: 0.8, fontSize: '14px', fontFamily: DS.font }}>Please wait a moment</Typography>
       </Backdrop>
-    </Grid>
+    </Box>
   );
 };
 

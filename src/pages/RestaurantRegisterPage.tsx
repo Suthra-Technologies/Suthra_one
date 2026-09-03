@@ -1,13 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { Backdrop, Box, Paper, TextField, Button, Typography, Alert, CircularProgress, Grid, CssBaseline, Avatar, MenuItem, InputAdornment, Select, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
-import { Restaurant, Visibility, VisibilityOff, CheckCircle } from '@mui/icons-material';
+import {
+  Backdrop,
+  Box,
+  Paper,
+  TextField,
+  Button,
+  Typography,
+  Alert,
+  CircularProgress,
+  Grid,
+  Avatar,
+  InputAdornment,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Divider,
+} from '@mui/material';
+import {
+  Visibility,
+  VisibilityOff,
+  CheckCircle,
+  StorefrontOutlined,
+  CloudUploadOutlined,
+  PersonOutline,
+  EmailOutlined,
+  LockOutlined,
+  BadgeOutlined,
+  HeadsetMicOutlined,
+  RocketLaunchOutlined,
+  LockOutlined as LockIcon,
+  Inventory2Outlined,
+  ShieldOutlined,
+  TrendingUpOutlined,
+  SupportAgentOutlined,
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { validateEmail, validatePhone, validateName, validatePassword, validateCompanyName, validateRequired, validateEin, getHelperText, hasError } from '../utils/validation';
 import type { ValidationResult } from '../utils/validation';
 import { sanitizeName } from '../utils/inputSanitizers';
-import { useAuth } from '../context/AuthContext';
 import PhoneInput from '../components/PhoneInput';
 import { splitPlanFeatures, planFeatureLabel } from '../utils/planFeatures';
+import brandMark from '../assets/images/Images/Register/suthra-one-hex-mark.png';
+import posLifestyle from '../assets/images/Images/Register/register-pos-lifestyle.png';
+import restaurantInterior from '../assets/images/Images/Register/register-restaurant-interior.png';
 
 interface RestaurantRegisterForm {
   restaurantName: string;
@@ -40,21 +77,95 @@ interface Plan {
 
 const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
 
-const COUNTRIES = [
-  { code: 'IN', label: 'India', phone: '+91' },
-  { code: 'US', label: 'USA', phone: '+1' },
-  { code: 'GB', label: 'UK', phone: '+44' },
-  { code: 'AU', label: 'Australia', phone: '+61' },
-  { code: 'AE', label: 'UAE', phone: '+971' },
-  { code: 'JP', label: 'Japan', phone: '+81' },
-  { code: 'CN', label: 'China', phone: '+86' },
-  { code: 'DE', label: 'Germany', phone: '+49' },
-  { code: 'FR', label: 'France', phone: '+33' },
-  { code: 'SG', label: 'Singapore', phone: '+65' },
+const DS = {
+  purple: '#8B5CF6',
+  purpleDeep: '#7C3AED',
+  orange: '#F97316',
+  text: '#111827',
+  muted: '#6B7280',
+  label: '#1F2937',
+  border: '#E5E7EB',
+  link: '#3B82F6',
+  font: "'Inter', 'Plus Jakarta Sans', sans-serif",
+  heading: "'Plus Jakarta Sans', 'Inter', sans-serif",
+};
+
+const FEATURES = [
+  { title: 'All-in-One Solution', desc: 'POS, Inventory, Billing & more', icon: Inventory2Outlined, color: '#8B5CF6' },
+  { title: 'Secure & Reliable', desc: 'Bank-level security for your data', icon: ShieldOutlined, color: '#F97316' },
+  { title: 'Grow Your Business', desc: 'Powerful insights to scale fast', icon: TrendingUpOutlined, color: '#22C55E' },
+  { title: '24/7 Support', desc: "We're here whenever you need us", icon: SupportAgentOutlined, color: '#3B82F6' },
 ];
 
+const GoogleGIcon = () => (
+  <Box component="svg" viewBox="0 0 24 24" sx={{ width: 18, height: 18, mr: 1.25, flexShrink: 0 }}>
+    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+  </Box>
+);
+
+const fieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '10px',
+    bgcolor: '#fff',
+    fontFamily: DS.font,
+    fontSize: '14px',
+    height: 48,
+    '& fieldset': { borderColor: '#E8E8EE' },
+    '&:hover fieldset': { borderColor: '#D1D5DB' },
+    '&.Mui-focused fieldset': { borderColor: DS.purple, borderWidth: '1.5px' },
+  },
+  '& .MuiInputBase-input': {
+    py: 0,
+    height: 48,
+    boxSizing: 'border-box',
+    fontFamily: DS.font,
+    fontSize: '14px',
+    '&::placeholder': { color: '#9CA3AF', opacity: 1 },
+  },
+  '& .MuiFormHelperText-root': {
+    mx: 0,
+    mt: 0.6,
+    fontSize: '12px',
+    fontFamily: DS.font,
+  },
+};
+
+const FieldLabel: React.FC<{ htmlFor?: string; required?: boolean; optional?: boolean; children: React.ReactNode }> = ({
+  htmlFor,
+  required,
+  optional,
+  children,
+}) => (
+  <Typography
+    component="label"
+    htmlFor={htmlFor}
+    sx={{ display: 'block', mb: 0.75, fontSize: '13px', fontWeight: 600, color: DS.label, fontFamily: DS.font, letterSpacing: '-0.01em' }}
+  >
+    {children}
+    {required && <Box component="span" sx={{ color: '#EF4444', ml: 0.35 }}>*</Box>}
+    {optional && (
+      <Box component="span" sx={{ color: DS.muted, fontWeight: 500, ml: 0.5, fontSize: '12px' }}>(Optional)</Box>
+    )}
+  </Typography>
+);
+
+const getPasswordStrength = (password: string) => {
+  if (!password) return { label: '', color: '#E5E7EB', filled: 0, meetsLength: false };
+  let score = 0;
+  if (password.length >= 8) score += 1;
+  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 1;
+  if (/\d/.test(password)) score += 1;
+  if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score += 1;
+  if (score <= 1) return { label: 'Weak', color: '#EF4444', filled: 1, meetsLength: password.length >= 8 };
+  if (score === 2) return { label: 'Fair', color: '#F59E0B', filled: 2, meetsLength: password.length >= 8 };
+  if (score === 3) return { label: 'Good', color: '#22C55E', filled: 3, meetsLength: true };
+  return { label: 'Strong', color: '#16A34A', filled: 4, meetsLength: true };
+};
+
 const RestaurantRegisterPage: React.FC = () => {
-  const { login } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState<RestaurantRegisterForm>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -95,7 +206,6 @@ const RestaurantRegisterPage: React.FC = () => {
   const [uploadingLogo, setUploadingLogo] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [successData, setSuccessData] = useState<{ restaurantName: string } | null>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [errors, setErrors] = useState<Record<string, ValidationResult>>({});
   const [slugAvailability, setSlugAvailability] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
 
@@ -132,10 +242,8 @@ const RestaurantRegisterPage: React.FC = () => {
           const nameLower = plan.name?.toLowerCase() || '';
           const intervalLower = plan.interval?.toLowerCase() || '';
 
-          // STRICT EXCLUSION: If it contains 'sms' anywhere, reject it
           if (nameLower.includes('sms') || intervalLower.includes('sms')) return false;
 
-          // STRICT INCLUSION: Only show plans with monthly interval
           const isMatch = intervalLower === 'monthly';
           if (isMatch) {
             console.log(`[Plans Lookup Match] Plan: "${plan.name}" has Interval: "${plan.interval}" (Matched Monthly Interval)`);
@@ -145,7 +253,6 @@ const RestaurantRegisterPage: React.FC = () => {
 
         console.log("[Plans Lookup] Final filtered plans showing in registration UI:", finalPlans);
         setPlans(finalPlans);
-        // We no longer auto-select a plan by default as per user request to make it optional
       } catch (err) {
         console.error('Failed to fetch plans', err);
       } finally {
@@ -155,49 +262,33 @@ const RestaurantRegisterPage: React.FC = () => {
     fetchPlans();
   }, []);
 
-  // const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   const { name, value } = e.target;
-  //   setForm({ ...form, [name]: value });
-  //   // Clear error when user starts typing
-  //   if (errors[name]) {
-  //     setErrors(prev => ({ ...prev, [name]: { isValid: true } }));
-  //   }
-  // };
-
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
-    // Special rule for phone input
     if (name === "phone") {
-      const numeric = String(value || '').replace(/\D/g, ""); // keep only digits
+      const numeric = String(value || '').replace(/\D/g, "");
       const isUS = form.dialCode === '1' || form.dialCode === '+1';
       const final = (isUS && numeric.length > 10) ? numeric.slice(-10) : numeric;
       setForm(prev => ({ ...prev, [name]: final }));
-
-      // Clear error when user types a valid phone number (10 digits)
       if (errors[name]) {
         setErrors(prev => ({ ...prev, [name]: { isValid: true } }));
       }
       return;
     }
 
-    // Auto-format EIN as ##-####### (max 9 digits)
     if (name === "ein") {
       const digits = String(value || '').replace(/\D/g, '').slice(0, 9);
       const formatted = digits.length > 2 ? `${digits.slice(0, 2)}-${digits.slice(2)}` : digits;
       setForm(prev => ({ ...prev, [name]: formatted }));
-
       if (errors[name]) {
         setErrors(prev => ({ ...prev, [name]: { isValid: true } }));
       }
       return;
     }
 
-    // Name sanitization: allow only letters and spaces, max 50 characters
     if (name === "firstName" || name === "lastName") {
       const cleaned = sanitizeName(value).slice(0, 50);
       setForm(prev => ({ ...prev, [name]: cleaned }));
-
       if (errors[name]) {
         setErrors(prev => ({ ...prev, [name]: { isValid: true } }));
       }
@@ -234,8 +325,6 @@ const RestaurantRegisterPage: React.FC = () => {
     formData.append('file', file);
 
     try {
-      // No tenant exists yet at registration time, so this lands under
-      // tenants/unassigned/branding/logos/ until the restaurant is created.
       const res = await fetch(`${API_BASE}/upload/image?module=branding`, {
         method: 'POST',
         body: formData,
@@ -306,7 +395,6 @@ const RestaurantRegisterPage: React.FC = () => {
       ein: validateEin(form.ein || ''),
     };
 
-    // Additional slug validation
     if (newErrors.slug.isValid && !/^[a-z0-9-]+$/.test(form.slug)) {
       newErrors.slug = { isValid: false, message: 'Domain must be lowercase letters, numbers, and hyphens only' };
     }
@@ -330,7 +418,6 @@ const RestaurantRegisterPage: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    // Validate all fields before submission
     if (!validateForm()) {
       setError('Please fix the errors in the form');
       return;
@@ -355,14 +442,12 @@ const RestaurantRegisterPage: React.FC = () => {
 
       if (!res.ok) throw new Error(data?.message || 'Registration failed');
 
-      // If a paid plan was selected, redirect to Stripe checkout
       if (data.checkoutUrl) {
         localStorage.setItem('pending_registration_form', JSON.stringify(form));
         window.location.href = data.checkoutUrl;
         return;
       }
 
-      // If it's a trial/free registration, show success popup
       localStorage.removeItem('pending_registration_form');
       setSuccessData({ restaurantName: form.restaurantName });
     } catch (e: any) {
@@ -372,240 +457,592 @@ const RestaurantRegisterPage: React.FC = () => {
     }
   };
 
+  const strength = getPasswordStrength(form.password);
+
+  const slugHint =
+    getHelperText(errors.slug) ||
+    (slugAvailability === 'taken'
+      ? 'This domain is already taken — please choose another'
+      : slugAvailability === 'checking'
+      ? 'Checking availability...'
+      : slugAvailability === 'available'
+      ? 'This domain is available'
+      : 'This will be your unique store URL');
+
   return (
-    <Grid container component="main" sx={{ height: '100vh' }}>
-      <Grid
-        item
-        xs={false}
-        sm={6}
-        md={6}
+    <Box
+      sx={{
+        minHeight: '100vh',
+        height: { md: '100vh' },
+        display: 'flex',
+        bgcolor: '#EEF0F6',
+        fontFamily: DS.font,
+        overflow: { xs: 'auto', md: 'hidden' },
+      }}
+    >
+      {/* LEFT — branding */}
+      <Box
         sx={{
-          backgroundImage: 'url(https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1350&q=80)',
-          backgroundRepeat: 'no-repeat',
-          backgroundColor: (t) =>
-            t.palette.mode === 'light' ? t.palette.grey[50] : t.palette.grey[900],
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          display: { xs: 'none', md: 'flex' },
+          width: { md: '38%', lg: '36.5%' },
+          height: '100vh',
+          flexDirection: 'column',
+          position: 'relative',
+          overflow: 'hidden',
+          px: { md: 3.25, lg: 4.25 },
+          pt: 3.25,
+          pb: 2.5,
         }}
-      />
-      <Grid item xs={12} sm={6} md={6} component={Paper} elevation={6} square sx={{ height: '100%', overflowY: 'auto' }}>
+      >
+        <Box
+          component="img"
+          src={restaurantInterior}
+          alt=""
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+            filter: 'blur(1.5px) saturate(0.85)',
+            transform: 'scale(1.04)',
+            pointerEvents: 'none',
+          }}
+        />
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(180deg, rgba(247,246,250,0.88) 0%, rgba(255,255,255,0.82) 42%, rgba(244,243,248,0.9) 100%)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 1.15, mb: 3.25 }}>
+          <Box
+            component="img"
+            src={brandMark}
+            alt="Suthra One"
+            sx={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0 }}
+          />
+          <Box>
+            <Typography sx={{ fontFamily: DS.heading, fontWeight: 800, fontSize: '17px', color: DS.text, lineHeight: 1.1, letterSpacing: '-0.03em' }}>
+              Suthra One
+            </Typography>
+            <Typography sx={{ mt: 0.35, fontSize: '8.5px', fontWeight: 600, letterSpacing: '0.16em', color: '#9CA3AF', textTransform: 'uppercase', fontFamily: DS.font }}>
+              All-in-One POS System
+            </Typography>
+          </Box>
+        </Box>
+
+        <Typography
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            fontFamily: DS.heading,
+            fontWeight: 800,
+            fontSize: { md: '30px', lg: '34px' },
+            lineHeight: 1.15,
+            color: DS.text,
+            letterSpacing: '-0.035em',
+            mb: 1.25,
+          }}
+        >
+          Let&apos;s Build Something{' '}
+          <Box component="span" sx={{ color: DS.orange }}>Amazing</Box>
+          {' '}Together
+        </Typography>
+        <Typography sx={{ position: 'relative', zIndex: 1, color: DS.muted, fontSize: '13.5px', lineHeight: 1.6, mb: 2.5, maxWidth: 340, fontFamily: DS.font }}>
+          Join thousands of restaurant partners growing their business with Suthra One.
+        </Typography>
+
+        <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 1.1, mb: 2.25 }}>
+          {FEATURES.map((item) => (
+            <Box
+              key={item.title}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.35,
+                px: 1.5,
+                py: 1.15,
+                bgcolor: 'rgba(255,255,255,0.92)',
+                border: '1px solid #E8E8EE',
+                borderRadius: '12px',
+                boxShadow: '0 2px 8px rgba(15,23,42,0.04)',
+              }}
+            >
+              <Box
+                sx={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '9px',
+                  bgcolor: `${item.color}16`,
+                  color: item.color,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <item.icon sx={{ fontSize: 18 }} />
+              </Box>
+              <Box>
+                <Typography sx={{ fontSize: '13px', fontWeight: 700, color: DS.text, fontFamily: DS.heading, lineHeight: 1.2 }}>
+                  {item.title}
+                </Typography>
+                <Typography sx={{ fontSize: '11.5px', color: DS.muted, mt: 0.2, fontFamily: DS.font }}>
+                  {item.desc}
+                </Typography>
+              </Box>
+            </Box>
+          ))}
+        </Box>
+
+        <Box
+          component="img"
+          src={posLifestyle}
+          alt="Suthra One POS"
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            width: '100%',
+            flex: 1,
+            minHeight: 140,
+            maxHeight: 420,
+            objectFit: 'cover',
+            objectPosition: 'center',
+            borderRadius: '16px',
+            boxShadow: '0 10px 28px rgba(15,23,42,0.12)',
+            mb: 1.75,
+          }}
+        />
 
         <Box
           sx={{
-            my: 8,
-            mx: 6,
+            position: 'relative',
+            zIndex: 1,
+            mt: 'auto',
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
+            gap: 1.1,
+            px: 1.6,
+            py: 1.15,
+            borderRadius: '12px',
+            bgcolor: 'rgba(255,255,255,0.7)',
+            border: '1px solid rgba(229,231,235,0.95)',
+            backdropFilter: 'blur(12px)',
           }}
         >
-          <Box sx={{ mb: 4, textAlign: 'center' }}>
-            <Typography component="h1" variant="h4" fontWeight="bold" sx={{ color: 'primary.main', letterSpacing: 1 }}>
-              Suthra One
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
+          <LockIcon sx={{ fontSize: 16, color: DS.purple }} />
+          <Typography sx={{ fontSize: '11.5px', color: DS.muted, fontWeight: 500, fontFamily: DS.font, lineHeight: 1.4 }}>
+            Your data is 100% secure. We never share your information.
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* RIGHT — form sheet */}
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: { xs: '100vh', md: '100vh' },
+          height: { md: '100vh' },
+          overflowY: 'auto',
+          bgcolor: '#fff',
+          borderRadius: { xs: 0, md: '32px 0 0 32px' },
+          boxShadow: { md: '-18px 0 48px rgba(15,23,42,0.08)' },
+          display: 'flex',
+          justifyContent: 'center',
+          px: { xs: 2.5, sm: 4, md: 4.5, lg: 6 },
+          py: { xs: 2.5, md: 3 },
+        }}
+      >
+        <Box sx={{ width: '100%', maxWidth: 640, position: 'relative' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.25 }}>
+            <Button
+              startIcon={<HeadsetMicOutlined sx={{ fontSize: 17 }} />}
+              href="tel:+19083138909"
+              sx={{
+                textTransform: 'none',
+                color: DS.purple,
+                bgcolor: 'rgba(139,92,246,0.1)',
+                borderRadius: '999px',
+                px: 1.7,
+                py: 0.55,
+                minWidth: 0,
+                fontWeight: 600,
+                fontSize: '13px',
+                fontFamily: DS.font,
+                boxShadow: 'none',
+                '&:hover': { bgcolor: 'rgba(139,92,246,0.16)', boxShadow: 'none' },
+              }}
+            >
+              Need help?
+            </Button>
+          </Box>
+
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1.1, mb: 2.5 }}>
+            <Box component="img" src={brandMark} alt="Suthra One" sx={{ width: 36, height: 36, objectFit: 'contain' }} />
+            <Typography sx={{ fontFamily: DS.heading, fontWeight: 800, fontSize: '16px', color: DS.text }}>Suthra One</Typography>
+          </Box>
+
+          <Box sx={{ textAlign: 'center', mb: 3.25 }}>
+            <Box
+              sx={{
+                width: 46,
+                height: 46,
+                borderRadius: '50%',
+                bgcolor: 'rgba(139,92,246,0.12)',
+                color: DS.purple,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 1.35,
+              }}
+            >
+              <StorefrontOutlined sx={{ fontSize: 22 }} />
+            </Box>
+            <Typography sx={{ fontFamily: DS.heading, fontWeight: 800, fontSize: { xs: '24px', md: '28px' }, color: DS.text, letterSpacing: '-0.035em', lineHeight: 1.15 }}>
               Partner Registration
+            </Typography>
+            <Typography sx={{ mt: 0.65, color: DS.muted, fontSize: '13.5px', fontFamily: DS.font }}>
+              Fill in the details below to create your partner account
             </Typography>
           </Box>
 
-
-
-          <Box component="form" noValidate onSubmit={onSubmit} sx={{ width: '100%' }}>
+          <Box component="form" noValidate onSubmit={onSubmit}>
             <Grid container spacing={2}>
               <Grid item xs={12}>
+                <FieldLabel htmlFor="restaurantName" required>Restaurant Name</FieldLabel>
                 <TextField
                   fullWidth
-                  label="Restaurant Name"
+                  id="restaurantName"
                   name="restaurantName"
+                  placeholder="Enter your restaurant name"
                   value={form.restaurantName}
                   onChange={onChange}
                   onBlur={() => handleBlur('restaurantName')}
                   error={hasError(errors.restaurantName)}
                   helperText={getHelperText(errors.restaurantName)}
                   required
+                  sx={fieldSx}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <StorefrontOutlined sx={{ color: '#9CA3AF', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+
+              <Grid item xs={12} sm={7}>
+                <FieldLabel htmlFor="slug" required>Domain / Store URL</FieldLabel>
                 <TextField
                   fullWidth
-                  label="Domain"
+                  id="slug"
                   name="slug"
+                  placeholder="yourstore"
                   value={form.slug}
                   onChange={onChange}
                   onBlur={() => handleBlur('slug')}
                   error={hasError(errors.slug) || slugAvailability === 'taken'}
-                  helperText={
-                    getHelperText(errors.slug) ||
-                    (slugAvailability === 'taken'
-                      ? 'This domain is already taken — please choose another'
-                      : slugAvailability === 'checking'
-                      ? 'Checking availability...'
-                      : slugAvailability === 'available'
-                      ? (
-                        <span>
-                          Available! Your store will be at:{' '}
-                          <Box component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-                            {form.slug.trim().toLowerCase()}.suthraone.com
-                          </Box>
-                        </span>
-                      )
-                      : form.slug.trim()
-                      ? (
-                        <span>
-                          Your store will be at:{' '}
-                          <Box component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-                            {form.slug.trim().toLowerCase()}.suthraone.com
-                          </Box>
-                        </span>
-                      )
-                      : "URL identifier — your store address will be yourname.suthraone.com")
-                  }
+                  helperText={slugHint}
                   required
-                  placeholder="e.g. my-bistro"
+                  sx={{
+                    ...fieldSx,
+                    '& .MuiFormHelperText-root': {
+                      mx: 0,
+                      mt: 0.6,
+                      fontSize: '12px',
+                      fontFamily: DS.font,
+                      color: hasError(errors.slug) || slugAvailability === 'taken'
+                        ? '#EF4444'
+                        : slugAvailability === 'available'
+                        ? '#16A34A'
+                        : DS.muted,
+                    },
+                    '& .MuiOutlinedInput-root': {
+                      ...fieldSx['& .MuiOutlinedInput-root'],
+                      pr: 0,
+                      overflow: 'hidden',
+                    },
+                  }}
                   InputProps={{
-                    endAdornment: <InputAdornment position="end">.suthraone.com</InputAdornment>,
+                    endAdornment: (
+                      <InputAdornment position="end" sx={{ maxHeight: 'none', height: '100%', ml: 0 }}>
+                        <Box
+                          sx={{
+                            bgcolor: '#F3F4F6',
+                            color: '#6B7280',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            px: 1.6,
+                            height: 48,
+                            display: 'flex',
+                            alignItems: 'center',
+                            borderLeft: '1px solid #E8E8EE',
+                            fontFamily: DS.font,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          .suthraone.com
+                        </Box>
+                      </InputAdornment>
+                    ),
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar
-                    src={form.logo}
-                    sx={{ width: 56, height: 56, bgcolor: 'primary.light' }}
-                  >
-                    {!form.logo && <Restaurant />}
-                  </Avatar>
-                  <Box>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      size="small"
-                      disabled={uploadingLogo}
-                      sx={{ textTransform: 'none' }}
-                      startIcon={uploadingLogo && <CircularProgress size={16} color="inherit" />}
-                    >
-                      {uploadingLogo ? 'Uploading...' : (form.logo ? 'Change Logo' : 'Upload Logo')}
-                      <input
-                        type="file"
-                        hidden
-                        accept="image/*"
-                        onChange={handleLogoUpload}
-                      />
-                    </Button>
-                    <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.7rem' }}>
-                      Max 5MB (Optional)
-                    </Typography>
-                  </Box>
+
+              <Grid item xs={12} sm={5}>
+                <FieldLabel optional>Upload Logo</FieldLabel>
+                <Box
+                  component="label"
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: 72,
+                    border: '1.5px dashed #C4B5FD',
+                    borderRadius: '10px',
+                    cursor: uploadingLogo ? 'wait' : 'pointer',
+                    bgcolor: '#FAFAFF',
+                    px: 1,
+                    py: 0.75,
+                    textAlign: 'center',
+                    '&:hover': { borderColor: DS.purple, bgcolor: 'rgba(139,92,246,0.06)' },
+                  }}
+                >
+                  {form.logo ? (
+                    <Avatar src={form.logo} sx={{ width: 28, height: 28, mb: 0.35 }} />
+                  ) : (
+                    <CloudUploadOutlined sx={{ color: DS.orange, fontSize: 22, mb: 0.25 }} />
+                  )}
+                  <Typography sx={{ fontSize: '12px', color: DS.orange, fontWeight: 700, lineHeight: 1.2 }}>
+                    {uploadingLogo ? 'Uploading...' : form.logo ? 'Change logo' : 'Click to upload'}
+                  </Typography>
+                  <Typography sx={{ fontSize: '10.5px', color: DS.muted, lineHeight: 1.25 }}>PNG, JPG (Max 5MB)</Typography>
+                  <input type="file" hidden accept="image/*" onChange={handleLogoUpload} />
                 </Box>
               </Grid>
+
               <Grid item xs={12} sm={6}>
+                <FieldLabel htmlFor="firstName" required>First Name</FieldLabel>
                 <TextField
                   fullWidth
-                  label="First Name"
+                  id="firstName"
                   name="firstName"
+                  placeholder="John"
                   value={form.firstName}
                   onChange={onChange}
                   onBlur={() => handleBlur('firstName')}
                   error={hasError(errors.firstName)}
                   helperText={getHelperText(errors.firstName)}
                   required
+                  sx={fieldSx}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PersonOutline sx={{ color: '#9CA3AF', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
+                <FieldLabel htmlFor="lastName" required>Last Name</FieldLabel>
                 <TextField
                   fullWidth
-                  label="Last Name"
+                  id="lastName"
                   name="lastName"
+                  placeholder="Doe"
                   value={form.lastName}
                   onChange={onChange}
                   onBlur={() => handleBlur('lastName')}
                   error={hasError(errors.lastName)}
                   helperText={getHelperText(errors.lastName)}
                   required
+                  sx={fieldSx}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PersonOutline sx={{ color: '#9CA3AF', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </Grid>
+
               <Grid item xs={12}>
+                <FieldLabel htmlFor="email" required>Email Address</FieldLabel>
                 <TextField
                   fullWidth
-                  label="Email Address"
+                  id="email"
                   name="email"
                   type="email"
+                  placeholder="name@business.com"
                   value={form.email}
                   onChange={onChange}
                   onBlur={() => handleBlur('email')}
                   error={hasError(errors.email)}
                   helperText={getHelperText(errors.email)}
                   required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <PhoneInput
-                  fullWidth
-                  label="Phone Number"
-                  value={form.phone}
-                  onChange={(val) => {
-                    const clean = val.replace(/\D/g, '');
-                    const isUS = form.dialCode === '1' || form.dialCode === '+1';
-                    const final = (isUS && clean.length > 10) ? clean.slice(-10) : clean;
-                    setForm({ ...form, phone: final });
-
-                    // Clear error when user types or corrects the number
-                    if (errors.phone) {
-                      setErrors(prev => ({ ...prev, phone: { isValid: true } }));
-                    }
+                  sx={fieldSx}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailOutlined sx={{ color: '#9CA3AF', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
                   }}
-                  dialCode={form.dialCode}
-                  onDialCodeChange={(code) => setForm({ ...form, dialCode: code })}
-                  error={hasError(errors.phone)}
-                  helperText={getHelperText(errors.phone) || "10 digits"}
-                  required
                 />
               </Grid>
-              <Grid item xs={12}>
+
+              <Grid item xs={12} sm={6}>
+                <FieldLabel required>Phone Number</FieldLabel>
+                <Box sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '10px',
+                    fontFamily: DS.font,
+                    height: 48,
+                    '& fieldset': { borderColor: '#E8E8EE' },
+                    '&:hover fieldset': { borderColor: '#D1D5DB' },
+                    '&.Mui-focused fieldset': { borderColor: DS.orange, borderWidth: '1.5px' },
+                  },
+                  '& .MuiInputBase-input': { py: 0, fontSize: '14px', fontFamily: DS.font },
+                  '& .MuiFormHelperText-root': { mx: 0, mt: 0.6, fontSize: '12px', fontFamily: DS.font },
+                }}>
+                  <PhoneInput
+                    fullWidth
+                    placeholder="(555) 000-0000"
+                    value={form.phone}
+                    onChange={(val) => {
+                      const clean = val.replace(/\D/g, '');
+                      const isUS = form.dialCode === '1' || form.dialCode === '+1';
+                      const final = (isUS && clean.length > 10) ? clean.slice(-10) : clean;
+                      setForm({ ...form, phone: final });
+                      if (errors.phone) {
+                        setErrors(prev => ({ ...prev, phone: { isValid: true } }));
+                      }
+                    }}
+                    dialCode={form.dialCode}
+                    onDialCodeChange={(code) => setForm({ ...form, dialCode: code })}
+                    error={hasError(errors.phone)}
+                    helperText={getHelperText(errors.phone)}
+                    required
+                    onBlur={() => handleBlur('phone')}
+                  />
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <FieldLabel htmlFor="ein">EIN (Employer Identification Number)</FieldLabel>
                 <TextField
                   fullWidth
-                  label="Create Password"
+                  id="ein"
+                  name="ein"
+                  value={form.ein}
+                  onChange={onChange}
+                  onBlur={() => handleBlur('ein')}
+                  error={hasError(errors.ein)}
+                  helperText={getHelperText(errors.ein) || 'Optional'}
+                  placeholder="e.g. 12-3456789"
+                  inputProps={{ maxLength: 10 }}
+                  sx={fieldSx}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <BadgeOutlined sx={{ color: '#9CA3AF', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <FieldLabel htmlFor="password" required>Create Password</FieldLabel>
+                <TextField
+                  fullWidth
+                  id="password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
+                  placeholder="Create a strong password"
                   value={form.password}
                   onChange={onChange}
                   onBlur={() => handleBlur('password')}
                   error={hasError(errors.password)}
-                  helperText={getHelperText(errors.password)}
+                  helperText={hasError(errors.password) ? getHelperText(errors.password) : undefined}
                   required
+                  sx={fieldSx}
                   InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockOutlined sx={{ color: '#9CA3AF', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowPassword(!showPassword)}
-                          edge="end"
-                        >
+                        <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" sx={{ color: '#9CA3AF' }}>
                           {showPassword ? <Visibility /> : <VisibilityOff />}
                         </IconButton>
                       </InputAdornment>
                     ),
                   }}
                 />
+                {form.password && (
+                  <Box sx={{ mt: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 0.6, mb: 0.75 }}>
+                      {[0, 1, 2, 3].map((i) => (
+                        <Box
+                          key={i}
+                          sx={{
+                            flex: 1,
+                            height: 4,
+                            borderRadius: 99,
+                            bgcolor: i < strength.filled ? strength.color : '#E5E7EB',
+                          }}
+                        />
+                      ))}
+                    </Box>
+                    <Typography sx={{ fontSize: '12px', fontWeight: 600, color: strength.color, mb: 0.5 }}>
+                      Password strength: {strength.label}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      <CheckCircle sx={{ fontSize: 14, color: strength.meetsLength ? '#22C55E' : '#D1D5DB' }} />
+                      <Typography sx={{ fontSize: '11.5px', color: strength.meetsLength ? '#16A34A' : DS.muted }}>
+                        Use 8+ characters with a mix of letters, numbers & symbols
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
               </Grid>
-              <Grid item xs={12}>
+
+              <Grid item xs={12} sm={6}>
+                <FieldLabel htmlFor="confirmPassword" required>Confirm Password</FieldLabel>
                 <TextField
                   fullWidth
-                  label="Confirm Password"
+                  id="confirmPassword"
                   name="confirmPassword"
                   type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Re-enter password"
                   value={form.confirmPassword}
                   onChange={onChange}
                   onBlur={() => handleBlur('confirmPassword')}
                   error={hasError(errors.confirmPassword)}
                   helperText={getHelperText(errors.confirmPassword)}
                   required
+                  sx={fieldSx}
                   InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockOutlined sx={{ color: '#9CA3AF', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          edge="end"
-                        >
+                        <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end" sx={{ color: '#9CA3AF' }}>
                           {showConfirmPassword ? <Visibility /> : <VisibilityOff />}
                         </IconButton>
                       </InputAdornment>
@@ -613,44 +1050,26 @@ const RestaurantRegisterPage: React.FC = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="EIN (Employer Identification Number)"
-                  name="ein"
-                  value={form.ein}
-                  onChange={onChange}
-                  onBlur={() => handleBlur('ein')}
-                  error={hasError(errors.ein)}
-                  helperText={getHelperText(errors.ein) || 'Optional — e.g. 12-3456789'}
-                  placeholder="12-3456789"
-                  inputProps={{ maxLength: 10 }}
-                />
-              </Grid>
             </Grid>
 
-            {/* Plans Selection UI */}
-            {loadingPlans ? (
-              <Box sx={{ mt: 5, mb: 2, display: 'flex', justifyContent: 'center', p: 3 }}>
-                <CircularProgress />
+            {/* {loadingPlans ? (
+              <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center', p: 2 }}>
+                <CircularProgress sx={{ color: DS.orange }} />
               </Box>
             ) : plans.length > 0 ? (
-              <Box sx={{ mt: 5, mb: 2, width: '100%' }}>
-                <Typography variant="h6" fontWeight="bold" sx={{ textAlign: 'center', color: 'text.primary' }}>
-                  Choose Your Subscription Plan (Optional)
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 3, textAlign: 'center', color: 'text.secondary' }}>
+              <Box sx={{ mt: 4 }}>
+                <Typography sx={{ fontFamily: DS.heading, fontWeight: 700, fontSize: '13px', color: DS.label, textAlign: 'left' }}>
+                  Choose a plan <Box component="span" sx={{ color: DS.muted, fontWeight: 500 }}>(Optional)</Box>
                 </Typography>
                 <Box
                   sx={{
                     display: 'flex',
                     overflowX: 'auto',
-                    gap: 3,
-                    pb: 2,
-                    px: 1,
-                    scrollSnapType: 'x mandatory',
+                    gap: 2,
+                    mt: 2,
+                    pb: 1,
                     '&::-webkit-scrollbar': { height: 8 },
-                    '&::-webkit-scrollbar-thumb': { backgroundColor: 'divider', borderRadius: 4 },
+                    '&::-webkit-scrollbar-thumb': { backgroundColor: DS.border, borderRadius: 4 },
                   }}
                 >
                   {plans.map((plan) => {
@@ -662,153 +1081,127 @@ const RestaurantRegisterPage: React.FC = () => {
                       plan.maxSms ? `${plan.maxSms} SMS Credits` : null,
                     ].filter(Boolean) as string[];
                     const featureItems = extra.map(planFeatureLabel);
+                    const selected = form.planId === plan._id;
 
                     return (
-                      <Box key={plan._id} sx={{ scrollSnapAlign: 'start', flexShrink: 0, width: { xs: 280, md: 300 } }}>
-                        <Paper
-                          elevation={form.planId === plan._id ? 8 : 1}
-                          onClick={() => setForm({ ...form, planId: form.planId === plan._id ? undefined : plan._id })}
-                          sx={{
-                            p: 3,
-                            height: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            cursor: 'pointer',
-                            borderRadius: 4,
-                            position: 'relative',
-                            overflow: 'hidden',
-                            border: form.planId === plan._id ? '2px solid' : '2px solid transparent',
-                            borderColor: form.planId === plan._id ? 'primary.main' : 'divider',
-                            transition: 'all 0.3s ease',
-                            '&:hover': {
-                              transform: 'translateY(-6px)',
-                              boxShadow: '0 12px 20px -10px rgba(79, 70, 229, 0.28), 0 4px 20px 0 rgba(0, 0, 0, 0.12)',
-                              borderColor: 'primary.main',
-                            },
-                            backgroundColor: form.planId === plan._id ? 'rgba(79, 70, 229, 0.04)' : 'background.paper',
-                          }}
-                        >
-                          <Typography variant="subtitle1" fontWeight="bold" color={form.planId === plan._id ? 'primary.main' : 'text.primary'} sx={{ textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.85rem', mb: 1, pr: 8 }}>
-                            {plan.name}
-                          </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
-                            <Typography variant="h4" fontWeight="bold" color="text.primary">
-                              ${Number(plan.price || 0).toFixed(2)}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ ml: 1, textTransform: 'capitalize' }}>
-                              / {plan.interval}
-                            </Typography>
+                      <Paper
+                        key={plan._id}
+                        elevation={0}
+                        onClick={() => setForm({ ...form, planId: selected ? undefined : plan._id })}
+                        sx={{
+                          p: 2.25,
+                          width: 260,
+                          flexShrink: 0,
+                          cursor: 'pointer',
+                          borderRadius: '14px',
+                          border: selected ? `2px solid ${DS.orange}` : `1px solid ${DS.border}`,
+                          bgcolor: selected ? 'rgba(139,92,246,0.04)' : '#fff',
+                        }}
+                      >
+                        <Typography sx={{ fontWeight: 800, fontSize: '13px', color: selected ? DS.orange : DS.text, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                          {plan.name}
+                        </Typography>
+                        <Typography sx={{ fontSize: '22px', fontWeight: 800, mt: 0.5, color: DS.text }}>
+                          ${Number(plan.price || 0).toFixed(2)}
+                          <Box component="span" sx={{ fontSize: '13px', fontWeight: 500, color: DS.muted }}> / {plan.interval}</Box>
+                        </Typography>
+                        <Typography sx={{ fontSize: '12px', color: DS.muted, mt: 1, minHeight: 36 }}>{plan.description || 'Get started with our basic features.'}</Typography>
+                        {[...limitItems, ...featureItems].slice(0, 5).map((feature) => (
+                          <Box key={feature} sx={{ display: 'flex', gap: 1, mt: 0.75 }}>
+                            <CheckCircle sx={{ fontSize: 14, color: selected ? DS.orange : '#D1D5DB', mt: '2px' }} />
+                            <Typography sx={{ fontSize: '12px', color: DS.muted }}>{feature}</Typography>
                           </Box>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 3, minHeight: 40 }}>
-                            {plan.description || 'Get started with our basic features to manage your restaurant efficiently.'}
+                        ))}
+                        {basePlan && (
+                          <Typography sx={{ fontSize: '11px', fontStyle: 'italic', color: DS.muted, mt: 1 }}>
+                            Everything in {basePlan.name}, plus extras
                           </Typography>
-                          {/* Limit/system items list */}
-                          {limitItems.length > 0 && (
-                            <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 1.5, mb: basePlan ? 1.5 : 3 }}>
-                              {limitItems.map((feature, idx) => (
-                                <Box component="li" key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-                                  <Box sx={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    width: 20, height: 20, borderRadius: '50%',
-                                    backgroundColor: form.planId === plan._id ? 'primary.main' : 'rgba(0,0,0,0.08)',
-                                    color: form.planId === plan._id ? 'white' : 'text.secondary',
-                                    flexShrink: 0,
-                                  }}>
-                                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}>✓</Typography>
-                                  </Box>
-                                  <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4 }}>{feature}</Typography>
-                                </Box>
-                              ))}
-                            </Box>
-                          )}
-
-                          {/* Base Plan Header */}
-                          {basePlan && (
-                            <Box sx={{ mb: 1.5, px: 0.5 }}>
-                              <Typography variant="body2" fontWeight="bold" color="text.primary" sx={{ fontSize: '0.82rem', fontStyle: 'italic' }}>
-                                Everything in {basePlan.name}, plus:
-                              </Typography>
-                            </Box>
-                          )}
-
-                          {/* Incremental features list */}
-                          <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 1.5, flexGrow: 1, mb: 3 }}>
-                            {featureItems.map((feature, idx) => (
-                              <Box component="li" key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-                                <Box sx={{
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  width: 20, height: 20, borderRadius: '50%',
-                                  backgroundColor: form.planId === plan._id ? 'primary.main' : 'rgba(0,0,0,0.08)',
-                                  color: form.planId === plan._id ? 'white' : 'text.secondary',
-                                  flexShrink: 0,
-                                }}>
-                                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}>✓</Typography>
-                                </Box>
-                                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4 }}>{feature}</Typography>
-                              </Box>
-                            ))}
-                          </Box>
-                          <Button
-                            variant={form.planId === plan._id ? "contained" : "outlined"}
-                            fullWidth
-                            sx={{
-                              mt: 'auto',
-                              borderRadius: 2,
-                              textTransform: 'none',
-                              fontWeight: 'bold',
-                              py: 1,
-                              pointerEvents: 'none' // Let the paper handle the click
-                            }}
-                          >
-                            {form.planId === plan._id ? 'Selected' : 'Choose Plan'}
-                          </Button>
-                        </Paper>
-                      </Box>
-                    )
+                        )}
+                      </Paper>
+                    );
                   })}
                 </Box>
-                <Typography variant="body2" sx={{ mt: 3, textAlign: 'center', color: 'text.secondary', fontStyle: 'italic' }}>
-                  Choose a plan to unlock all premium features, or skip this step to begin your free trial.
-                </Typography>
               </Box>
-            ) : null}
+            ) : null} */}
 
-            {error && <Alert severity="error" sx={{ mt: 3, borderRadius: 2 }}>{error}</Alert>}
+            {error && <Alert severity="error" sx={{ mt: 3, borderRadius: '12px' }}>{error}</Alert>}
 
             <Button
               type="submit"
               fullWidth
               variant="contained"
-              size="large"
-              sx={{
-                mt: 4,
-                mb: 2,
-                height: 48,
-                borderRadius: 2,
-                textTransform: 'none',
-                fontSize: '1.1rem',
-                fontWeight: 600,
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: (!loading && isReadyToRegister) ? 'translateY(-2px)' : 'none',
-                  boxShadow: (!loading && isReadyToRegister) ? '0 6px 20px rgba(25, 118, 210, 0.4)' : 'none',
-                }
-              }}
               disabled={loading || !isReadyToRegister}
+              startIcon={!loading ? <RocketLaunchOutlined /> : undefined}
+              sx={{
+                mt: 3.5,
+                height: 52,
+                borderRadius: '12px',
+                textTransform: 'none',
+                fontSize: '16px',
+                fontWeight: 700,
+                fontFamily: DS.font,
+                background: `linear-gradient(90deg, ${DS.orange} 0%, ${DS.orange} 100%)`,
+                boxShadow: '0 10px 24px rgba(139,92,246,0.28)',
+                '&:hover': { background: `linear-gradient(90deg, ${DS.orangeDeep} 0%, #EA580C 100%)` },
+                '&.Mui-disabled': {
+                  background: `linear-gradient(90deg, ${DS.orange} 0%, ${DS.orange} 100%)`,
+                  color: '#fff',
+                  opacity: 0.55,
+                },
+              }}
             >
               {loading ? <CircularProgress size={24} color="inherit" /> : 'Start Your Journey'}
             </Button>
 
-            <Grid container justifyContent="center">
-              <Grid item>
-                <Button onClick={() => navigate('/login')} sx={{ textTransform: 'none' }}>
-                  Already have an account? <strong>Sign in</strong>
-                </Button>
-              </Grid>
-            </Grid>
+            <Divider sx={{ my: 2.5, '&::before, &::after': { borderColor: DS.border }, '& .MuiDivider-wrapper': { px: 1.5, color: DS.muted, fontSize: '13px' } }}>
+              or
+            </Divider>
+
+            <Button
+              fullWidth
+              variant="outlined"
+              type="button"
+              onClick={() => setError('Google sign-up for partner accounts is not enabled yet. Please complete the form above.')}
+              sx={{
+                height: 50,
+                borderRadius: '12px',
+                textTransform: 'none',
+                fontFamily: DS.font,
+                fontWeight: 600,
+                fontSize: '14.5px',
+                color: DS.text,
+                borderColor: DS.border,
+                '&:hover': { borderColor: '#D1D5DB', bgcolor: '#F9FAFB' },
+              }}
+            >
+              <GoogleGIcon />
+              Sign up with Google
+            </Button>
+
+            <Typography sx={{ mt: 2.75, textAlign: 'center', fontSize: '14px', color: DS.muted }}>
+              Already have an account?{' '}
+              <Box
+                component="button"
+                type="button"
+                onClick={() => navigate('/login')}
+                sx={{
+                  border: 0,
+                  background: 'none',
+                  p: 0,
+                  color: DS.link,
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  fontFamily: DS.font,
+                }}
+              >
+                Sign in
+              </Box>
+            </Typography>
           </Box>
         </Box>
-      </Grid>
+      </Box>
+
       <Backdrop
         sx={{
           color: '#fff',
@@ -816,28 +1209,25 @@ const RestaurantRegisterPage: React.FC = () => {
           flexDirection: 'column',
           gap: 2,
           backdropFilter: 'blur(4px)',
-          backgroundColor: 'rgba(0,0,0,0.7)'
+          backgroundColor: 'rgba(0,0,0,0.7)',
         }}
         open={loading}
       >
         <CircularProgress color="inherit" size={60} thickness={4} />
-        <Typography variant="h6" color="inherit" sx={{ fontWeight: 500 }}>
+        <Typography sx={{ fontWeight: 600, fontSize: '18px', fontFamily: DS.heading }}>
           Creating your restaurant...
         </Typography>
-        <Typography variant="body2" color="inherit" sx={{ opacity: 0.8 }}>
+        <Typography sx={{ opacity: 0.8, fontSize: '14px' }}>
           Please wait while we set up your workspace
         </Typography>
       </Backdrop>
 
-      {/* Success Dialog for Free Registration */}
       <Dialog
         open={!!successData}
         onClose={() => setSuccessData(null)}
         maxWidth="sm"
         fullWidth
-        PaperProps={{
-          sx: { borderRadius: 3, p: 2 }
-        }}
+        PaperProps={{ sx: { borderRadius: '16px', p: 2 } }}
       >
         <DialogTitle sx={{ textAlign: 'center', pt: 3 }}>
           <CheckCircle sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
@@ -849,11 +1239,11 @@ const RestaurantRegisterPage: React.FC = () => {
           <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
             You have successfully created your restaurant workspace:
           </Typography>
-          <Typography variant="h5" color="primary.main" fontWeight="bold" sx={{ mb: 3 }}>
+          <Typography variant="h5" sx={{ color: DS.orange, fontWeight: 'bold', mb: 3 }}>
             {successData?.restaurantName}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Your account is currently under review by the Suthra One team. You'll get an email once your restaurant gets approved and is ready to use!
+            Your account is currently under review by the Suthra One team. You&apos;ll get an email once your restaurant gets approved and is ready to use!
           </Typography>
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', pb: 3, pt: 2 }}>
@@ -863,13 +1253,20 @@ const RestaurantRegisterPage: React.FC = () => {
               setSuccessData(null);
               navigate('/login');
             }}
-            sx={{ px: 6, py: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+            sx={{
+              px: 6,
+              py: 1.5,
+              borderRadius: '10px',
+              textTransform: 'none',
+              fontWeight: 'bold',
+              background: `linear-gradient(90deg, ${DS.orange} 0%, ${DS.orange} 100%)`,
+            }}
           >
             Go to Login
           </Button>
         </DialogActions>
       </Dialog>
-    </Grid>
+    </Box>
   );
 };
 
