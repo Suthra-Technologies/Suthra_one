@@ -1,0 +1,762 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { settingsAPI } from '../services/api';
+import { useAuth } from './AuthContext';
+
+// Unit configuration for inventory
+export interface UnitConfig {
+    value: string;
+    label: string;
+    type: 'weight' | 'volume' | 'count';
+}
+
+export interface TimeSlot {
+    openTime: string;
+    closeTime: string;
+}
+
+export interface BusinessHourDay {
+    day: string;
+    isOpen: boolean;
+    openTime?: string;
+    closeTime?: string;
+    slots?: TimeSlot[];
+}
+
+export interface RestaurantMailingStatus {
+    hasGmailAppPassword?: boolean;
+    hasSmtpPassword?: boolean;
+}
+
+export interface RestaurantGmailMailingSettings {
+    email: string;
+    fromEmail?: string;
+    appPassword: string;
+}
+
+export interface RestaurantSmtpMailingSettings {
+    host: string;
+    port: number;
+    secure: boolean;
+    username: string;
+    password: string;
+    fromEmail: string;
+}
+
+export interface RestaurantMailingSettings {
+    enabled: boolean;
+    provider: 'gmail' | 'smtp';
+    fromName: string;
+    gmail: RestaurantGmailMailingSettings;
+    smtp: RestaurantSmtpMailingSettings;
+    status?: RestaurantMailingStatus;
+}
+
+export interface RestaurantSettings {
+    name: string;
+    address: string;
+    phone: string;
+    email: string;
+    currency: string;
+    currencySymbol: string;
+    taxRate: number;
+    processingFee?: number;
+    // Slab size ($ of order value per fee unit); 0/unset = processingFee is a percent
+    processingFeeOrderValue?: number;
+    logo: string;
+    stamp?: string;
+    country: string;
+    timezone: string;
+    dialCode: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    taxBreakdown?: {
+        enabled: boolean;
+        country: number | string;
+        state: number | string;
+        city: number | string;
+        county: number | string;
+    };
+    tablePricing?: {
+        enabled: boolean;
+        sharedBaseRate: number;
+        privateBaseRate: number;
+    };
+    utensilsFee?: {
+        enabled: boolean;
+        amount: number;
+    };
+    units?: UnitConfig[];
+    occasions?: string[];
+    expenseCategories?: string[];
+    expensePayees?: string[];
+    deliveryRadius: number;
+    businessHours?: BusinessHourDay[];
+    mailing?: RestaurantMailingSettings;
+}
+
+export interface SystemSettings {
+    theme: string;
+    notifications: boolean;
+    autoPrint: boolean;
+    googleMapsApiKey?: string;
+    posPaymentMethods?: {
+        cash?: boolean;
+        card?: boolean;
+        zelle?: boolean;
+        venmo?: boolean;
+        cheque?: boolean;
+        creditCard?: boolean;
+        debitCard?: boolean;
+        [key: string]: boolean | undefined;
+    };
+    paymentQrCodes?: {
+        [key: string]: string | undefined;
+    };
+}
+
+export interface PaymentSettings {
+    stripePublishableKey?: string;
+    stripeSecretKey?: string;
+    stripeWebhookSecret?: string;
+    stripeMode?: 'test' | 'live';
+    phonePeClientId?: string;
+    phonePeClientSecret?: string;
+    phonePeClientVersion?: string;
+    phonePeEnv?: 'UAT' | 'PROD';
+}
+
+export interface NotificationSettings {
+    sms: {
+        enabled: boolean;
+        provider: 'twilio';
+        twilio: {
+            accountSid: string;
+            authToken: string;
+            fromNumber: string;
+        };
+        status?: {
+            hasAccountSid?: boolean;
+            hasAuthToken?: boolean;
+            hasFromNumber?: boolean;
+            isConnected?: boolean;
+        };
+    };
+    sound?: string;
+    soundDuration?: number; // duration in seconds
+    push?: any;
+}
+
+export interface PrinterConfig {
+    name: string;
+    type: 'epson-epos' | 'escpos-tcp' | 'print-agent' | 'usb' | 'none';
+    ip: string;
+    port: number;
+    paperWidth: number;
+    deviceId?: string;
+    /**
+     * Printer command language. Only relevant for type 'escpos-tcp':
+     *  - 'epos-print': Epson ePOS-Print over HTTP — for Epson TM-m30III/TM series (works when raw 9100 is off)
+     *  - 'escpos': raw ESC/POS over TCP 9100 — most generic thermal printers
+     *  - 'star-line': Star Line Mode over TCP 9100 — Star SP700/SP742/TSP
+     */
+    commandMode?: 'epos-print' | 'escpos' | 'star-line';
+}
+
+export interface TenantPrinterSettings {
+    enabled: boolean;
+    /**
+     * What Print Automation prints when an order is created:
+     *  - 'both': KOT then bill (default, existing behavior)
+     *  - 'kot': KOT only
+     *  - 'bill': billing receipt only
+     */
+    autoPrintMode?: 'both' | 'kot' | 'bill';
+    preferredAgentId?: string;
+    billing?: PrinterConfig;
+    kitchen?: PrinterConfig;
+}
+
+export interface DeliverySettings {
+    builtIn: {
+        enabled: boolean;
+        minDeliveryRange: number;
+        maxDeliveryRange: number;
+        baseFee: number;
+        baseMiles: number;
+        perMileRate: number;
+    };
+    doordash: {
+        enabled: boolean;
+        developerId: string;
+        keyId: string;
+        signingSecret: string;
+        isSandbox: boolean;
+    };
+    ubereats: {
+        enabled: boolean;
+        clientId: string;
+        clientSecret: string;
+        customerId: string;
+        storeId: string;
+        isSandbox: boolean;
+        pickupBarcodeType?: string;
+        dropoffPinEnabled?: boolean;
+    };
+    // Which platform delivery services the superadmin allows this restaurant to use
+    // (read-only here; set from the superadmin Tenant Details page). Absent = all allowed.
+    allowedServices?: {
+        doordash: boolean;
+        ubereats: boolean;
+        grubhub: boolean;
+        ubereatsMarketplace: boolean;
+    };
+}
+
+export interface RewardSettings {
+    isEnabled: boolean;
+    displayName: string;
+    pointValue: number;
+    earnRate: number;
+    calculationBase: string;
+    minOrderValueToEarn: number;
+    welcomeBonus: number;
+    firstOrderBonus: number;
+    minPointsToRedeem: number;
+    maxRedemptionPercentage: number;
+    pointsPerRating: number;
+}
+
+export interface SettingsState {
+    restaurant: RestaurantSettings;
+    system: SystemSettings;
+    payment: PaymentSettings;
+    notification: NotificationSettings;
+    printer: TenantPrinterSettings;
+    rewards: RewardSettings;
+    delivery?: DeliverySettings;
+}
+
+// Default settings
+const defaultSettings: SettingsState = {
+    restaurant: {
+        name: '',
+        address: '',
+        phone: '',
+        email: '',
+        currency: 'USD',
+        currencySymbol: '$',
+        taxRate: 5,
+        processingFee: 3,
+        city: '',
+        state: '',
+        zipCode: '',
+        taxBreakdown: {
+            enabled: false,
+            country: 0,
+            state: 0,
+            city: 0,
+            county: 0
+        },
+        logo: '',
+        country: 'United States',
+        timezone: 'America/New_York',
+        dialCode: '1',
+        tablePricing: {
+            enabled: true,
+            sharedBaseRate: 100,
+            privateBaseRate: 100
+        },
+        occasions: [
+            "Birthday Party",
+            "Sweet Sixteen Party",
+            "Graduation Party",
+            "Wedding Reception",
+            "Engagement Party",
+            "Baby Shower",
+            "Business Meeting",
+        ],
+        expenseCategories: ['salaries', 'rent', 'utilities', 'maintenance', 'supplies', 'marketing', 'other'],
+        expensePayees: [],
+        deliveryRadius: 15,
+        businessHours: [
+            { day: 'Monday', isOpen: true, slots: [{ openTime: '11:00', closeTime: '22:00' }] },
+            { day: 'Tuesday', isOpen: true, slots: [{ openTime: '11:00', closeTime: '22:00' }] },
+            { day: 'Wednesday', isOpen: true, slots: [{ openTime: '11:00', closeTime: '22:00' }] },
+            { day: 'Thursday', isOpen: true, slots: [{ openTime: '11:00', closeTime: '22:00' }] },
+            { day: 'Friday', isOpen: true, slots: [{ openTime: '11:00', closeTime: '23:00' }] },
+            { day: 'Saturday', isOpen: true, slots: [{ openTime: '11:00', closeTime: '23:00' }] },
+            { day: 'Sunday', isOpen: true, slots: [{ openTime: '12:00', closeTime: '21:00' }] },
+        ],
+        mailing: {
+            enabled: false,
+            provider: 'gmail',
+            fromName: '',
+            gmail: {
+                email: '',
+                fromEmail: '',
+                appPassword: '',
+            },
+            smtp: {
+                host: '',
+                port: 587,
+                secure: false,
+                username: '',
+                password: '',
+                fromEmail: '',
+            },
+            status: {
+                hasGmailAppPassword: false,
+                hasSmtpPassword: false,
+            },
+        },
+    },
+    system: {
+        theme: 'light',
+        notifications: true,
+        autoPrint: false,
+        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+        posPaymentMethods: {
+            cash: true,
+            card: true,
+            zelle: true,
+            venmo: true,
+            cheque: true,
+            creditCard: true,
+            debitCard: true,
+        },
+        paymentQrCodes: {}
+    },
+    payment: {
+        stripePublishableKey: '',
+        stripeSecretKey: '',
+        stripeWebhookSecret: '',
+        stripeMode: 'test',
+    },
+    notification: {
+        sms: {
+            enabled: false,
+            provider: 'twilio',
+            twilio: {
+                accountSid: '',
+                authToken: '',
+                fromNumber: '',
+            },
+        },
+        sound: 'notification',
+        soundDuration: 6,
+    },
+    printer: {
+        enabled: false,
+        autoPrintMode: 'both',
+        billing: { name: 'Main Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
+        kitchen: { name: 'Kitchen Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
+    },
+    rewards: {
+        isEnabled: false,
+        displayName: 'Points',
+        pointValue: 0.05,
+        earnRate: 1,
+        calculationBase: 'total',
+        minOrderValueToEarn: 0,
+        welcomeBonus: 100,
+        firstOrderBonus: 0,
+        minPointsToRedeem: 100,
+        maxRedemptionPercentage: 100,
+        pointsPerRating: 0,
+    },
+    delivery: {
+        builtIn: {
+            enabled: false,
+            minDeliveryRange: 0,
+            maxDeliveryRange: 10,
+            baseFee: 0,
+            baseMiles: 0,
+            perMileRate: 0,
+        },
+        doordash: {
+            enabled: false,
+            developerId: '',
+            keyId: '',
+            signingSecret: '',
+            isSandbox: true,
+        },
+        ubereats: {
+            enabled: false,
+            clientId: '',
+            clientSecret: '',
+            customerId: '',
+            storeId: '',
+            isSandbox: true,
+        }
+    }
+};
+
+interface SettingsContextType {
+    settings: SettingsState;
+    loading: boolean;
+    isFetched: boolean;
+    fetchError: boolean;
+    refreshSettings: () => Promise<void>;
+    updateSettings: (newSettings: SettingsState) => void;
+    formatCurrency: (amount: number) => string;
+    getUnits: () => UnitConfig[];
+    unitSystem: UnitSystem;
+    defaultDialCode: string; // Dynamic dial code based on setting
+}
+
+const SettingsContext = createContext<SettingsContextType | null>(null);
+
+export const useSettings = () => {
+    const context = useContext(SettingsContext);
+    if (!context) {
+        throw new Error('useSettings must be used within a SettingsProvider');
+    }
+    return context;
+};
+
+// Helper to get symbol from code
+export const getCurrencySymbol = (currencyCode: string): string => {
+    switch (currencyCode) {
+        case 'USD': return '$';
+        case 'INR': return '₹';
+        case 'EUR': return '€';
+        case 'GBP': return '£';
+        case 'AUD': return 'A$';
+        case 'CAD': return 'C$';
+        case 'SGD': return 'S$';
+        case 'JPY': return '¥';
+        case 'CNY': return '¥';
+        default: return currencyCode;
+    }
+};
+
+// Map of common countries to their dial codes
+export const COUNTRY_DIAL_CODES: Record<string, string> = {
+    'United States': '1',
+    'India': '91',
+    'United Kingdom': '44',
+    'Canada': '1',
+    'Australia': '61',
+    'Singapore': '65',
+    'United Arab Emirates': '971',
+    'Germany': '49',
+    'France': '33',
+    'Japan': '81',
+};
+
+// Helper to get dial code by country name
+export const getDialCodeByCountry = (countryName: string): string => {
+    return COUNTRY_DIAL_CODES[countryName] || '1'; // Default to 1 if not found
+};
+
+// Countries that use Imperial system
+const IMPERIAL_COUNTRIES = [
+    'United States', 'USA', 'US', 'America',
+    'Liberia',
+    'Myanmar', 'Burma'
+];
+
+// Unit system types
+export type UnitSystem = 'metric' | 'imperial';
+
+// Metric units (India, most of the world)
+export const METRIC_UNITS: UnitConfig[] = [
+    { value: 'kg', label: 'Kilograms (kg)', type: 'weight' },
+    { value: 'g', label: 'Grams (g)', type: 'weight' },
+    { value: 'l', label: 'Liters (l)', type: 'volume' },
+    { value: 'ml', label: 'Milliliters (ml)', type: 'volume' },
+    { value: 'pieces', label: 'Pieces', type: 'count' },
+    { value: 'packets', label: 'Packets', type: 'count' },
+    { value: 'boxes', label: 'Boxes', type: 'count' },
+    { value: 'bottles', label: 'Bottles', type: 'count' },
+];
+
+// Imperial units (USA, Liberia, Myanmar)
+export const IMPERIAL_UNITS: UnitConfig[] = [
+    { value: 'lb', label: 'Pounds (lb)', type: 'weight' },
+    { value: 'oz', label: 'Ounces (oz)', type: 'weight' },
+    { value: 'gallon', label: 'Gallons', type: 'volume' },
+    { value: 'quart', label: 'Quarts', type: 'volume' },
+    { value: 'pint', label: 'Pints', type: 'volume' },
+    { value: 'fl_oz', label: 'Fluid Ounces (fl oz)', type: 'volume' },
+    { value: 'each', label: 'Each', type: 'count' },
+    { value: 'dozen', label: 'Dozen', type: 'count' },
+    { value: 'pieces', label: 'Pieces', type: 'count' },
+    { value: 'boxes', label: 'Boxes', type: 'count' },
+];
+
+// Determine unit system from country
+export const getUnitSystem = (country: string): UnitSystem => {
+    const normalizedCountry = country?.trim()?.toLowerCase() || '';
+    return IMPERIAL_COUNTRIES.some(c => normalizedCountry.includes(c?.toLowerCase()))
+        ? 'imperial'
+        : 'metric';
+};
+
+// Get appropriate units based on country
+export const getUnitsForCountry = (country: string): { value: string; label: string }[] => {
+    return getUnitSystem(country) === 'imperial' ? IMPERIAL_UNITS : METRIC_UNITS;
+};
+
+/**
+ * BCP 47 locale to format dates with, derived from the tenant's country.
+ *
+ * Only the day/month order actually differs for our purposes, so this maps to
+ * one representative locale per convention rather than trying to cover every
+ * country. Codes are matched exactly — "us" as a substring also matches
+ * Australia, Austria, Belarus, Cyprus, Mauritius and Russia, all day-first.
+ */
+const MONTH_FIRST_NAMES = ['united states', 'america', 'philippines', 'micronesia'];
+const MONTH_FIRST_CODES = ['us', 'usa', 'ph', 'phl', 'fm', 'fsm'];
+
+export const getDateLocale = (country: string): string => {
+    const normalized = country?.trim()?.toLowerCase() || '';
+    if (!normalized) return 'en-GB';
+    if (MONTH_FIRST_CODES.includes(normalized)) return 'en-US';
+    return MONTH_FIRST_NAMES.some((name) => normalized.includes(name)) ? 'en-US' : 'en-GB';
+};
+
+// Get all valid unit values (for backend validation)
+export const ALL_VALID_UNITS = [
+    // Metric
+    'kg', 'g', 'l', 'ml', 'pieces', 'packets', 'boxes', 'bottles',
+    // Imperial
+    'lb', 'oz', 'gallon', 'quart', 'pint', 'fl_oz', 'each', 'dozen'
+];
+
+export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { user } = useAuth();
+
+    // Seed initial settings from localStorage or user.tenant if available
+    const getInitialSettings = (): SettingsState => {
+        try {
+            const tenantSlug = (user?.tenant as any)?.slug || (user?.tenant as any)?._id || 'default';
+            const cached = localStorage.getItem(`cached_restaurant_settings_${tenantSlug}`);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                return { ...defaultSettings, ...parsed };
+            }
+        } catch {
+            // ignore JSON error
+        }
+        const initial = { ...defaultSettings };
+        if (user?.tenant) {
+            const t = user.tenant as any;
+            if (t.name) initial.restaurant.name = t.name;
+            if (t.logo) initial.restaurant.logo = t.logo;
+            if (t.address) initial.restaurant.address = t.address;
+            if (t.contactEmail || user.email) initial.restaurant.email = t.contactEmail || user.email || '';
+            if (t.contactPhone || user.phone) {
+                const phoneVal = t.contactPhone || user.phone || '';
+                initial.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+            }
+        }
+        return initial;
+    };
+
+    const [settings, setSettings] = useState<SettingsState>(getInitialSettings);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [isFetched, setIsFetched] = useState<boolean>(false);
+    const [fetchError, setFetchError] = useState<boolean>(false);
+
+    const refreshSettings = async () => {
+        try {
+            setLoading(true);
+            setFetchError(false);
+            const response = await settingsAPI.getAll();
+
+            let fetched: Partial<SettingsState> = {};
+
+            if (Array.isArray(response.data)) {
+                fetched = (response?.data || []).reduce((acc: Partial<SettingsState>, curr: any) => {
+                    if (curr?.category && curr?.settings) {
+                        acc[curr.category as keyof SettingsState] = curr.settings;
+                    }
+                    return acc;
+                }, {});
+            } else if (response.data && typeof response.data === 'object') {
+                fetched = response.data as Partial<SettingsState>;
+            }
+
+            const merged: SettingsState = {
+                restaurant: {
+                    ...defaultSettings.restaurant,
+                    ...(fetched.restaurant || {}),
+                    mailing: {
+                        ...defaultSettings.restaurant.mailing,
+                        ...(fetched.restaurant?.mailing || {}),
+                        enabled: fetched.restaurant?.mailing?.enabled ?? defaultSettings.restaurant.mailing?.enabled ?? false,
+                        provider: fetched.restaurant?.mailing?.provider ?? defaultSettings.restaurant.mailing?.provider ?? 'gmail',
+                        fromName: fetched.restaurant?.mailing?.fromName ?? defaultSettings.restaurant.mailing?.fromName ?? '',
+                        gmail: {
+                            ...defaultSettings.restaurant.mailing?.gmail!,
+                            ...(fetched.restaurant?.mailing?.gmail || {}),
+                            email: fetched.restaurant?.mailing?.gmail?.email || defaultSettings.restaurant.mailing?.gmail.email || '',
+                        },
+                        smtp: {
+                            ...defaultSettings.restaurant.mailing?.smtp!,
+                            ...(fetched.restaurant?.mailing?.smtp || {}),
+                            host: fetched.restaurant?.mailing?.smtp?.host || defaultSettings.restaurant.mailing?.smtp.host || '',
+                            username: fetched.restaurant?.mailing?.smtp?.username || defaultSettings.restaurant.mailing?.smtp.username || '',
+                            password: fetched.restaurant?.mailing?.smtp?.password || defaultSettings.restaurant.mailing?.smtp.password || '',
+                            fromEmail: fetched.restaurant?.mailing?.smtp?.fromEmail || defaultSettings.restaurant.mailing?.smtp.fromEmail || '',
+                        },
+                        status: {
+                            ...defaultSettings.restaurant.mailing?.status,
+                            ...(fetched.restaurant?.mailing?.status || {}),
+                        },
+                    },
+                },
+                system: {
+                    ...defaultSettings.system,
+                    ...(fetched.system || {}),
+                    googleMapsApiKey: (fetched.system?.googleMapsApiKey) || defaultSettings.system.googleMapsApiKey,
+                    posPaymentMethods: {
+                        ...(fetched.system?.posPaymentMethods || {}),
+                        cash: fetched.system?.posPaymentMethods?.cash ?? defaultSettings.system.posPaymentMethods?.cash ?? true,
+                        card: fetched.system?.posPaymentMethods?.card ?? defaultSettings.system.posPaymentMethods?.card ?? true,
+                        zelle: fetched.system?.posPaymentMethods?.zelle ?? defaultSettings.system.posPaymentMethods?.zelle ?? true,
+                        venmo: fetched.system?.posPaymentMethods?.venmo ?? defaultSettings.system.posPaymentMethods?.venmo ?? true,
+                        cheque: fetched.system?.posPaymentMethods?.cheque ?? defaultSettings.system.posPaymentMethods?.cheque ?? true,
+                        creditCard: fetched.system?.posPaymentMethods?.creditCard ?? defaultSettings.system.posPaymentMethods?.creditCard ?? true,
+                        debitCard: fetched.system?.posPaymentMethods?.debitCard ?? defaultSettings.system.posPaymentMethods?.debitCard ?? true,
+                    },
+                    paymentQrCodes: fetched.system?.paymentQrCodes || {}
+                },
+                payment: {
+                    ...defaultSettings.payment,
+                    ...(fetched.payment || {}),
+                },
+                notification: {
+                    ...defaultSettings.notification,
+                    ...(fetched.notification || {}),
+                    sms: {
+                        ...defaultSettings.notification.sms,
+                        ...(fetched.notification?.sms || {}),
+                        twilio: {
+                            ...defaultSettings.notification.sms.twilio,
+                            ...(fetched.notification?.sms?.twilio || {}),
+                        },
+                    },
+                    soundDuration: fetched.notification?.soundDuration ?? defaultSettings.notification.soundDuration ?? 6,
+                },
+                printer: {
+                    ...defaultSettings.printer,
+                    ...(fetched.printer || {}),
+                    billing: {
+                        ...defaultSettings.printer.billing!,
+                        ...(fetched.printer?.billing || {}),
+                    },
+                    kitchen: {
+                        ...defaultSettings.printer.kitchen!,
+                        ...(fetched.printer?.kitchen || {}),
+                    }
+                },
+                rewards: {
+                    ...defaultSettings.rewards,
+                    ...(fetched.rewards || {}),
+                },
+                delivery: {
+                    builtIn: {
+                        ...defaultSettings.delivery!.builtIn,
+                        ...(fetched.delivery?.builtIn || {}),
+                    },
+                    doordash: {
+                        ...defaultSettings.delivery!.doordash,
+                        ...(fetched.delivery?.doordash || {}),
+                    },
+                    ubereats: {
+                        ...defaultSettings.delivery!.ubereats,
+                        ...(fetched.delivery?.ubereats || {}),
+                    }
+                }
+            };
+
+            // Recalculate symbol based on fetched currency
+            merged.restaurant.currencySymbol = getCurrencySymbol(merged.restaurant.currency);
+
+            if (!merged.restaurant.name && user?.tenant) {
+                merged.restaurant.name = (user.tenant as any).name || '';
+            }
+            if (!merged.restaurant.logo && user?.tenant) {
+                merged.restaurant.logo = (user.tenant as any).logo || '';
+            }
+            if (!merged.restaurant.address && user?.tenant) {
+                merged.restaurant.address = (user.tenant as any).address || '';
+            }
+            if (!merged.restaurant.email && user?.tenant) {
+                merged.restaurant.email = (user.tenant as any).contactEmail || user?.email || '';
+            }
+            if (!merged.restaurant.phone && user?.tenant) {
+                const phoneVal = (user.tenant as any).contactPhone || user?.phone || '';
+                merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+            }
+
+            setSettings(merged);
+            setIsFetched(true);
+
+            try {
+                const tenantSlug = (user?.tenant as any)?.slug || (user?.tenant as any)?._id || 'default';
+                localStorage.setItem(`cached_restaurant_settings_${tenantSlug}`, JSON.stringify(merged));
+            } catch {
+                // ignore
+            }
+        } catch (error) {
+            console.error('Error fetching global settings:', error);
+            setFetchError(true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (user) {
+            refreshSettings();
+        } else {
+            setLoading(false);
+        }
+    }, [user]);
+
+    const updateSettings = (newSettings: SettingsState) => {
+        const updated = { ...newSettings };
+        updated.restaurant.currencySymbol = getCurrencySymbol(updated.restaurant.currency);
+        setSettings(updated);
+        try {
+            const tenantSlug = (user?.tenant as any)?.slug || (user?.tenant as any)?._id || 'default';
+            localStorage.setItem(`cached_restaurant_settings_${tenantSlug}`, JSON.stringify(updated));
+        } catch {
+            // ignore
+        }
+    };
+
+    const formatCurrency = (amount: number): string => {
+        return `${settings.restaurant.currencySymbol}${amount.toFixed(2)}`;
+    };
+
+    const unitSystem = getUnitSystem(settings.restaurant.country);
+
+    const getUnits = (): UnitConfig[] => {
+        if (settings.restaurant.units && settings.restaurant.units.length > 0) {
+            return settings.restaurant.units;
+        }
+        return unitSystem === 'imperial' ? IMPERIAL_UNITS : METRIC_UNITS;
+    };
+
+    return (
+        <SettingsContext.Provider value={{
+            settings,
+            loading,
+            isFetched,
+            fetchError,
+            refreshSettings,
+            updateSettings,
+            formatCurrency,
+            getUnits,
+            unitSystem,
+            defaultDialCode: settings.restaurant.dialCode || '1'
+        }}>
+            {children}
+        </SettingsContext.Provider>
+    );
+};

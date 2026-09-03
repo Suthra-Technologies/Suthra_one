@@ -1,0 +1,1596 @@
+import React, { useState, useEffect } from 'react';
+import {
+    Box,
+    Typography,
+    Paper,
+    TextField,
+    Button,
+    MenuItem,
+    IconButton,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Stack,
+    ToggleButton,
+    ToggleButtonGroup,
+    Card,
+    CardMedia,
+    CircularProgress,
+    Grid,
+    Divider,
+    Autocomplete,
+    alpha,
+    useTheme,
+    Tooltip,
+    InputAdornment,
+    Chip,
+    FormControl,
+    useMediaQuery
+} from '@mui/material';
+import {
+    Add as AddIcon,
+    Delete as DeleteIcon,
+    ArrowBack as BackIcon,
+    CloudUpload as UploadIcon,
+    Store as VendorIcon,
+    Description as DetailsIcon,
+    Inventory as ItemsIcon,
+    AttachFile as AttachmentIcon,
+    LocalShipping as ShippingIcon,
+    AccountBalance as BankIcon,
+    InfoOutlined as InfoIcon,
+    CheckCircle as CheckCircleIcon,
+    AddCircleOutline as AddCircleIcon,
+    MoveToInbox as RestockIcon,
+    Category as CategoryIcon
+} from '@mui/icons-material';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { purchaseOrdersAPI, uploadAPI, inventoryAPI, usersAPI, vendorsAPI } from '../../services/api';
+import { toast } from 'react-hot-toast';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
+
+// --- Global Utilities ---
+const normalizeUnit = (unit: string): string => {
+    const u = (unit || '')?.toLowerCase().trim();
+    if (u === 'box') return 'boxes';
+    if (u === 'packet') return 'packets';
+    if (u === 'piece') return 'pieces';
+    if (u === 'bottle') return 'bottles';
+    if (u === 'kg') return 'kg';
+    if (u === 'g') return 'g';
+    if (u === 'l') return 'l';
+    if (u === 'ml') return 'ml';
+    return u;
+};
+
+// --- Bill Entry design tokens ---
+const TOKENS = {
+    bg: '#f6f1e7',
+    surface: '#ffffff',
+    ink: '#26221b',
+    muted: '#8a8272',
+    border: '#e3dac6',
+    borderLight: '#ece5d3',
+    accent: '#b3492f',
+    danger: '#b3492f',
+    status: {
+        paid: { bg: '#e2ecdc', fg: '#3f6b2c' },
+        overdue: { bg: '#f3dcd6', fg: '#a5432b' },
+        due: { bg: '#f6e6c8', fg: '#93551f' },
+    },
+    inventoryWarning: { bg: '#f6e6d0', fg: '#93551f' },
+    fontSerif: '"Spectral", Georgia, serif',
+    fontSans: '"IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif',
+    fontMono: '"IBM Plex Mono", ui-monospace, monospace',
+};
+
+// Expense categories. Must stay in sync with the `category` enum on the
+// purchase-order schema and the category filter on the list page.
+const PO_CATEGORIES = [
+    { value: 'raw_materials', label: 'Raw Materials' },
+    { value: 'salaries', label: 'Salaries' },
+    { value: 'rent', label: 'Rent' },
+    { value: 'utilities', label: 'Utilities' },
+    { value: 'maintenance', label: 'Maintenance' },
+    { value: 'supplies', label: 'Supplies' },
+    { value: 'other', label: 'Other' },
+];
+
+const CreatePOPage: React.FC = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { id } = useParams();
+    const { getRelativePath } = useActiveTenant();
+    const theme = useTheme();
+    const [loading, setLoading] = useState(false);
+    const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
+    const [vendors, setVendors] = useState<any[]>([]);
+    const [selectedVendor, setSelectedVendor] = useState<any>(null);
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+    // Check for pre-filled data from navigation state (e.g., from Reorder alerts)
+    const state = location.state as any;
+
+    const [formData, setFormData] = useState({
+        type: 'purchase_order',
+        poNumber: `PO-${Date.now().toString().slice(-6)}`, // Visual indicator
+        vendor: state?.vendor || { name: '', contact: '', email: '', address: '' },
+        category: state?.category || 'raw_materials',
+        referenceNumber: '',
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        items: state?.items || [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, taxRate: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
+        taxRate: 0, // No tax for purchase orders
+        shippingCost: 0,
+        notes: state?.notes || '',
+        status: 'draft',
+        paymentStatus: 'unpaid',
+        paymentMethod: 'cash',
+        paymentSource: 'bank_account',
+        attachments: [] as any[],
+        metadata: {} as any,
+    });
+    const [uploading, setUploading] = useState(false);
+    const [extracting, setExtracting] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        fetchInventory();
+        fetchUsers();
+        fetchVendors();
+        if (id) {
+            fetchPO();
+        }
+    }, [id]);
+
+    const fetchPO = async () => {
+        try {
+            setLoading(true);
+            const response = await purchaseOrdersAPI.getOne(id!);
+            const po = response.data.data || response.data;
+            setFormData({
+                type: po.type || 'purchase_order',
+                poNumber: po.poNumber,
+                vendor: po.vendor || { name: '', contact: '', email: '', address: '' },
+                category: po.category || 'raw_materials',
+                referenceNumber: po.referenceNumber || '',
+                dueDate: po.dueDate ? new Date(po.dueDate).toISOString().split('T')[0] : '',
+                items: (po.items && (po?.items || []).length > 0) ? po.items : [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, taxRate: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
+                taxRate: po.taxRate || 0,
+                shippingCost: po.shippingCost || 0,
+                notes: po.notes || '',
+                status: po.status || 'draft',
+                paymentStatus: po.paymentStatus || 'unpaid',
+                paymentMethod: po.paymentMethod || 'cash',
+                paymentSource: po.paymentSource || 'bank_account',
+                attachments: po.attachments || [],
+                metadata: po.metadata || {},
+            });
+            if (po.vendor && po.vendor.name) {
+                // We just set a string/object so the Autocomplete shows it
+                setSelectedVendor(po.vendor);
+            }
+        } catch (error) {
+            console.error('Failed to fetch PO', error);
+            toast.error('Failed to load purchase order');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Refetch vendors when category changes
+    useEffect(() => {
+        fetchVendors();
+        setSelectedVendor(null); // Reset selected vendor when category changes
+    }, [formData.category]);
+    const fetchInventory = async () => {
+        try {
+            const response = await inventoryAPI.getAll();
+            setInventoryItems(response.data || []);
+        } catch (error) {
+            console.error('Failed to fetch inventory', error);
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const response = await usersAPI.getUsers();
+            const allUsers = response.data.data || response.data.users || response.data || [];
+            setUsers(allUsers.filter((u: any) => !u.roles?.includes('customer')));
+        } catch (error) {
+            console.error('Failed to fetch users', error);
+        }
+    };
+
+    const fetchVendors = async () => {
+        try {
+            const response = await vendorsAPI.getAll({ status: 'active', category: formData.category });
+            setVendors(response.data.vendors || []);
+        } catch (error) {
+            console.error('Failed to fetch vendors', error);
+        }
+    };
+
+    const handleCreateVendor = async () => {
+        const vendorName = formData.vendor.name?.trim();
+        if (!vendorName) {
+            toast.error('Vendor name is required');
+            return;
+        }
+        try {
+            toast.loading('Creating vendor...', { id: 'create-vendor' });
+            const newVendor = {
+                name: vendorName,
+                contact: formData.vendor.contact || '',
+                email: formData.vendor.email || '',
+                address: formData.vendor.address || '',
+                categories: [formData.category || 'raw_materials'],
+                status: 'active',
+            };
+            const response = await vendorsAPI.create(newVendor);
+            const created = response.data?.data || response.data?.vendor || response.data;
+
+            // Refresh vendors list and auto-select the new one
+            await fetchVendors();
+            setSelectedVendor(created);
+            setFormData(prev => ({
+                ...prev,
+                vendor: {
+                    name: created.name,
+                    contact: created.contact || prev.vendor.contact,
+                    email: created.email || prev.vendor.email,
+                    address: created.address || prev.vendor.address,
+                },
+                metadata: { ...prev.metadata, vendorId: created._id }
+            }));
+            toast.success(`Vendor "${vendorName}" created!`, { id: 'create-vendor' });
+        } catch (error: any) {
+            console.error('Failed to create vendor:', error);
+            toast.error(error.response?.data?.message || 'Failed to create vendor', { id: 'create-vendor' });
+        }
+    };
+
+    const handleVendorSelect = (vendor: any) => {
+        setSelectedVendor(vendor);
+        if (vendor) {
+            setFormData(prev => ({
+                ...prev,
+                vendor: {
+                    name: vendor.name,
+                    contact: vendor.contact || '',
+                    email: vendor.email || '',
+                    address: vendor.address || '',
+                },
+                metadata: { ...prev.metadata, vendorId: vendor._id }
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                vendor: { name: '', contact: '', email: '', address: '' },
+                metadata: { ...prev.metadata, vendorId: undefined }
+            }));
+        }
+    };
+
+    const handleVendorChange = (field: string, value: string) => {
+        let finalValue = value;
+        if (field === 'name') {
+            finalValue = value.replace(/[^a-zA-Z\s]/g, '');
+        } else if (field === 'contact') {
+            finalValue = value.replace(/\D/g, '').slice(0, 10);
+        }
+        setFormData({ ...formData, vendor: { ...formData.vendor, [field]: finalValue } });
+    };
+
+    const handleMetadataChange = (field: string, value: any) => {
+        setFormData({ ...formData, metadata: { ...formData.metadata, [field]: value } });
+    };
+
+    const handleNumberInput = (index: number, field: string, rawValue: string) => {
+        let cleanValue = rawValue;
+        if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+            cleanValue = cleanValue.replace(/^0+/, '');
+            if (cleanValue === '') cleanValue = '0';
+        }
+        const parts = cleanValue.split('.');
+        if (parts[0].length > 5) return;
+        handleItemChange(index, field, cleanValue);
+    };
+
+    const handleItemChange = (index: number, field: string, value: any) => {
+        const newItems = [...formData.items];
+
+        if (field === 'inventoryItem' && value) {
+            const item = inventoryItems.find(i => i._id === value);
+            if (item) {
+                const q = parseFloat(newItems[index].quantity as any) || 1;
+                const t = parseFloat(newItems[index].taxRate as any) || 0;
+                newItems[index] = {
+                    ...newItems[index],
+                    description: item.name,
+                    unit: item.unit,
+                    unitPrice: item.costPrice || 0,
+                    inventoryItem: item._id,
+                    total: q * (item.costPrice || 0) * (1 + t / 100)
+                };
+            }
+        } else {
+            newItems[index] = { ...newItems[index], [field]: value };
+            if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
+                const q = parseFloat(newItems[index].quantity as any) || 0;
+                const p = parseFloat(newItems[index].unitPrice as any) || 0;
+                const t = parseFloat(newItems[index].taxRate as any) || 0;
+                newItems[index].total = q * p * (1 + t / 100);
+            }
+        }
+
+        setFormData({ ...formData, items: newItems });
+    };
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const response = await uploadAPI.uploadImage(file, 'purchase');
+            const url = response.data.url || response.data.imageUrl || response.data;
+            const finalUrl = typeof url === 'string' ? url : (url.url || url);
+
+            setFormData(prev => ({
+                ...prev,
+                attachments: [...prev.attachments, { url: finalUrl, name: file.name }]
+            }));
+            toast.success('File uploaded successfully');
+        } catch (error) {
+            console.error('Upload error:', error);
+            toast.error('Failed to upload file');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const removeAttachment = (index: number) => {
+        setFormData(prev => ({
+            ...prev,
+            attachments: prev.attachments.filter((_, i) => i !== index)
+        }));
+    };
+
+    const handleExtractInvoice = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Reset the input so the same file can be re-uploaded
+        event.target.value = '';
+
+        setExtracting(true);
+        toast.loading('Extracting invoice with AI...', { id: 'extract-toast' });
+        try {
+            const formDataUpload = new FormData();
+            formDataUpload.append('file', file);
+            const response = await purchaseOrdersAPI.extractInvoice(formDataUpload);
+
+            console.log('--- AI Extraction Processed ---');
+
+            const responseData = response.data?.data || response.data;
+            const extractionData = responseData.extraction || responseData;
+            const verificationData = responseData.verification || {};
+            const vendorFailed = !!responseData.vendorFailed || !!extractionData?.error;
+            const itemsFailed = !!responseData.itemsFailed || !!verificationData?.error;
+
+            // Helper: recursively find an object with certain keys
+            const findNested = (obj: any, ...keys: string[]): any => {
+                if (!obj || typeof obj !== 'object') return null;
+                for (const key of keys) {
+                    if (obj[key] !== undefined && obj[key] !== null) return obj[key];
+                }
+                for (const val of Object.values(obj)) {
+                    if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                        const found = findNested(val, ...keys);
+                        if (found !== null && found !== undefined) return found;
+                    }
+                }
+                return null;
+            };
+
+            // Helper: recursively find first array in object
+            const findFirstArray = (obj: any): any[] => {
+                if (!obj || typeof obj !== 'object') return [];
+                if (Array.isArray(obj)) return obj;
+                for (const val of Object.values(obj)) {
+                    if (Array.isArray(val) && val.length > 0) return val;
+                    if (typeof val === 'object' && val !== null) {
+                        const found = findFirstArray(val);
+                        if (found.length > 0) return found;
+                    }
+                }
+                return [];
+            };
+
+            // --- Auto-fill Vendor Details ---
+            const vendorObj = extractionData.vendor || extractionData.vendor_details || extractionData.supplier_info || {};
+            const vendorName = findNested(extractionData, 'vendor_name', 'supplier_name', 'company_name') ||
+                vendorObj.vendor_name || vendorObj.name || vendorObj.company || vendorObj.supplier ||
+                extractionData.vendor_name || extractionData.supplier || '';
+            const vendorContact = findNested(extractionData, 'phone', 'phone_number', 'contact_number', 'tel') ||
+                vendorObj.phone || vendorObj.contact || vendorObj.phone_number || '';
+            const vendorEmail = findNested(extractionData, 'email', 'vendor_email') ||
+                vendorObj.email || '';
+            const vendorAddress = findNested(extractionData, 'address', 'vendor_address', 'location', 'street') ||
+                vendorObj.address || vendorObj.location || '';
+
+            console.log('=== MAPPED VENDOR ===', { vendorName, vendorContact, vendorEmail, vendorAddress });
+
+            // --- Auto-fill Items ---
+            // Try verification data first (matched products), then extraction data
+            let rawItems = findFirstArray(verificationData);
+            if (rawItems.length === 0) rawItems = findFirstArray(extractionData);
+
+            console.log('=== RAW ITEMS ===', JSON.stringify(rawItems, null, 2));
+
+            const extractedItems = rawItems.length > 0 ? rawItems.map((item: any) => {
+                const qty = parseFloat(item.quantity || item.qty || item.count || item.amount || 1);
+                const price = parseFloat(item.price || item.unit_price || item.unitPrice || item.rate || item.cost || item.unit_cost || 0);
+                const itemName = item.name || item.description || item.product || item.item || item.product_name ||
+                    item.matched_name || item.item_name || item.material || '';
+
+                // Try to match with existing inventory items
+                let matchedInventoryId = item.inventory_id || item.inventoryId || item.matched_id || item._id || '';
+                if (!matchedInventoryId && itemName) {
+                    const matchedInv = inventoryItems.find((inv: any) =>
+                        inv.name?.toLowerCase().includes(itemName?.toLowerCase()) ||
+                        itemName?.toLowerCase().includes(inv.name?.toLowerCase())
+                    );
+                    if (matchedInv) matchedInventoryId = matchedInv._id;
+                }
+
+                // Check if verified/matched
+                const isVerified = item.verified === true || item.matched === true || item.exists === true ||
+                    item.status === 'matched' || item.status === 'verified' || item.status === 'found';
+
+                const tax = parseFloat(item.tax_rate || item.taxRate || item.tax || 0);
+                const safeTax = isNaN(tax) ? 0 : tax;
+                const safeQty = isNaN(qty) ? 1 : qty;
+                const safePrice = isNaN(price) ? 0 : price;
+
+                return {
+                    description: itemName,
+                    quantity: safeQty,
+                    unit: normalizeUnit(item.unit || item.uom || 'kg'),
+                    unitPrice: safePrice,
+                    taxRate: safeTax,
+                    total: safeQty * safePrice * (1 + safeTax / 100),
+                    inventoryItem: matchedInventoryId || (isVerified ? 'verified' : ''),
+                    weightValue: item.weight_value || item.weightValue || item.weight || '',
+                    weightUnit: normalizeUnit(item.weight_unit || item.weightUnit || item.unit || 'lb')
+                };
+            }) : [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, taxRate: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }];
+
+            console.log('=== MAPPED ITEMS ===', JSON.stringify(extractedItems, null, 2));
+
+            // --- Auto-fill other fields ---
+            const invoiceNumber = findNested(extractionData, 'invoice_number', 'invoiceNumber', 'reference', 'bill_number', 'receipt_number', 'invoice_no') || '';
+            const dueDate = findNested(extractionData, 'due_date', 'dueDate', 'payment_due', 'delivery_date', 'date_due') || '';
+            const invoiceDate = findNested(extractionData, 'invoice_date', 'date', 'order_date', 'bill_date') || '';
+
+            // Format date if found (try to parse various date formats)
+            let formattedDueDate = '';
+            const rawDate = dueDate || invoiceDate;
+            if (rawDate) {
+                try {
+                    const parsed = new Date(rawDate);
+                    if (!isNaN(parsed.getTime())) {
+                        formattedDueDate = parsed.toISOString().split('T')[0];
+                    }
+                } catch (e) { /* ignore parse errors */ }
+            }
+
+            console.log('=== MAPPED OTHER ===', { invoiceNumber, dueDate, invoiceDate, formattedDueDate });
+
+            setFormData(prev => ({
+                ...prev,
+                vendor: {
+                    name: vendorName || prev.vendor.name,
+                    contact: vendorContact || prev.vendor.contact,
+                    email: vendorEmail || prev.vendor.email,
+                    address: vendorAddress || prev.vendor.address,
+                },
+                items: extractedItems,
+                referenceNumber: invoiceNumber || prev.referenceNumber,
+                dueDate: formattedDueDate || prev.dueDate,
+                notes: (prev.notes ? prev.notes + '\n\n' : '') +
+                    `--- AI Extraction ---\n${JSON.stringify(extractionData, null, 2)}` +
+                    `\n\n--- AI Verification ---\n${JSON.stringify(verificationData, null, 2)}`
+            }));
+
+            // Try to match vendor from existing vendors list
+            if (vendorFailed && itemsFailed) {
+                toast.error('AI extraction timed out for both vendor and items. Please enter the details manually.', { id: 'extract-toast', duration: 6000 });
+            } else if (vendorFailed) {
+                toast.error('Vendor detection timed out, but items were extracted. Please fill in the vendor manually.', { id: 'extract-toast', duration: 6000 });
+            } else if (itemsFailed) {
+                toast.error('Item detection timed out, but vendor was extracted. Please add items manually.', { id: 'extract-toast', duration: 6000 });
+            } else if (vendorName) {
+                const matched = vendors.find((v: any) =>
+                    v.name?.toLowerCase().trim() === vendorName?.toLowerCase().trim()
+                );
+                if (matched) {
+                    setSelectedVendor(matched);
+                    toast.success(`Invoice extracted! Vendor matched: ${matched.name}`, { id: 'extract-toast' });
+                    // Use matched vendor's details if they exist to complement AI extraction
+                    setFormData(prev => ({
+                        ...prev,
+                        vendor: {
+                            ...prev.vendor,
+                            contact: prev.vendor.contact || matched.contact || '',
+                            email: prev.vendor.email || matched.email || '',
+                            address: prev.vendor.address || matched.address || '',
+                        }
+                    }));
+                } else {
+                    toast.success(`Invoice extracted! Vendor "${vendorName}" filled. Review items.`, { id: 'extract-toast' });
+                }
+            } else {
+                toast.success('Invoice extracted! Review the auto-filled data.', { id: 'extract-toast' });
+            }
+
+            // Also upload as visual evidence
+            try {
+                const uploadRes = await uploadAPI.uploadImage(file, 'purchase');
+                const url = uploadRes.data.url || uploadRes.data.imageUrl || uploadRes.data;
+                const finalUrl = typeof url === 'string' ? url : (url.url || url);
+                setFormData(prev => ({
+                    ...prev,
+                    attachments: [...prev.attachments, { url: finalUrl, name: file.name }]
+                }));
+            } catch (err) {
+                console.warn('Evidence upload failed, skipping.');
+            }
+
+        } catch (error: any) {
+            console.error('Extraction error:', error);
+            const isTimeout = error.code === 'ECONNABORTED' || /timeout/i.test(error.message || '');
+            const message = isTimeout
+                ? 'AI extraction timed out. The service may be slow right now — try again, or enter the vendor and items manually.'
+                : (error.response?.data?.message || 'Failed to extract invoice. Please enter the details manually.');
+            toast.error(message, { id: 'extract-toast', duration: 6000 });
+        } finally {
+            setExtracting(false);
+        }
+    };
+
+    const addItem = () => {
+        setFormData({
+            ...formData,
+            items: [...formData.items, { description: '', quantity: 1, unit: 'kg', unitPrice: 0, taxRate: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
+        });
+    };
+
+    const handleCreateInventoryItem = async (index: number) => {
+        const item = formData.items[index];
+        if (!item.description) {
+            toast.error('Item name is required to create in inventory');
+            return;
+        }
+
+        if (!formData.vendor.name) {
+            toast.error('Please select or enter a vendor name first');
+            return;
+        }
+
+        try {
+            toast.loading('Creating inventory item...', { id: `create-inv-${index}` });
+            const newItem = {
+                name: item.description,
+                sku: `AI-${Date.now().toString().slice(-8)}`,
+                category: 'raw_materials',
+                unit: normalizeUnit(item.unit || 'kg'),
+                currentStock: 0,
+                minimumStock: 1,
+                maximumStock: 1000,
+                reorderLevel: 5,
+                costPrice: item.unitPrice || 0,
+                sellingPrice: 0,
+                supplier: {
+                    name: formData.vendor.name || '',
+                    contact: formData.vendor.contact || '',
+                    email: formData.vendor.email || '',
+                    address: formData.vendor.address || '',
+                },
+                description: `Auto-created from Purchase Order ${formData.poNumber}`,
+                isPerishable: false,
+                isActive: true,
+            };
+            const response = await inventoryAPI.create(newItem);
+            const createdItem = response.data?.data || response.data;
+
+            // Update the item row with the new inventory ID
+            const newItems = [...formData.items];
+            newItems[index] = { ...newItems[index], inventoryItem: createdItem._id };
+            setFormData(prev => ({ ...prev, items: newItems }));
+
+            // Refresh inventory list
+            await fetchInventory();
+
+            toast.success(`"${item.description}" added to inventory with supplier "${formData.vendor.name}"!`, { id: `create-inv-${index}` });
+        } catch (error: any) {
+            console.error('Failed to create inventory item:', error);
+            const errorMsg = error.response?.data?.message || 'Failed to create inventory item';
+            toast.error(errorMsg, { id: `create-inv-${index}` });
+        }
+    };
+
+    const removeItem = (index: number) => {
+        setFormData({ ...formData, items: (formData?.items || []).filter((_: any, i: number) => i !== index) });
+    };
+
+    const handleRestockAll = async () => {
+        const verifiedItems = (formData?.items || []).filter((item: any) => item.inventoryItem && item.inventoryItem !== 'verified' && item.quantity > 0);
+        if (verifiedItems.length === 0) {
+            toast.error('No verified inventory items to restock. Ensure all items are matched to inventory first.');
+            return;
+        }
+
+        toast.loading(`Restocking ${verifiedItems.length} items...`, { id: 'restock-toast' });
+        try {
+            const restockPayload = verifiedItems.map((item: any) => ({
+                inventoryId: item.inventoryItem,
+                quantity: item.quantity,
+                costPrice: item.unitPrice || undefined,
+            }));
+
+            const response = await inventoryAPI.restockBulk(restockPayload);
+            const result = response.data?.data || response.data;
+
+            if (result.success > 0) {
+                toast.success(
+                    `✅ Restocked ${result.success} items successfully!${result.failed > 0 ? ` (${result.failed} failed)` : ''}`,
+                    { id: 'restock-toast', duration: 5000 }
+                );
+            } else {
+                toast.error('Failed to restock items. Check the console for details.', { id: 'restock-toast' });
+            }
+            console.log('Restock result:', result);
+        } catch (error: any) {
+            console.error('Restock error:', error);
+            toast.error(error.response?.data?.message || 'Failed to restock items', { id: 'restock-toast' });
+        }
+    };
+
+    const calculateSubtotal = () => (formData?.items || []).reduce((sum: number, item: any) => {
+        const q = parseFloat(item.quantity) || 0;
+        const p = parseFloat(item.unitPrice) || 0;
+        return sum + q * p;
+    }, 0);
+    const calculateTax = () => (formData?.items || []).reduce((sum: number, item: any) => {
+        const q = parseFloat(item.quantity) || 0;
+        const p = parseFloat(item.unitPrice) || 0;
+        const t = parseFloat(item.taxRate) || 0;
+        return sum + q * p * (t / 100);
+    }, 0);
+    const calculateTotal = () => calculateSubtotal() + calculateTax() + (formData.shippingCost || 0);
+
+    const getStatusPill = () => {
+        if (formData.paymentStatus === 'paid') {
+            return { label: 'Paid', ...TOKENS.status.paid };
+        }
+        if (formData.dueDate) {
+            const due = new Date(formData.dueDate);
+            const today = new Date();
+            due.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+            const days = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            if (days < 0) return { label: 'Overdue', ...TOKENS.status.overdue };
+            return { label: `Due in ${days} day${days === 1 ? '' : 's'}`, ...TOKENS.status.due };
+        }
+        return { label: 'Due', ...TOKENS.status.due };
+    };
+
+    const handleSubmit = async (status: string) => {
+        if (loading) return;
+        if (!formData.vendor.name && formData.category !== 'salaries') {
+            setErrors(prev => ({ ...prev, name: 'Required field' }));
+            toast.error('Entity name is required');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const payload = {
+                ...formData,
+                status,
+                subtotal: calculateSubtotal(),
+                tax: calculateTax(),
+                totalAmount: calculateTotal(),
+            };
+            if (id) {
+                await purchaseOrdersAPI.update(id, payload);
+                toast.success('Record updated successfully!');
+                navigate(getRelativePath('/purchase-orders'));
+            } else {
+                await purchaseOrdersAPI.create(payload);
+                toast.success('Record saved successfully!');
+                navigate(getRelativePath('/purchase-orders'));
+            }
+        } catch (error: any) {
+            console.error('Save PO Error:', error);
+            toast.error(error.response?.data?.message || 'Failed to save record');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const cardSx = {
+        p: { xs: 2.5, md: 3.5 },
+        borderRadius: '14px',
+        bgcolor: TOKENS.surface,
+        border: `1px solid ${TOKENS.border}`,
+        boxShadow: 'none',
+        maxWidth: { xs: 500, md: 'none' },
+        mx: { xs: 'auto', md: 0 },
+        width: '100%'
+    };
+
+    const SectionHeader = ({ icon, title, centeredOnMobile, sx }: { icon: React.ReactNode, title: string, centeredOnMobile?: boolean, sx?: any }) => (
+        <Stack
+            direction="row"
+            spacing={isMobile ? 1.25 : 2}
+            alignItems="center"
+            sx={{
+                mb: isMobile ? 1.5 : 2.5,
+                width: '100%',
+                ...sx
+            }}
+        >
+            <Box sx={{
+                p: isMobile ? 0.75 : 1.25,
+                borderRadius: isMobile ? 1.5 : 2.5,
+                bgcolor: alpha(TOKENS.accent, 0.08),
+                color: TOKENS.accent,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: `inset 0 0 0 1px ${alpha(TOKENS.accent, 0.15)}`,
+                '& .MuiSvgIcon-root': { fontSize: isMobile ? 18 : 24 }
+            }}>
+                {icon}
+            </Box>
+            <Typography
+                sx={{
+                    fontFamily: TOKENS.fontSerif,
+                    fontWeight: 600,
+                    fontSize: { xs: '0.95rem', md: '1.1rem' },
+                    color: TOKENS.ink,
+                    opacity: 0.9
+                }}
+            >
+                {title}
+            </Typography>
+        </Stack>
+    );
+
+    // --- Dynamic UI Logic ---
+    const isSalary = formData.category === 'salaries';
+    const isUtility = formData.category === 'utilities';
+    const isInventory = formData.category === 'raw_materials';
+
+    if (id && loading && formData.poNumber.startsWith('PO-')) {
+        return <TableSkeleton rows={6} columns={7} />;
+    }
+
+    const statusPill = getStatusPill();
+
+    return (
+        <Box sx={{
+            width: '100%',
+            minHeight: '100vh',
+            fontFamily: TOKENS.fontSans,
+            overflowX: 'hidden'
+        }}>
+            <Box sx={{
+                p: { xs: 1.5, md: 4 },
+                pb: { xs: 24, md: 14 },
+                maxWidth: 1400,
+                mx: 'auto',
+            }}>
+                <Stack
+                    direction={isMobile ? "column" : "row"}
+                    justifyContent="space-between"
+                    alignItems={isMobile ? "stretch" : "center"}
+                    spacing={isMobile ? 1.5 : 2}
+                    mb={isMobile ? 3 : 4}
+                    sx={{ width: '100%', flexWrap: 'wrap' }}
+                >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <IconButton size={isMobile ? "small" : "medium"} onClick={() => navigate(getRelativePath('/purchase-orders'))} sx={{ border: `1px solid ${TOKENS.border}`, p: isMobile ? 1 : 1.25, bgcolor: TOKENS.surface }}>
+                            <BackIcon fontSize={isMobile ? "small" : "medium"} />
+                        </IconButton>
+                        <Box>
+                            <Typography sx={{
+                                fontSize: '0.75rem',
+                                letterSpacing: '0.12em',
+                                textTransform: 'uppercase',
+                                color: TOKENS.muted,
+                                fontWeight: 600,
+                                mb: 0.3
+                            }}>
+                                Purchase Ledger
+                            </Typography>
+                            <Typography sx={{
+                                fontFamily: TOKENS.fontSerif,
+                                fontWeight: 600,
+                                fontSize: { xs: '1.5rem', sm: '2.125rem' },
+                                color: TOKENS.ink,
+                                lineHeight: 1.1
+                            }}>
+                                {id ? 'Edit Bill Entry' : 'New Bill Entry'}
+                            </Typography>
+                        </Box>
+                    </Box>
+                    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexWrap: 'wrap', gap: 1 }}>
+                        <Button
+                            component="label"
+                            variant="outlined"
+                            disabled={extracting}
+                            startIcon={extracting ? <CircularProgress size={16} color="inherit" /> : null}
+                            sx={{
+                                borderRadius: 2,
+                                px: { xs: 1.5, sm: 2.5 },
+                                py: 1,
+                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                fontWeight: 600,
+                                textTransform: 'none',
+                                color: TOKENS.accent,
+                                borderColor: TOKENS.accent,
+                                bgcolor: TOKENS.surface,
+                                '&:hover': { borderColor: TOKENS.accent, bgcolor: alpha(TOKENS.accent, 0.06) }
+                            }}
+                        >
+                            {extracting ? 'Extracting...' : (isMobile ? '✦ Auto-fill' : '✦ Auto-fill from invoice')}
+                            <input type="file" hidden accept="image/*,application/pdf,.doc,.docx" onChange={handleExtractInvoice} />
+                        </Button>
+                        <Chip
+                            label={statusPill.label}
+                            sx={{
+                                bgcolor: statusPill.bg,
+                                color: statusPill.fg,
+                                fontWeight: 700,
+                                fontSize: '0.7rem',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                                borderRadius: 999,
+                                height: 28
+                            }}
+                        />
+                    </Stack>
+                </Stack>
+
+                <Grid container spacing={0} justifyContent="center" sx={{ width: '100%', m: 0 }}>
+                    {/* Left Column - Main Form */}
+                    <Grid item xs={12} md={12}>
+                        <Stack spacing={isMobile ? 2 : 3} alignItems={isMobile ? "center" : "stretch"}>
+                            {/* 1. Expense Category — drives the rest of the form and
+                                   the category filter on the purchase orders list. */}
+                            <Paper sx={cardSx}>
+                                <SectionHeader
+                                    icon={<CategoryIcon />}
+                                    title="Expense Category"
+                                />
+                                <Grid container spacing={isMobile ? 1.5 : 3}>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            size={isMobile ? "small" : "medium"}
+                                            label="Category"
+                                            value={formData.category}
+                                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                            helperText="Applies to manually entered and AI auto-filled invoices"
+                                            sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
+                                        >
+                                            {PO_CATEGORIES.map((c) => (
+                                                <MenuItem key={c.value} value={c.value} sx={{ fontSize: isMobile ? '0.85rem' : '1rem' }}>
+                                                    {c.label}
+                                                </MenuItem>
+                                            ))}
+                                        </TextField>
+                                    </Grid>
+                                </Grid>
+                            </Paper>
+
+                            {/* 2. Specialized Entity Selection */}
+                            <Paper sx={cardSx}>
+                                <SectionHeader
+                                    icon={<VendorIcon />}
+                                    title={isSalary ? 'Staff' : isUtility ? 'Provider' : 'Vendor Details'}
+                                />
+                                <Grid container spacing={isMobile ? 1.5 : 3}>
+                                    {isSalary ? (
+                                        <Grid item xs={12} sm={6}>
+                                            <FormControl fullWidth>
+                                                <Autocomplete
+                                                    options={users}
+                                                    size={isMobile ? "small" : "medium"}
+                                                    getOptionLabel={(option) => `${option.firstName} ${option.lastName} (${option.roles?.[0]})`}
+                                                    onChange={(_, newValue) => {
+                                                        if (newValue) {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                vendor: {
+                                                                    name: `${newValue.firstName} ${newValue.lastName}`,
+                                                                    email: newValue.email,
+                                                                    contact: newValue.email, // fallback
+                                                                    address: ''
+                                                                },
+                                                                metadata: { ...prev.metadata, employeeId: newValue._id }
+                                                            }));
+                                                        }
+                                                    }}
+                                                    renderInput={(params) => <TextField {...params} label="Select Staff Member *" sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }} />}
+                                                />
+                                            </FormControl>
+                                        </Grid>
+                                    ) : (
+                                        <Grid item xs={12} sm={6}>
+                                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                <Autocomplete
+                                                    options={vendors}
+                                                    size={isMobile ? "small" : "medium"}
+                                                    value={selectedVendor}
+                                                    getOptionLabel={(option) => typeof option === 'string' ? option : (option.name || '')}
+                                                    onChange={(_, newValue) => {
+                                                        if (typeof newValue === 'string') {
+                                                            handleVendorChange('name', newValue);
+                                                        } else {
+                                                            handleVendorSelect(newValue);
+                                                        }
+                                                    }}
+                                                    inputValue={formData.vendor.name}
+                                                    onInputChange={(_, val, reason) => {
+                                                        if (reason === 'input') {
+                                                            handleVendorChange('name', val);
+                                                            if (selectedVendor && val !== selectedVendor.name) {
+                                                                setSelectedVendor(null);
+                                                            }
+                                                        }
+                                                    }}
+                                                    freeSolo
+                                                    sx={{ flex: 1 }}
+                                                    renderOption={(props, option) => (
+                                                        <Box component="li" {...props} sx={{ fontSize: '0.875rem' }}>
+                                                            <Box>
+                                                                <Typography fontWeight="bold" variant="body2">{option.name}</Typography>
+                                                                {option.contact && (
+                                                                    <Typography variant="caption" color="text.secondary">
+                                                                        {option.contact} {option.email && `• ${option.email}`}
+                                                                    </Typography>
+                                                                )}
+                                                            </Box>
+                                                        </Box>
+                                                    )}
+                                                    renderInput={(params) => (
+                                                        <TextField
+                                                            {...params}
+                                                            label={isUtility ? "Provider *" : "Vendor *"}
+                                                            error={!!errors.name}
+                                                            sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
+                                                        />
+                                                    )}
+                                                    noOptionsText={
+                                                        formData.vendor.name ? (
+                                                            <Box sx={{ textAlign: 'center', py: 1 }}>
+                                                                <Typography variant="caption" color="text.secondary" gutterBottom sx={{ display: 'block' }}>
+                                                                    "{formData.vendor.name}" not found
+                                                                </Typography>
+                                                                <Button
+                                                                    size="small"
+                                                                    variant="contained"
+                                                                    startIcon={<AddIcon sx={{ fontSize: 14 }} />}
+                                                                    onClick={handleCreateVendor}
+                                                                    sx={{
+                                                                        textTransform: 'none',
+                                                                        borderRadius: 1.5,
+                                                                        fontSize: '0.7rem',
+                                                                        background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
+                                                                    }}
+                                                                >
+                                                                    Create
+                                                                </Button>
+                                                            </Box>
+                                                        ) : (
+                                                            <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', display: 'block', py: 1 }}>
+                                                                Type to search...
+                                                            </Typography>
+                                                        )
+                                                    }
+                                                />
+                                                {formData.vendor.name && !selectedVendor && (
+                                                    <IconButton
+                                                        onClick={handleCreateVendor}
+                                                        size="small"
+                                                        sx={{
+                                                            bgcolor: alpha(theme.palette.warning.main, 0.1),
+                                                            color: theme.palette.warning.dark,
+                                                            borderRadius: 1.5,
+                                                            p: 1
+                                                        }}
+                                                    >
+                                                        <AddIcon fontSize="small" />
+                                                    </IconButton>
+                                                )}
+                                            </Box>
+                                        </Grid>
+                                    )}
+
+                                    {isSalary && (
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField
+                                                fullWidth
+                                                type="month"
+                                                size={isMobile ? "small" : "medium"}
+                                                label="Salary Month"
+                                                value={formData.metadata.payMonth || ''}
+                                                onChange={(e) => handleMetadataChange('payMonth', e.target.value)}
+                                                InputLabelProps={{ shrink: true, sx: { fontSize: isMobile ? '0.8rem' : '1rem' } }}
+                                                sx={{ '& .MuiInputBase-input': { fontSize: isMobile ? '0.875rem' : '1rem' } }}
+                                            />
+                                        </Grid>
+                                    )}
+
+                                    {isUtility && (
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField
+                                                fullWidth
+                                                size={isMobile ? "small" : "medium"}
+                                                label="Meter Reading"
+                                                value={formData.metadata.meterReading || ''}
+                                                onChange={(e) => handleMetadataChange('meterReading', e.target.value)}
+                                                sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
+                                            />
+                                        </Grid>
+                                    )}
+
+                                    {!isSalary && (
+                                        <>
+                                            <Grid item xs={isMobile ? 6 : 2.67} sm={2.67}>
+                                                <TextField
+                                                    fullWidth
+                                                    size={isMobile ? "small" : "medium"}
+                                                    label="Contact"
+                                                    value={formData.vendor.contact}
+                                                    onChange={(e) => handleVendorChange('contact', e.target.value)}
+                                                    sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={isMobile ? 6 : 2.67} sm={2.67}>
+                                                <TextField
+                                                    fullWidth
+                                                    size={isMobile ? "small" : "medium"}
+                                                    label="Invoice #"
+                                                    value={formData.referenceNumber}
+                                                    onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
+                                                    placeholder="INV-001"
+                                                    sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} sm={2.66}>
+                                                <TextField
+                                                    fullWidth
+                                                    size={isMobile ? "small" : "medium"}
+                                                    label="Email"
+                                                    value={formData.vendor.email}
+                                                    onChange={(e) => handleVendorChange('email', e.target.value)}
+                                                    sx={{
+                                                        display: { xs: isMobile ? 'none' : 'block', sm: 'block' },
+                                                        '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' }
+                                                    }}
+                                                />
+                                                {isMobile && (
+                                                    <TextField
+                                                        fullWidth
+                                                        size="small"
+                                                        label="Address"
+                                                        value={formData.vendor.address}
+                                                        onChange={(e) => handleVendorChange('address', e.target.value)}
+                                                        sx={{ '& .MuiInputLabel-root': { fontSize: '0.8rem' } }}
+                                                    />
+                                                )}
+                                            </Grid>
+                                            {!isMobile && (
+                                                <Grid item xs={12}>
+                                                    <TextField
+                                                        fullWidth
+                                                        label="Address / Branch"
+                                                        multiline rows={1}
+                                                        value={formData.vendor.address}
+                                                        onChange={(e) => handleVendorChange('address', e.target.value)}
+                                                    />
+                                                </Grid>
+                                            )}
+                                        </>
+                                    )}
+                                </Grid>
+                            </Paper>
+                            {/* 3. Dynamic Items Table */}
+                            <Paper sx={cardSx}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMobile ? 1.5 : 2.5, gap: 1 }}>
+                                    <SectionHeader
+                                        icon={<ItemsIcon />}
+                                        title={isSalary ? 'Pay' : 'Items'}
+                                        sx={{ mb: 0, width: 'auto' }}
+                                    />
+                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                                        {isInventory && formData.items.some((i: any) => i.inventoryItem && i.inventoryItem !== 'verified') && (
+                                            <Button
+                                                size="small"
+                                                startIcon={<RestockIcon sx={{ fontSize: 16 }} />}
+                                                onClick={handleRestockAll}
+                                                variant="contained"
+                                                sx={{
+                                                    borderRadius: 1.5,
+                                                    whiteSpace: 'nowrap',
+                                                    textTransform: 'none',
+                                                    fontSize: '0.7rem',
+                                                    px: 1,
+                                                    background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                                                }}
+                                            >
+                                                Restock
+                                            </Button>
+                                        )}
+                                        <Button
+                                            size="small"
+                                            startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                                            onClick={addItem}
+                                            variant="outlined"
+                                            sx={{
+                                                borderRadius: '8px',
+                                                borderStyle: 'dashed',
+                                                width: 'auto',
+                                                whiteSpace: 'nowrap',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 600,
+                                                textTransform: 'none',
+                                                px: 1.25,
+                                                color: TOKENS.accent,
+                                                borderColor: TOKENS.accent,
+                                                '&:hover': { borderColor: TOKENS.accent, borderStyle: 'dashed', bgcolor: alpha(TOKENS.accent, 0.06) }
+                                            }}
+                                        >
+                                            Add item
+                                        </Button>
+                                    </Box>
+                                </Box>
+
+                                <TableContainer sx={{
+                                    overflowX: 'auto',
+                                    maxHeight: { xs: 'none', sm: 500 },
+                                    '&::-webkit-scrollbar': { width: '8px', height: '8px' },
+                                }}>
+                                    {/* MOBILE CARD VIEW */}
+                                    {isMobile ? (
+                                        (formData?.items || []).length === 0 ? (
+                                            <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+                                                <Typography variant="caption">No items available</Typography>
+                                            </Box>
+                                        ) : (
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                                {(formData?.items || []).map((item: any, index: number) => (
+                                                    <Box key={index} sx={{
+                                                        width: '100%',
+                                                        maxWidth: 500,
+                                                        mx: 'auto',
+                                                        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                                                        borderRadius: 2,
+                                                        p: 1.5,
+                                                        bgcolor: alpha(theme.palette.background.default, 0.3),
+                                                    }}>
+                                                        {/* Description / Pay Component */}
+                                                        <Box sx={{ mb: 1 }}>
+                                                            {isInventory ? (
+                                                                <Autocomplete
+                                                                    options={inventoryItems}
+                                                                    size="small"
+                                                                    freeSolo
+                                                                    getOptionLabel={(o) => typeof o === 'string' ? o : (o.name || '')}
+                                                                    value={item.description}
+                                                                    onInputChange={(_, val) => handleItemChange(index, 'description', val)}
+                                                                    onChange={(_, val: any) => {
+                                                                        if (val && typeof val !== 'string') {
+                                                                            handleItemChange(index, 'inventoryItem', val._id);
+                                                                        }
+                                                                    }}
+                                                                    renderInput={(p) => <TextField {...p} fullWidth placeholder="Search material..." sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }} />}
+                                                                />
+                                                            ) : (
+                                                                <TextField
+                                                                    fullWidth size="small" placeholder="Item description..."
+                                                                    value={item.description}
+                                                                    onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                                                    sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }}
+                                                                />
+                                                            )}
+                                                        </Box>
+
+                                                        {/* QTY / Unit / Price / Tax Grid */}
+                                                        {isSalary ? (
+                                                            <Box sx={{ mb: 1 }}>
+                                                                <TextField
+                                                                    type="number" size="small" label="Amount" fullWidth
+                                                                    value={item.unitPrice}
+                                                                    onChange={(e) => handleNumberInput(index, 'unitPrice', e.target.value)}
+                                                                    sx={{ '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                    InputProps={{ startAdornment: <InputAdornment position="start" sx={{ '& p': { fontSize: '0.75rem' } }}>$</InputAdornment> }}
+                                                                />
+                                                            </Box>
+                                                        ) : (
+                                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 1.25 }}>
+                                                                {/* Row 1: Qty & Unit */}
+                                                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                                                    <TextField
+                                                                        type="number" size="small" label="Qty"
+                                                                        value={item.quantity}
+                                                                        onChange={(e) => handleNumberInput(index, 'quantity', e.target.value)}
+                                                                        sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                    />
+                                                                    <TextField
+                                                                        size="small" label="Unit"
+                                                                        value={item.unit || ''}
+                                                                        onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
+                                                                        sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                    />
+                                                                </Box>
+                                                                {/* Row 2: Price & Tax % */}
+                                                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                                                    <TextField
+                                                                        type="number" size="small" label="Price"
+                                                                        value={item.unitPrice}
+                                                                        onChange={(e) => handleNumberInput(index, 'unitPrice', e.target.value)}
+                                                                        sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                        InputProps={{ startAdornment: <InputAdornment position="start" sx={{ '& p': { fontSize: '0.75rem' } }}>$</InputAdornment> }}
+                                                                    />
+                                                                    <TextField
+                                                                        type="number" size="small" label="Tax %"
+                                                                        value={item.taxRate ?? 0}
+                                                                        onChange={(e) => handleNumberInput(index, 'taxRate', e.target.value)}
+                                                                        sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                    />
+                                                                </Box>
+                                                            </Box>
+                                                        )}
+
+                                                        {/* Footer: Sum + Status + Delete */}
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                <Typography variant="caption" fontWeight={900} sx={{ color: 'primary.main', fontSize: '0.9rem' }}>
+                                                                    ${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}
+                                                                </Typography>
+                                                                {isInventory && item.inventoryItem && (
+                                                                    <Chip label="MATCHED" size="small" color="success" variant="outlined" sx={{ fontSize: '0.6rem', height: 16, fontWeight: 800 }} />
+                                                                )}
+                                                                {isInventory && !item.inventoryItem && item.description && (
+                                                                    <Button
+                                                                        size="small"
+                                                                        onClick={() => handleCreateInventoryItem(index)}
+                                                                        sx={{ fontSize: '0.6rem', height: 20, p: 0, textTransform: 'none', minWidth: 'auto', color: 'orange' }}
+                                                                    >
+                                                                        + INVENTORY
+                                                                    </Button>
+                                                                )}
+                                                            </Box>
+
+                                                            <IconButton
+                                                                size="small" color="error"
+                                                                onClick={() => removeItem(index)}
+                                                                disabled={(formData?.items || []).length === 1}
+                                                                sx={{ p: 0.5 }}
+                                                            >
+                                                                <DeleteIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Box>
+                                                    </Box>
+                                                ))}
+                                            </Box>
+                                        )
+                                    ) : (
+                                        /* DESKTOP GRID VIEW */
+                                        <Box sx={{ minWidth: 720 }}>
+                                            {(() => {
+                                                const gridCols = isSalary ? '3fr 1fr 32px' : '2.6fr 0.6fr 0.7fr 0.8fr 0.6fr 1fr 32px';
+                                                return (
+                                                    <>
+                                                        <Box sx={{
+                                                            display: 'grid',
+                                                            gridTemplateColumns: gridCols,
+                                                            gap: 1.5,
+                                                            px: 1,
+                                                            pb: 1,
+                                                            borderBottom: `1px solid ${TOKENS.border}`,
+                                                        }}>
+                                                            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: TOKENS.muted }}>
+                                                                {isSalary ? 'Pay Component' : isInventory ? 'Inventory Item' : 'Description'}
+                                                            </Typography>
+                                                            {!isSalary && <Typography align="right" sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: TOKENS.muted }}>Qty</Typography>}
+                                                            {!isSalary && <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: TOKENS.muted }}>Unit</Typography>}
+                                                            {!isSalary && <Typography align="right" sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: TOKENS.muted }}>Unit price</Typography>}
+                                                            {!isSalary && <Typography align="right" sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: TOKENS.muted }}>Tax %</Typography>}
+                                                            <Typography align="right" sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: TOKENS.muted }}>{isSalary ? 'Amount' : 'Total'}</Typography>
+                                                            <Box />
+                                                        </Box>
+                                                        {(formData?.items || []).map((item: any, index: number) => (
+                                                            <Box key={index} sx={{
+                                                                display: 'grid',
+                                                                gridTemplateColumns: gridCols,
+                                                                gap: 1.5,
+                                                                alignItems: 'center',
+                                                                px: 1,
+                                                                py: 1.5,
+                                                                borderBottom: `1px solid ${TOKENS.borderLight}`,
+                                                            }}>
+                                                                <Box>
+                                                                    {isInventory ? (
+                                                                        <Box>
+                                                                            <Autocomplete
+                                                                                options={inventoryItems}
+                                                                                size="small"
+                                                                                freeSolo
+                                                                                fullWidth
+                                                                                getOptionLabel={(o) => typeof o === 'string' ? o : (o.name || '')}
+                                                                                value={item.description}
+                                                                                onInputChange={(_, val) => handleItemChange(index, 'description', val)}
+                                                                                onChange={(_, val: any) => {
+                                                                                    if (val && typeof val !== 'string') {
+                                                                                        handleItemChange(index, 'inventoryItem', val._id);
+                                                                                    }
+                                                                                }}
+                                                                                renderInput={(p) => <TextField {...p} size="small" fullWidth placeholder="Search inventory..." />}
+                                                                            />
+                                                                            <Box sx={{ mt: 0.5, display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                                                {item.inventoryItem && item.inventoryItem !== 'verified' && (
+                                                                                    <Chip label="MATCHED" size="small" color="success" variant="outlined" sx={{ fontSize: '0.6rem', height: 16, fontWeight: 800 }} />
+                                                                                )}
+                                                                                {!item.inventoryItem && item.description && (
+                                                                                    <Button
+                                                                                        size="small"
+                                                                                        onClick={() => handleCreateInventoryItem(index)}
+                                                                                        sx={{ fontSize: '0.65rem', height: 20, p: 0, textTransform: 'none', minWidth: 'auto', color: TOKENS.accent, fontWeight: 700 }}
+                                                                                    >
+                                                                                        + Add to inventory
+                                                                                    </Button>
+                                                                                )}
+                                                                            </Box>
+                                                                        </Box>
+                                                                    ) : (
+                                                                        <TextField fullWidth size="small" value={item.description} onChange={(e) => handleItemChange(index, 'description', e.target.value)} />
+                                                                    )}
+                                                                </Box>
+                                                                {!isSalary && (
+                                                                    <TextField type="number" size="small" value={item.quantity} onChange={(e) => handleNumberInput(index, 'quantity', e.target.value)} sx={{ '& input': { textAlign: 'right' } }} />
+                                                                )}
+                                                                {!isSalary && (
+                                                                    <TextField size="small" value={item.unit || ''} onChange={(e) => handleItemChange(index, 'unit', e.target.value)} placeholder="kg" />
+                                                                )}
+                                                                {!isSalary && (
+                                                                    <TextField type="number" size="small" value={item.unitPrice} onChange={(e) => handleNumberInput(index, 'unitPrice', e.target.value)} sx={{ '& input': { textAlign: 'right' } }} />
+                                                                )}
+                                                                {!isSalary && (
+                                                                    <TextField type="number" size="small" value={item.taxRate ?? 0} onChange={(e) => handleNumberInput(index, 'taxRate', e.target.value)} sx={{ '& input': { textAlign: 'right' } }} />
+                                                                )}
+                                                                <Typography align="right" sx={{ fontFamily: TOKENS.fontMono, fontWeight: 700, fontSize: '0.9rem', color: TOKENS.ink }}>
+                                                                    ${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}
+                                                                </Typography>
+                                                                {!isSalary && (
+                                                                    <IconButton onClick={() => removeItem(index)} disabled={(formData?.items || []).length === 1} size="small" sx={{ color: TOKENS.muted, '&:hover': { color: TOKENS.danger } }}>
+                                                                        <DeleteIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                )}
+                                                            </Box>
+                                                        ))}
+                                                    </>
+                                                );
+                                            })()}
+                                        </Box>
+                                    )}
+                                </TableContainer>
+                            </Paper>
+
+                            {/* 4. Price Breakdown */}
+                            <Paper sx={cardSx}>
+                                <SectionHeader icon={<InfoIcon />} title="Price Breakdown" />
+                                <Box sx={{ maxWidth: 320, ml: 'auto' }}>
+                                    <Stack spacing={1.25}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography sx={{ fontSize: '0.85rem', color: TOKENS.muted }}>Subtotal</Typography>
+                                            <Typography sx={{ fontFamily: TOKENS.fontMono, fontSize: '0.9rem', color: TOKENS.ink }}>
+                                                ${calculateSubtotal().toFixed(2)}
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography sx={{ fontSize: '0.85rem', color: TOKENS.muted }}>Tax</Typography>
+                                            <Typography sx={{ fontFamily: TOKENS.fontMono, fontSize: '0.9rem', color: TOKENS.ink }}>
+                                                ${calculateTax().toFixed(2)}
+                                            </Typography>
+                                        </Box>
+                                        <Divider sx={{ borderColor: TOKENS.borderLight }} />
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography sx={{ fontWeight: 700, color: TOKENS.ink }}>Total</Typography>
+                                            <Typography sx={{ fontFamily: TOKENS.fontMono, fontWeight: 700, fontSize: '1.375rem', color: TOKENS.ink }}>
+                                                ${calculateTotal().toFixed(2)}
+                                            </Typography>
+                                        </Box>
+                                        <Divider sx={{ borderColor: TOKENS.borderLight }} />
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography sx={{ fontSize: '0.85rem', color: TOKENS.muted }}>Due date</Typography>
+                                            <TextField
+                                                type="date" size="small"
+                                                value={formData.dueDate}
+                                                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                                                sx={{ '& input': { py: 0.5, px: 1, fontSize: '0.85rem' } }}
+                                            />
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography sx={{ fontSize: '0.85rem', color: TOKENS.muted }}>Payment status</Typography>
+                                            <TextField
+                                                select size="small"
+                                                value={formData.paymentStatus}
+                                                onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value })}
+                                                sx={{ minWidth: 120, '& .MuiInputBase-input': { fontSize: '0.85rem', py: 0.5 } }}
+                                            >
+                                                <MenuItem value="unpaid" sx={{ fontSize: '0.85rem' }}>Due</MenuItem>
+                                                <MenuItem value="partial" sx={{ fontSize: '0.85rem' }}>Overdue</MenuItem>
+                                                <MenuItem value="paid" sx={{ fontSize: '0.85rem' }}>Paid</MenuItem>
+                                            </TextField>
+                                        </Box>
+                                    </Stack>
+                                </Box>
+                            </Paper>
+                        </Stack>
+                    </Grid>
+
+                    {/* Right Column - Removed (Financial Goal + Settlement) */}
+                </Grid>
+            </Box>
+
+            {/* Sticky bottom action bar with safe area */}
+            <Box sx={{
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                bgcolor: TOKENS.surface,
+                borderTop: `1px solid ${TOKENS.border}`,
+                px: { xs: 2, md: 4 },
+                pt: { xs: 1.25, md: 2 },
+                pb: { xs: 'calc(env(safe-area-inset-bottom, 0px) + 20px)', md: 2 },
+                display: 'flex',
+                flexDirection: { xs: 'column-reverse', sm: 'row' },
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                gap: { xs: 1, sm: 1.5 },
+                zIndex: 1200,
+                boxShadow: '0 -4px 16px rgba(0,0,0,0.06)'
+            }}>
+                {isMobile ? (
+                    <>
+                        <Box sx={{ display: 'flex', width: '100%', gap: 1 }}>
+                            <Button
+                                variant="text"
+                                fullWidth
+                                onClick={() => navigate(getRelativePath('/purchase-orders'))}
+                                sx={{
+                                    borderRadius: 2,
+                                    py: 1,
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    color: TOKENS.muted,
+                                    '&:hover': { bgcolor: alpha(TOKENS.ink, 0.04) }
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="contained"
+                                fullWidth
+                                onClick={() => handleSubmit('draft')}
+                                disabled={loading}
+                                sx={{
+                                    borderRadius: 2,
+                                    py: 1,
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    bgcolor: TOKENS.borderLight,
+                                    color: TOKENS.ink,
+                                    boxShadow: 'none',
+                                    '&:hover': { bgcolor: TOKENS.border, boxShadow: 'none' }
+                                }}
+                            >
+                                Save as draft
+                            </Button>
+                        </Box>
+                        <Button
+                            variant="contained"
+                            fullWidth
+                            onClick={() => handleSubmit('pending')}
+                            disabled={loading}
+                            startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
+                            sx={{
+                                borderRadius: 2,
+                                py: 1.2,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                bgcolor: TOKENS.accent,
+                                color: '#fff',
+                                boxShadow: 'none',
+                                '&:hover': { bgcolor: '#96391f', boxShadow: 'none' }
+                            }}
+                        >
+                            {loading ? 'Saving...' : (id ? 'Update entry' : 'Save entry')}
+                        </Button>
+                    </>
+                ) : (
+                    <>
+                        <Button
+                            variant="text"
+                            onClick={() => navigate(getRelativePath('/purchase-orders'))}
+                            sx={{
+                                borderRadius: 2,
+                                px: 3,
+                                py: 1.25,
+                                fontWeight: 600,
+                                textTransform: 'none',
+                                color: TOKENS.muted,
+                                '&:hover': { bgcolor: alpha(TOKENS.ink, 0.04) }
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="contained"
+                            onClick={() => handleSubmit('draft')}
+                            disabled={loading}
+                            sx={{
+                                borderRadius: 2,
+                                px: 3,
+                                py: 1.25,
+                                fontWeight: 600,
+                                textTransform: 'none',
+                                bgcolor: TOKENS.borderLight,
+                                color: TOKENS.ink,
+                                boxShadow: 'none',
+                                '&:hover': { bgcolor: TOKENS.border, boxShadow: 'none' }
+                            }}
+                        >
+                            Save as draft
+                        </Button>
+                        <Button
+                            variant="contained"
+                            onClick={() => handleSubmit('pending')}
+                            disabled={loading}
+                            startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
+                            sx={{
+                                borderRadius: 2,
+                                px: 4,
+                                py: 1.25,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                bgcolor: TOKENS.accent,
+                                color: '#fff',
+                                boxShadow: 'none',
+                                '&:hover': { bgcolor: '#96391f', boxShadow: 'none' }
+                            }}
+                        >
+                            {loading ? 'Saving...' : (id ? 'Update entry' : 'Save entry')}
+                        </Button>
+                    </>
+                )}
+            </Box>
+        </Box>
+    );
+};
+
+export default CreatePOPage;

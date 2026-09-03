@@ -1,0 +1,470 @@
+import {
+    Refresh as RefreshIcon,
+    Restaurant as RestaurantIcon,
+    AccessTime as TimeIcon
+} from '@mui/icons-material';
+import {
+    alpha,
+    Box,
+    Card,
+    CardActions,
+    CardContent,
+    Chip,
+    Grid,
+    IconButton,
+    LinearProgress,
+    Menu,
+    MenuItem,
+    Typography,
+    useTheme,
+    Pagination,
+    Stack,
+    useMediaQuery
+} from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
+import { ordersAPI } from '../../services/api';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
+
+const KitchenOrdersPage: React.FC = () => {
+    const [orders, setOrders] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+    const [selectedOrderType, setSelectedOrderType] = useState<string | null>(null);
+    const { hasRole } = useAuth();
+    const { formatCurrency } = useSettings();
+    const theme = useTheme();
+    const [orderTypeFilter, setOrderTypeFilter] = useState<string>('all');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [page, setPage] = useState(1);
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const headingFontSize = { xs: '1.2rem', sm: '1.45rem' };
+    const bodyFontSize = { xs: '0.76rem', sm: '0.88rem' };
+
+    const fetchOrders = async () => {
+        try {
+            setLoading(true);
+            const response = await ordersAPI.getActive();
+            const ordersData = Array.isArray(response.data) ? response.data : [];
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            
+            const todayEnd = new Date();
+            todayEnd.setHours(23, 59, 59, 999);
+
+            // Filter orders that should not be in kitchen (e.g. ready for pickup/takeaway are usually at counter)
+            const kitchenOrders = ordersData.filter((order: any) => {
+                const orderDate = new Date(order.createdAt);
+                const isToday = orderDate >= todayStart && orderDate <= todayEnd;
+                const isValidStatus = !['ready_to_takeaway', 'ready_to_pickup', 'on_the_way', 'served', 'delivered', 'completed', 'cancelled'].includes(order.status);
+
+                return isToday && isValidStatus && !order.isDisputed;
+            });
+            setOrders(kitchenOrders);
+        } catch (error) {
+            console.error('Error fetching orders:', error);
+            toast.error('Failed to load orders');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchOrders();
+    }, []);
+
+    const handleStatusClick = (event: React.MouseEvent<HTMLButtonElement>, order: any) => {
+        setAnchorEl(event.currentTarget);
+        setSelectedOrderId(order._id);
+        setSelectedOrderType(order.orderType);
+    };
+
+    const handleStatusClose = () => {
+        setAnchorEl(null);
+        setSelectedOrderId(null);
+        setSelectedOrderType(null);
+    };
+
+    const handleStatusChange = async (newStatus: string) => {
+        if (!selectedOrderId) return;
+
+        try {
+            await ordersAPI.update(selectedOrderId, { status: newStatus });
+            toast.success('Order status updated');
+            fetchOrders(); // Refresh list
+        } catch (error) {
+            console.error('Error updating status:', error);
+            toast.error('Failed to update status');
+        } finally {
+            handleStatusClose();
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'completed':
+            case 'delivered':
+                return 'success';
+            case 'pending':
+            case 'preparing':
+                return 'warning';
+            case 'cancelled':
+                return 'error';
+            case 'ready':
+            case 'ready_to_pick':
+            case 'in-progress':
+                return 'info';
+            default:
+                return 'default';
+        }
+    };
+
+    const getProgressColor = (progress: number) => {
+        if (progress === 100) return 'success';
+        if (progress >= 50) return 'info';
+        if (progress > 0) return 'warning';
+        return 'error';
+    };
+
+    const canManageOrders = hasRole(['admin', 'manager', 'kitchen_staff', 'food_runner']);
+
+    const filteredOrders = orders.filter((order) => {
+        const matchType =
+            orderTypeFilter === 'all'
+                ? true
+                : order.orderType === orderTypeFilter;
+
+        const matchStatus =
+            statusFilter === 'all'
+                ? true
+                : order.status === statusFilter;
+
+        return matchType && matchStatus;
+    });
+
+    const sortedOrders = [...filteredOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const ITEMS_PER_PAGE = isMobile ? 5 : (sortedOrders.length || 1);
+    const totalPages = isMobile ? Math.ceil(sortedOrders.length / 5) : 1;
+    const paginatedOrders = isMobile ? sortedOrders.slice((page - 1) * 5, page * 5) : sortedOrders;
+
+    useEffect(() => {
+        setPage(1);
+    }, [orderTypeFilter, statusFilter]);
+
+    return (
+        <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+            <Box
+                sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', md: 'column' },
+                    justifyContent: 'space-between',
+                    alignItems: { xs: 'flex-start', md: 'stretch' },
+                    gap: 2,   // 🔥 NEW
+                    mb: 4
+                }}
+
+            >
+                {/* LEFT SIDE — Kitchen Orders Title */}
+                <Typography
+                    variant="h4"
+                    sx={{
+                        fontWeight: 'bold',
+                        fontSize: headingFontSize,
+                        color: '#000',
+                        textAlign: { xs: 'center', md: 'center' },
+                        width: '100%'
+                    }}
+                >
+                    Kitchen Display System
+                </Typography>
+
+                {/* RIGHT SIDE — STATUS + FILTERS */}
+                <Box
+                    sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: { xs: 'flex-end', md: 'center' },
+                        gap: 1.5
+                    }}
+                >
+                    {/* STATUS ROW */}
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 1,
+                            justifyContent: { xs: 'flex-start', md: 'center' },
+                            width: '100%'
+                        }}
+                    >
+
+                        {[
+                            { label: 'Pending', value: 'pending', color: '#f59e0b' },
+                            { label: 'Preparing', value: 'preparing', color: '#f97316' },
+                            { label: 'Ready', value: 'ready', color: '#0284c7' },
+                            { label: 'Total Active', value: 'all', color: '#6366f1' }
+                        ].map((item) => {
+                            const isActive = statusFilter === item.value;
+
+                            const count =
+                                item.value === 'all'
+                                    ? orders.length
+                                    : orders.filter(o => o.status === item.value).length;
+
+                            return (
+                                <Chip
+                                    key={item.value}
+                                    label={`${count} ${item.label}`}
+                                    onClick={() => setStatusFilter(item.value)}
+                                    clickable
+                                    sx={{
+                                        bgcolor: isActive ? item.color : 'transparent',
+                                        color: isActive ? '#fff' : item.color,
+                                        border: `1px solid ${item.color}`,
+                                        fontWeight: 600,
+                                        fontSize: bodyFontSize,
+                                        borderRadius: 2,
+                                        cursor: 'pointer'
+                                    }}
+                                />
+                            );
+                        })}
+
+                        <IconButton onClick={fetchOrders} sx={{ bgcolor: theme.palette.mode === 'light' ? '#f3f4f6' : alpha(theme.palette.background.paper, 0.5) }}>
+                            <RefreshIcon />
+                        </IconButton>
+                    </Box>
+
+                    {/* TYPE ROW */}
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 1,
+                            justifyContent: { xs: 'flex-start', md: 'center' },  // 🔥 NEW
+                            width: '100%'  // 🔥 NEW
+                        }}
+                    >
+                        {[
+                            { label: 'All Types', value: 'all' },
+                            { label: 'Dine In', value: 'dine_in' },
+                            { label: 'Takeaway', value: 'takeaway' },
+                            { label: 'Delivery', value: 'delivery' }
+                        ].map((filter) => {
+                            const isActive = orderTypeFilter === filter.value;
+
+                            return (
+                                <Chip
+                                    key={filter.value}
+                                    label={filter.label}
+                                    onClick={() => setOrderTypeFilter(filter.value)}
+                                    clickable
+                                    sx={{
+                                        bgcolor: isActive
+                                            ? (theme.palette.mode === 'light' ? '#e5e7eb' : alpha(theme.palette.primary.main, 0.2))
+                                            : (theme.palette.mode === 'light' ? '#f9fafb' : alpha(theme.palette.background.paper, 0.5)),
+                                        border: `1px solid ${theme.palette.divider}`,
+                                        color: theme.palette.text.primary,
+                                        fontWeight: 600,
+                                        fontSize: bodyFontSize,
+                                        borderRadius: 2,
+                                        cursor: 'pointer'
+                                    }}
+                                />
+                            );
+                        })}
+                    </Box>
+                </Box>
+            </Box>
+
+
+
+            {loading ? (
+                <CardGridSkeleton count={8} cardHeight={260} />
+            ) : orders.length === 0 ? (
+                <Box sx={{ textAlign: 'center', p: 5, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
+                    <Typography variant="h6" color="text.secondary" sx={{ fontSize: headingFontSize }}>
+                        No active kitchen orders.
+                    </Typography>
+                </Box>
+            ) : (
+                <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
+                    {paginatedOrders.map((order) => (
+                        <Grid
+                            item
+                            xs={12}
+                            sm={6}
+                            md={4}
+                            lg={3}
+                            key={order._id}
+                        >
+                            <Card
+                                sx={{
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    transition: 'transform 0.2s, box-shadow 0.2s',
+                                    '&:hover': {
+                                        transform: 'translateY(-4px)',
+                                        boxShadow: theme.shadows[8],
+                                    },
+                                    background: theme.palette.mode === 'dark'
+                                        ? 'linear-gradient(145deg, #1e1e1e, #2d2d2d)'
+                                        : 'linear-gradient(145deg, #ffffff, #f5f5f5)',
+                                    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                                    borderLeft: `6px solid ${((theme.palette as any)[getStatusColor(order.status)]?.main || theme.palette.warning.main)
+                                        }`,
+                                    minHeight: { xs: 210, sm: 260 }
+                                }}
+                            >
+                                <CardContent sx={{ flexGrow: 1, p: { xs: 1.25, sm: 2 }, '&:last-child': { pb: { xs: 1.25, sm: 2 } } }}>
+                                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: { xs: 1, sm: 2 }, gap: { xs: 0.5, sm: 1 } }}>
+                                        <Box>
+                                            <Typography variant="h6" color="info.main" gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '0.95rem', sm: headingFontSize.sm }, mb: 0.5 }}>
+                                                Token No: {order.dailyTokenNumber}
+                                            </Typography>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                                                <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
+                                                    Order:
+                                                </Typography>
+                                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', fontSize: '0.85rem', bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', px: 0.8, py: 0.2, borderRadius: 1 }}>
+                                                    #{order.orderNumber?.split('-').pop() || 'N/A'}
+                                                </Typography>
+                                            </Box>
+                                            {/* <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                                                Type: {getOrderTypeLabel(order.orderType, order)}
+                                            </Typography> */}
+                                            {(order.orderType === 'dine_in' && (order.tableNumber || order.table)) && (
+                                                <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', fontSize: { xs: '0.92rem', sm: headingFontSize.sm } }}>
+                                                    Table: {order.tableNumber || order.table?.tableNumber || order.table?.number || order.table?.tableName || order.table?.name}
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                        <Chip
+                                            label={order.status?.replace(/_/g, ' ')?.toUpperCase()}
+                                            color={getStatusColor(order.status) as any}
+                                            size="small"
+                                            sx={{ fontWeight: 'bold', alignSelf: { xs: 'flex-start', sm: 'flex-start' }, height: { xs: 22, sm: 24 }, fontSize: { xs: '0.62rem', sm: bodyFontSize.sm } }}
+                                        />
+                                    </Box>
+
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1, sm: 2 }, color: 'text.secondary' }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                            <RestaurantIcon fontSize="small" sx={{ mr: 0.75, fontSize: { xs: 14, sm: 16 } }} />
+                                            <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: bodyFontSize }}>
+                                                {order.orderType?.replace('_', ' ')?.toUpperCase()}
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                            <TimeIcon fontSize="small" sx={{ mr: 0.4, fontSize: { xs: 14, sm: 16 } }} />
+                                            <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>
+                                                {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+
+                                    {/* Progress Bar */}
+                                    {order.items && (order?.items || []).length > 0 && (() => {
+                                        const readyItems = (order?.items || []).filter((item: any) => item.preparationStatus === 'ready').length;
+                                        const progress = (readyItems / (order?.items || []).length) * 100;
+                                        return (
+                                            <Box sx={{ mt: { xs: 1, sm: 2 }, mb: { xs: 0.5, sm: 1 } }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.4 }}>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: '500', fontSize: bodyFontSize }}>
+                                                        Items Ready ({readyItems}/{(order?.items || []).length})
+                                                    </Typography>
+                                                    <Typography variant="caption" fontWeight="bold" color={getProgressColor(progress) as any} sx={{ fontSize: bodyFontSize }}>
+                                                        {Math.round(progress)}%
+                                                    </Typography>
+                                                </Box>
+                                                <LinearProgress
+                                                    variant="determinate"
+                                                    value={progress}
+                                                    color={getProgressColor(progress) as any}
+                                                    sx={{
+                                                        height: { xs: 5, sm: 6 },
+                                                        borderRadius: 3,
+                                                        bgcolor: alpha(theme.palette.grey[500], 0.1)
+                                                    }}
+                                                />
+                                            </Box>
+                                        );
+                                    })()}
+
+                                    <Box
+                                        sx={{
+                                            mt: { xs: 1, sm: 1.5 },
+                                            p: { xs: 0.9, sm: 1.25 },
+                                            bgcolor: alpha(theme.palette.warning.main, 0.05),
+                                            borderRadius: 1.5,
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            border: `1px solid ${alpha(theme.palette.warning.main, 0.15)}`
+                                        }}
+                                    >
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3, fontSize: bodyFontSize }}>
+                                            Total Items
+                                        </Typography>
+                                        <Typography variant="h6" color="warning.main" sx={{ fontWeight: 800, lineHeight: 1, fontSize: headingFontSize }}>
+                                            {order.items?.length || 0}
+                                        </Typography>
+                                    </Box>
+                                </CardContent>
+
+                                <CardActions sx={{ p: 2, pt: 0, justifyContent: 'flex-end' }}>
+                                    {/* {canManageOrders && (
+                                        <Button
+                                            size="small"
+                                            variant="contained"
+                                            color="warning"
+                                            endIcon={<MoreVertIcon />}
+                                            onClick={(e) => handleStatusClick(e, order)}
+                                        >
+                                            Update Status
+                                        </Button>
+                                    )} */}
+                                </CardActions>
+                            </Card>
+                        </Grid>
+                    ))}
+                </Grid>
+            )}
+
+            {!loading && isMobile && totalPages > 1 && (
+                <Stack spacing={2} alignItems="center" sx={{ mt: 4 }}>
+                    <Pagination 
+                        count={totalPages} 
+                        page={page} 
+                        onChange={(_, value) => setPage(value)} 
+                        color="primary" 
+                        size="large"
+                    />
+                </Stack>
+            )}
+
+            <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleStatusClose}
+            >
+                <MenuItem onClick={() => handleStatusChange('confirmed')}>Confirm Order</MenuItem>
+                <MenuItem onClick={() => handleStatusChange('preparing')}>Preparing</MenuItem>
+                {selectedOrderType === 'dine_in' && (
+                    <MenuItem onClick={() => handleStatusChange('ready')}>Ready (Dine In)</MenuItem>
+                )}
+                {selectedOrderType === 'takeaway' && (
+                    <MenuItem onClick={() => handleStatusChange('ready_to_takeaway')}>Ready (Takeaway)</MenuItem>
+                )}
+                {['delivery', 'online', 'online_takeaway'].includes(selectedOrderType || '') && (
+                    <MenuItem onClick={() => handleStatusChange('ready_to_pickup')}>Ready (Pickup/Delivery)</MenuItem>
+                )}
+            </Menu>
+        </Box >
+    );
+};
+
+export default KitchenOrdersPage;

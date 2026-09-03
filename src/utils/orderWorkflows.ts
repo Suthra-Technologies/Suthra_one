@@ -1,0 +1,392 @@
+// Order workflow utilities and helper functions
+
+/**
+ * Identity of a billed line: two lines print as one row only when every
+ * customer-visible attribute matches. Mirrors getOrderItemKey in the backend's
+ * orders.service.ts — keep the two in step.
+ */
+function getBillItemKey(item: any): string {
+    const menuItemId = (item.menuItem?._id || item.menuItem || item._id || '').toString();
+    const modifiers = (item.modifiers || [])
+        .map((m: any) => `${m.groupName || ''}:${m.name || ''}`)
+        .sort()
+        .join(',');
+    const addOns = (item.addOns || [])
+        .map((a: any) => (a?.name || a?._id || a || '').toString())
+        .sort()
+        .join(',');
+
+    return [
+        menuItemId || (item.name || '').trim().toLowerCase(),
+        item.variant?.name || item.variant?._id || 'base',
+        item.spiceLevel || 'none',
+        (item.notes || '').trim().toLowerCase(),
+        item.price ?? 0,
+        modifiers,
+        addOns,
+    ].join('::');
+}
+
+/**
+ * Collapses a bill's items to one row per distinct dish, summing quantity and
+ * total. The kitchen splits a dish across rows to track readiness per line, but a
+ * guest reading the bill should see "Aloo Methi Curry x3", not three rows.
+ *
+ * Cancelled lines are dropped: they are not charged and must not print.
+ */
+export function groupBillItems(items: any[]): any[] {
+    const grouped: any[] = [];
+    const indexByKey = new Map<string, number>();
+
+    for (const item of items || []) {
+        if (item?.preparationStatus === 'cancelled') continue;
+
+        const key = getBillItemKey(item);
+        const quantity = item.quantity ?? 1;
+        const price = item.price ?? 0;
+        const total = item.total ?? price * quantity;
+        const existingIndex = indexByKey.get(key);
+
+        if (existingIndex === undefined) {
+            indexByKey.set(key, grouped.length);
+            grouped.push({ ...item, quantity, price, total });
+        } else {
+            const target = grouped[existingIndex];
+            target.quantity += quantity;
+            target.total += total;
+        }
+    }
+
+    return grouped;
+}
+
+export interface OrderWorkflow {
+    type: string;
+    statuses: string[];
+    label: string;
+}
+
+export const ORDER_WORKFLOWS: Record<string, OrderWorkflow> = {
+    dine_in: {
+        type: 'dine_in',
+        label: 'Dine In',
+        statuses: ['pending', 'confirmed', 'preparing', 'in-progress', 'ready', 'served', 'completed', 'cancelled']
+    },
+    takeaway: {
+        type: 'takeaway',
+        label: 'Takeaway',
+        statuses: ['pending', 'confirmed', 'preparing', 'in-progress', 'ready_to_takeaway', 'completed', 'cancelled']
+    },
+    online_takeaway: {
+        type: 'online_takeaway',
+        label: 'Online Takeaway',
+        statuses: ['pending', 'confirmed', 'preparing', 'in-progress', 'ready_to_pickup', 'completed', 'cancelled']
+    },
+    global_dine_in: {
+        type: 'global_dine_in',
+        label: 'Online Dine In',
+        statuses: ['pending', 'confirmed', 'preparing', 'in-progress', 'ready', 'served', 'completed', 'cancelled']
+    },
+    global_takeaway: {
+        type: 'global_takeaway',
+        label: 'Online Takeaway',
+        statuses: ['pending', 'confirmed', 'preparing', 'in-progress', 'ready_to_takeaway', 'completed', 'cancelled']
+    },
+    delivery: {
+        type: 'delivery',
+        label: 'Online Delivery',
+        statuses: ['pending', 'confirmed', 'preparing', 'in-progress', 'ready_to_pickup', 'on_the_way', 'delivered', 'completed', 'cancelled']
+    }
+};
+
+export const STATUS_LABELS: Record<string, string> = {
+    pending: 'Pending',
+    confirmed: 'Confirmed',
+    preparing: 'Preparing',
+    ready: 'Ready',
+    approved: 'Approved',
+    served: 'Served',
+    completed: 'Completed',
+    ready_to_takeaway: 'Ready to Takeaway',
+    ready_to_pickup: 'Ready for Takeaway',
+    on_the_way: 'On the Way',
+    delivered: 'Delivered',
+    cancelled: 'Cancelled',
+    // Legacy/invalid statuses
+    'in-progress': 'In Progress',
+    ready_to_pick: 'Ready for Takeaway'
+};
+
+export const STATUS_COLORS: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'> = {
+    pending: 'warning',
+    confirmed: 'info',
+    preparing: 'primary',
+    ready: 'success',
+    approved: 'info',
+    served: 'success',
+    completed: 'success',
+    ready_to_takeaway: 'success',
+    ready_to_pick: 'success',
+    on_the_way: 'primary',
+    delivered: 'success',
+    cancelled: 'error',
+    // Legacy/invalid statuses
+    'in-progress': 'primary',
+    ready_to_pickup: 'success'
+};
+
+export const ORDER_TYPE_LABELS: Record<string, string> = {
+    dine_in: 'Dine In',
+    takeaway: 'Takeaway',
+    online_takeaway: 'Online Takeaway',
+    delivery: 'Delivery',
+    global_dine_in: 'Global Dine In',
+    global_takeaway: 'Global Takeaway'
+};
+
+export const PAYMENT_METHOD_LABELS: Record<string, string> = {
+    cash: 'Cash',
+    card: 'Card',
+    upi: 'UPI',
+    wallet: 'Wallet',
+    online: 'Online',
+    zelle: 'Zelle',
+    venmo: 'Venmo',
+    cheque: 'Cheque',
+    cod: 'COD',
+    phonepe: 'PhonePe',
+    gpay: 'Google Pay',
+    paytm: 'Paytm',
+    cashapp: 'Cash App',
+    applepay: 'Apple Pay'
+};
+
+/**
+ * Get available next statuses based on current status and order type
+ */
+export function getAvailableStatuses(currentStatus: string, orderType: string): string[] {
+    const workflow = ORDER_WORKFLOWS[orderType];
+    if (!workflow) return [];
+
+    const currentIndex = workflow.statuses.indexOf(currentStatus);
+    if (currentIndex === -1) return [];
+
+    // Can always cancel (if not already cancelled or completed)
+    const nextStatuses = workflow.statuses.slice(currentIndex + 1);
+
+    // Filter out terminal states if already in one
+    if (currentStatus === 'completed' || currentStatus === 'delivered' || currentStatus === 'cancelled') {
+        return [];
+    }
+
+    // Once food has reached served status and is with the customer, allow only completing/paying the order (hide cancelled)
+    if (currentStatus === 'served') {
+        return ['completed'];
+    }
+
+    // Always allow cancellation before served
+    if (!nextStatuses.includes('cancelled')) {
+        nextStatuses.push('cancelled');
+    }
+
+    return nextStatuses;
+}
+
+/**
+ * Get all possible statuses for a given order type
+ */
+export function getAllStatusesForType(orderType: string): string[] {
+    const workflow = ORDER_WORKFLOWS[orderType];
+    if (!workflow) return [];
+    return workflow.statuses;
+}
+
+/**
+ * Get status color for badge
+ */
+export function getStatusColor(status: string): 'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success' {
+    return STATUS_COLORS[status] || 'default';
+}
+
+/**
+ * Get status label for display
+ */
+export function getStatusLabel(status: string): string {
+    return STATUS_LABELS[status] || status;
+}
+
+/**
+ * Get order type label for display
+ */
+export function getOrderTypeLabel(orderType: string, order?: any): string {
+    if (order?.source === 'website' || order?.source === 'online' || order?.customerUser) {
+        if (orderType === 'dine_in' || orderType === 'global_dine_in') return 'Online Dine In';
+        if (orderType === 'takeaway' || orderType === 'online_takeaway' || orderType === 'global_takeaway') return 'Online Takeaway';
+    }
+    return ORDER_TYPE_LABELS[orderType] || orderType || '';
+}
+
+/**
+ * Get payment method label for display. Supports multiple methods comma separated.
+ */
+export function getPaymentMethodLabel(paymentMethod: string | string[]): string {
+    if (Array.isArray(paymentMethod)) {
+        if (paymentMethod.length === 0) return 'UNKNOWN';
+        // Unique map to ensure we don't say "CASH, CASH". Unlikely given design, but safe.
+        const uniqueMethods = Array.from(new Set(paymentMethod));
+        return uniqueMethods.map(pm => PAYMENT_METHOD_LABELS[pm] || (pm ? pm.charAt(0).toUpperCase() + pm.slice(1) : 'UNKNOWN')).join(' & ');
+    }
+    return PAYMENT_METHOD_LABELS[paymentMethod] || (paymentMethod ? paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1) : 'UNKNOWN');
+}
+
+/**
+ * Get active payment methods based on system settings and country context.
+ */
+export function getActivePaymentMethods(settings: any): { val: string; label: string }[] {
+    const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
+    const baseDefault = isIndia 
+        ? ['cash', 'card', 'phonepe', 'gpay', 'paytm', 'cheque'] 
+        : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
+    
+    const configuredKeys = Object.keys(settings?.system?.posPaymentMethods || {}).filter(
+        k => !['creditCard', 'debitCard'].includes(k)
+    );
+    const allCandidateKeys = Array.from(new Set([...baseDefault, ...configuredKeys]));
+
+    const activeMethods: { val: string; label: string }[] = [];
+
+    allCandidateKeys.forEach(m => {
+        const isExplicitlySet = settings?.system?.posPaymentMethods?.[m] !== undefined;
+        const isEnabled = isExplicitlySet 
+            ? settings.system.posPaymentMethods[m] === true 
+            : baseDefault.includes(m);
+
+        if (isEnabled) {
+            let label = PAYMENT_METHOD_LABELS[m];
+            if (!label) {
+                label = m
+                    .replace(/([A-Z])/g, ' $1')
+                    .replace(/[-_]/g, ' ')
+                    .trim()
+                    .replace(/\b\w/g, l => l.toUpperCase());
+            }
+            activeMethods.push({ val: m, label });
+        }
+    });
+
+    return activeMethods;
+}
+
+/**
+ * Check if an order is a Global Dine In order (placed via website, already paid)
+ */
+export function isGlobalDineIn(order: any): boolean {
+    return order?.orderType === 'global_dine_in' || (order?.orderType === 'dine_in' && order?.source === 'website');
+}
+
+/**
+ * Check if items can be added to an order
+ * Note: Global Dine In orders have already paid, so no items can be added
+ * Note: 'served' is excluded — the food is on the table and the bill is next, so
+ * those guests place a new order. Must stay in step with the allowed statuses in
+ * the backend's addItemsToOrder.
+ */
+export function canAddItems(status: string, orderType: string, order?: any): boolean {
+    // Global Dine In orders have already paid - don't allow adding items
+    if (order && isGlobalDineIn(order)) {
+        return false;
+    }
+    // Allow adding items for dine-in orders in active statuses
+    if (orderType === 'dine_in') {
+        return ['pending', 'confirmed', 'preparing', 'ready', 'approved'].includes(status);
+    }
+    return false;
+}
+
+/**
+ * Validate if a status transition is allowed
+ */
+export function isValidStatusTransition(currentStatus: string, newStatus: string, orderType: string): boolean {
+    const availableStatuses = getAvailableStatuses(currentStatus, orderType);
+    return availableStatuses.includes(newStatus);
+}
+
+/**
+ * Check if order is active (not completed or cancelled)
+ */
+export function isOrderActive(status: string): boolean {
+    return !['completed', 'delivered', 'cancelled'].includes(status);
+}
+
+/**
+ * Check if order is completed
+ */
+export function isOrderCompleted(status: string): boolean {
+    return ['completed', 'delivered'].includes(status);
+}
+
+/**
+ * Check if order is cancelled
+ */
+export function isOrderCancelled(status: string): boolean {
+    return status === 'cancelled';
+}
+
+/**
+ * Format currency for display
+ */
+/**
+ * Format currency for display
+ */
+export function formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+    }).format(amount);
+}
+
+/**
+ * Format date and time
+ */
+export function formatDateTime(date: string | Date, timeZone?: string): string {
+    return new Date(date).toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        ...(timeZone ? { timeZone } : {}),
+    });
+}
+
+/**
+ * Format time only
+ */
+export function formatTime(date: string | Date): string {
+    return new Date(date).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+/**
+ * Calculate time elapsed since order creation
+ */
+export function getTimeElapsed(createdAt: string | Date): string {
+    const now = new Date();
+    const created = new Date(createdAt);
+    const diffMs = now.getTime() - created.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 60) {
+        return `${diffMins}m ago`;
+    }
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) {
+        return `${diffHours}h ago`;
+    }
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+}
