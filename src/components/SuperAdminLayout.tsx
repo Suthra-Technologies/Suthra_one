@@ -35,6 +35,7 @@ import {
     ListItemText,
     Menu,
     MenuItem,
+    TextField,
     Toolbar,
     Typography,
 } from '@mui/material';
@@ -43,6 +44,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import SuperAdminNotifications from './SuperAdminNotifications';
+import brandIcon from '../assets/images/Images/Home/LogoIcon.webp';
 
 const DRAWER_WIDTH = 280;
 
@@ -147,7 +149,15 @@ const SuperAdminLayout: React.FC = () => {
     const drawer = (
         <Box>
             <Box 
-                sx={{ p: 3, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
+                sx={{
+                    px: 2,
+                    py: 2.25,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-start',
+                    cursor: 'pointer',
+                    gap: 1.35,
+                }}
                 onClick={() => {
                     navigate('/superadmin');
                     setMobileOpen(false);
@@ -155,32 +165,61 @@ const SuperAdminLayout: React.FC = () => {
             >
                 <Box
                     component="img"
-                    src="/logo.png"
-                    alt="Suthra One Logo"
+                    src={brandIcon}
+                    alt="Suthra One"
                     sx={{
+                        height: 52,
                         width: 'auto',
-                        height: 80,
                         objectFit: 'contain',
-                        borderRadius: 1,
-                        mb: 1.5,
+                        flexShrink: 0,
+                        filter: 'drop-shadow(0 2px 8px rgba(255,112,52,0.2))',
                     }}
                 />
-                <Typography variant="h6" fontWeight="bold" color="error.main" sx={{ lineHeight: 1.2 }}>
-                    Super Admin
-                </Typography>
-                {/* <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    Platform Management
-                </Typography> */}
-            </Box>
-            <Divider />
-
-            <Box sx={{ p: 2, bgcolor: alpha('#d32f2f', 0.05) }}>
-                <Typography variant="subtitle2" fontWeight="medium">
-                    {user?.email}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                    SUPERADMIN
-                </Typography>
+                <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.55, lineHeight: 1 }}>
+                        <Typography
+                            component="span"
+                            sx={{
+                                fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+                                fontWeight: 800,
+                                fontSize: '1.15rem',
+                                letterSpacing: '-0.03em',
+                                color: '#1C2434',
+                                lineHeight: 1.05,
+                            }}
+                        >
+                            Suthra
+                        </Typography>
+                        <Typography
+                            component="span"
+                            sx={{
+                                fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+                                fontWeight: 800,
+                                fontSize: '1.15rem',
+                                letterSpacing: '-0.03em',
+                                color: '#FF7034',
+                                lineHeight: 1.05,
+                            }}
+                        >
+                            One
+                        </Typography>
+                    </Box>
+                    <Typography
+                        sx={{
+                            fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif",
+                            fontSize: '0.58rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.06em',
+                            color: '#7E8DA5',
+                            textTransform: 'uppercase',
+                            lineHeight: 1.2,
+                            mt: 0.35,
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        ALL-IN-ONE POS SYSTEM
+                    </Typography>
+                </Box>
             </Box>
             <Divider />
 
@@ -330,7 +369,13 @@ const SuperAdminLayout: React.FC = () => {
                         <MenuIcon />
                     </IconButton>
                     <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
-                        Super Admin Portal
+                        {/* Replace with Search box for  Stores, invoices, plans, demo requests, tickets, etc. */}
+                        <TextField
+                            label="Search"
+                            variant="outlined"
+                            size="small"
+                            sx={{ width: 200 }}
+                        />
                     </Typography>
                     <SuperAdminNotifications />
                     <IconButton onClick={handleProfileMenuOpen} color="inherit">

@@ -656,7 +656,7 @@ const SuperAdminPortal: React.FC = () => {
             {user?.name || 'Super Admin'}! 👋
           </Typography>
           <Typography sx={{ color: DS.muted, fontSize: '0.95rem', mt: 0.5 }}>
-            Here&apos;s what&apos;s happening with your platform today.
+            Here&apos;s what&apos;s happening with our platform today.
           </Typography>
         </Box>
         <Stack direction="row" spacing={1.25} sx={{ flexShrink: 0 }}>

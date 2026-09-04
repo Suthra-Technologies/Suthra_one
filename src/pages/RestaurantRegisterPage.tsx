@@ -17,6 +17,10 @@ import {
   DialogContent,
   DialogActions,
   Divider,
+  FormControl,
+  Select,
+  MenuItem,
+  ListSubheader,
 } from '@mui/material';
 import {
   Visibility,
@@ -35,6 +39,7 @@ import {
   ShieldOutlined,
   TrendingUpOutlined,
   SupportAgentOutlined,
+  RestaurantMenuOutlined,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { validateEmail, validatePhone, validateName, validatePassword, validateCompanyName, validateRequired, validateEin, getHelperText, hasError } from '../utils/validation';
@@ -45,11 +50,17 @@ import { splitPlanFeatures, planFeatureLabel } from '../utils/planFeatures';
 import brandMark from '../assets/images/Images/Register/suthra-one-hex-mark.png';
 import posLifestyle from '../assets/images/Images/Register/register-pos-lifestyle.png';
 import restaurantInterior from '../assets/images/Images/Register/register-restaurant-interior.png';
+import {
+  RESTAURANT_CATEGORIES,
+  getRestaurantType,
+  getStoreCoverUrl,
+} from '../config/restaurantTypes';
 
 interface RestaurantRegisterForm {
   restaurantName: string;
   slug: string;
   logo: string;
+  restaurantType: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -81,6 +92,7 @@ const DS = {
   purple: '#8B5CF6',
   purpleDeep: '#7C3AED',
   orange: '#F97316',
+  orangeDeep: '#EA580C',
   text: '#111827',
   muted: '#6B7280',
   label: '#1F2937',
@@ -178,6 +190,7 @@ const RestaurantRegisterPage: React.FC = () => {
         if (urlPlanId) {
           parsed.planId = urlPlanId;
         }
+        if (!parsed.restaurantType) parsed.restaurantType = '';
         return parsed;
       }
     } catch (e) {
@@ -187,6 +200,7 @@ const RestaurantRegisterPage: React.FC = () => {
       restaurantName: '',
       slug: '',
       logo: '',
+      restaurantType: '',
       firstName: '',
       lastName: '',
       email: '',
@@ -375,6 +389,9 @@ const RestaurantRegisterPage: React.FC = () => {
       case 'ein':
         validation = validateEin(value);
         break;
+      case 'restaurantType':
+        validation = validateRequired(value, 'Restaurant type');
+        break;
       default:
         validation = { isValid: true };
     }
@@ -386,6 +403,7 @@ const RestaurantRegisterPage: React.FC = () => {
     const newErrors: Record<string, ValidationResult> = {
       restaurantName: validateCompanyName(form.restaurantName),
       slug: validateRequired(form.slug, 'Domain'),
+      restaurantType: validateRequired(form.restaurantType, 'Restaurant type'),
       firstName: validateName(form.firstName, 'First name'),
       lastName: validateName(form.lastName, 'Last name'),
       email: validateEmail(form.email),
@@ -406,6 +424,7 @@ const RestaurantRegisterPage: React.FC = () => {
   const isReadyToRegister = Boolean(
     form.restaurantName.trim() &&
     form.slug.trim() &&
+    form.restaurantType.trim() &&
     form.firstName.trim() &&
     form.lastName.trim() &&
     form.email.trim() &&
@@ -413,6 +432,8 @@ const RestaurantRegisterPage: React.FC = () => {
     form.password.trim() &&
     form.password === form.confirmPassword
   );
+
+  const selectedRestaurantType = getRestaurantType(form.restaurantType);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -735,6 +756,139 @@ const RestaurantRegisterPage: React.FC = () => {
                     ),
                   }}
                 />
+              </Grid>
+
+              <Grid item xs={12}>
+                <FieldLabel htmlFor="restaurantType" required>Restaurant Type</FieldLabel>
+                <FormControl fullWidth error={hasError(errors.restaurantType)}>
+                  <Select
+                    id="restaurantType"
+                    displayEmpty
+                    value={form.restaurantType}
+                    onChange={(e) => {
+                      const value = String(e.target.value);
+                      setForm((prev) => ({ ...prev, restaurantType: value }));
+                      setErrors((prev) => ({ ...prev, restaurantType: validateRequired(value, 'Restaurant type') }));
+                    }}
+                    onBlur={() => handleBlur('restaurantType')}
+                    sx={{
+                      borderRadius: '10px',
+                      bgcolor: '#fff',
+                      fontFamily: DS.font,
+                      fontSize: '14px',
+                      height: 48,
+                      '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E8E8EE' },
+                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#D1D5DB' },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: DS.purple, borderWidth: '1.5px' },
+                    }}
+                    startAdornment={
+                      <InputAdornment position="start" sx={{ mr: 0.5 }}>
+                        <RestaurantMenuOutlined sx={{ color: '#9CA3AF', fontSize: 20 }} />
+                      </InputAdornment>
+                    }
+                    renderValue={(selected) => {
+                      if (!selected) {
+                        return <Box component="span" sx={{ color: '#9CA3AF' }}>Select your restaurant / business type</Box>;
+                      }
+                      return getRestaurantType(String(selected))?.label || String(selected);
+                    }}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: {
+                          maxHeight: 360,
+                          borderRadius: '12px',
+                          mt: 0.5,
+                          boxShadow: '0 12px 40px rgba(15,23,42,0.12)',
+                        },
+                      },
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      Select your restaurant / business type
+                    </MenuItem>
+                    {RESTAURANT_CATEGORIES.map((cat) => [
+                      <ListSubheader
+                        key={`h-${cat.id}`}
+                        sx={{
+                          fontFamily: DS.heading,
+                          fontWeight: 800,
+                          fontSize: '12px',
+                          color: DS.purpleDeep,
+                          bgcolor: '#F8FAFC',
+                          lineHeight: '36px',
+                          letterSpacing: '0.02em',
+                        }}
+                      >
+                        {cat.label}
+                      </ListSubheader>,
+                      ...cat.types.map((t) => (
+                        <MenuItem
+                          key={t.id}
+                          value={t.id}
+                          sx={{
+                            fontFamily: DS.font,
+                            fontSize: '13.5px',
+                            py: 1.1,
+                            gap: 1.25,
+                            '&.Mui-selected': { bgcolor: 'rgba(124,58,237,0.08)' },
+                          }}
+                        >
+                          <Box
+                            component="img"
+                            src={t.coverUrl}
+                            alt=""
+                            sx={{ width: 36, height: 28, borderRadius: '6px', objectFit: 'cover', flexShrink: 0 }}
+                          />
+                          {t.label}
+                        </MenuItem>
+                      )),
+                    ])}
+                  </Select>
+                  {(hasError(errors.restaurantType) || getHelperText(errors.restaurantType)) && (
+                    <Typography sx={{ mt: 0.6, fontSize: '12px', color: hasError(errors.restaurantType) ? '#EF4444' : DS.muted, fontFamily: DS.font }}>
+                      {getHelperText(errors.restaurantType) || 'Choose the type that best matches your business'}
+                    </Typography>
+                  )}
+                </FormControl>
+
+                {selectedRestaurantType && (
+                  <Box
+                    sx={{
+                      mt: 1.5,
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      border: '1px solid #E8E8EE',
+                      position: 'relative',
+                      height: 120,
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={getStoreCoverUrl(selectedRestaurantType.id)}
+                      alt={selectedRestaurantType.label}
+                      sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'linear-gradient(180deg, transparent 30%, rgba(15,23,42,0.72) 100%)',
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        p: 1.5,
+                      }}
+                    >
+                      <Box>
+                        <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '13px', fontFamily: DS.heading, lineHeight: 1.2 }}>
+                          {selectedRestaurantType.label}
+                        </Typography>
+                        <Typography sx={{ color: 'rgba(255,255,255,0.82)', fontSize: '11.5px', fontFamily: DS.font }}>
+                          {selectedRestaurantType.categoryLabel}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                )}
               </Grid>
 
               <Grid item xs={12} sm={7}>
