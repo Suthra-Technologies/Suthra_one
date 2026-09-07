@@ -117,17 +117,11 @@ import StaffIconImg from "/src/assets/images/icons/staff.png";
 // Images
 import Logo from "../../assets/images/Images/Home/Logo.webp";
 import LogoIcon from "../../assets/images/Images/Home/LogoIcon.webp";
-import POS from "../../assets/images/Images/Home/pos.png";
-import billingPosImg from "../../assets/images/modules/billing_pos.jpg";
-import heroTabletPosImg from "../../assets/images/modules/hero_tablet_pos.jpg";
 import heroAnalyticsLaptopImg from "../../assets/images/modules/hero_analytics_laptop.jpg";
-import highlightPosTerminalImg from "../../assets/images/modules/highlight_pos_terminal.jpg";
 import highlightInventorySyncImg from "../../assets/images/modules/highlight_inventory_sync.jpg";
 import highlightStaffPayrollImg from "../../assets/images/modules/highlight_staff_payroll.jpg";
-import highlightCrmLoyaltyImg from "../../assets/images/modules/highlight_crm_loyalty.jpg";
 import demoVideo from "../../assets/videos/demo_video.mp4";
 import stockInventoryImg from "../../assets/images/modules/stock_inventory.jpg";
-import ordersBookingsImg from "../../assets/images/modules/orders_bookings.jpg";
 import discountsLoyaltyImg from "../../assets/images/modules/discounts_loyalty.jpg";
 import staffAttendanceImg from "../../assets/images/modules/staff_attendance.jpg";
 import purchasesSuppliersImg from "../../assets/images/modules/purchases_suppliers.jpg";
@@ -158,6 +152,18 @@ const INDUSTRY_IMAGES = {
   restaurant: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1200&q=80",
   services: "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80",
   enterprise: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80",
+};
+
+// --- Universal (Non-Industry-Specific) Module & Hero Photography ---
+// Chosen to avoid any single-industry (e.g. food service) bias or third-party brand marks,
+// since Suthra One serves retail, supermarkets, salons, wholesale, and restaurants alike.
+const MODULE_IMAGES = {
+  counterCheckout: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1200&q=80",
+  tabletCheckout: "https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&w=1200&q=80",
+  counterPayment: "https://images.unsplash.com/photo-1556742212-5b321f3c261b?auto=format&fit=crop&w=1200&q=80",
+  loyaltyDiscount: "https://images.unsplash.com/photo-1607083206869-4c7672e72a8a?auto=format&fit=crop&w=1200&q=80",
+  posTerminalCheckout: "https://images.unsplash.com/photo-1556742044-3c52d6e88c62?auto=format&fit=crop&w=1200&q=80",
+  tapToPayCounter: "https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?auto=format&fit=crop&w=1200&q=80",
 };
 
 // --- Animations ---
@@ -220,7 +226,7 @@ const HERO_SHOWCASE_STAGES = [
     tag: "Countertop POS",
     title: "High-Speed Counter POS",
     desc: "Complete touch register, barcode scanner, and cash drawer hardware setup.",
-    image: POS,
+    image: MODULE_IMAGES.counterCheckout,
     badges: [
       {
         pos: { top: "4%", left: { xs: "-2%", sm: "4%" } },
@@ -259,7 +265,7 @@ const HERO_SHOWCASE_STAGES = [
     tag: "Tablet & Mobile Billing",
     title: "Portable Aisle & Table POS",
     desc: "Take orders and accept contactless payments directly from mobile tablets.",
-    image: heroTabletPosImg,
+    image: MODULE_IMAGES.tabletCheckout,
     badges: [
       {
         pos: { top: "4%", left: { xs: "-2%", sm: "4%" } },
@@ -431,7 +437,7 @@ const QUICK_HIGHLIGHTS = [
     icon: PointOfSaleIcon,
     accent: "#FF6B35",
     badge: "Sub-second Billing",
-    bgImage: highlightPosTerminalImg,
+    bgImage: MODULE_IMAGES.tapToPayCounter,
   },
   {
     title: "Multi-Store Inventory",
@@ -455,7 +461,7 @@ const QUICK_HIGHLIGHTS = [
     icon: StarIcon,
     accent: "#FF6B35",
     badge: "+35% Retention",
-    bgImage: highlightCrmLoyaltyImg,
+    bgImage: MODULE_IMAGES.loyaltyDiscount,
   },
 ];
 
@@ -563,7 +569,7 @@ const featureData = [
       inactive: PosIconImg,
       active: PosIconActiveImg,
     },
-    images: [billingPosImg],
+    images: [MODULE_IMAGES.posTerminalCheckout],
     points: [
       "Quick barcode scanning, item search, and touch buttons for instant billing",
       "Accept all payments: Cash, Card, UPI, Mobile Wallets, and Split Bills",
@@ -595,7 +601,7 @@ const featureData = [
       inactive: OrdersIconImg,
       active: OrdersIconActiveImg,
     },
-    images: [ordersBookingsImg],
+    images: [MODULE_IMAGES.counterPayment],
     points: [
       "Live order board showing New, Preparing, Ready, and Completed orders",
       "Handles store walk-ins, online pickups, and delivery orders together",
@@ -1919,7 +1925,7 @@ const HomePage: React.FC = () => {
                   transition: "all 0.2s ease",
                 }}
               >
-                Explore All 14 Modules
+                Explore All 6 Modules
               </Button>
             </Grid>
 
@@ -2944,7 +2950,7 @@ const HomePage: React.FC = () => {
               >
                 <Box
                   component="img"
-                  src={POS}
+                  src={MODULE_IMAGES.counterCheckout}
                   alt="Suthra One POS Suite"
                   sx={{
                     width: "100%",
